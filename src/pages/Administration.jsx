@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import { useState, useEffect } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Alert, AlertDescription } from "@/components/ui/alert";
@@ -8,10 +8,7 @@ import { Settings, Shield, AlertTriangle, RefreshCw, CheckSquare } from "lucide-
 
 import GovernanceTab from "../components/admin/GovernanceTab";
 import ProjectApproval from "../components/admin/ProjectApproval";
-import { getContractOwner } from "@/api/functions";
-import { syncAndFetchProjects } from "@/api/functions";
-import { Project } from "@/api/entities";
-import { useContractInteraction } from "../components/contract/ContractInteraction";
+import useContractInteraction from "../components/contract/ContractInteraction";
 
 export default function Administration() {
   const [isOwner, setIsOwner] = useState(false);
@@ -25,6 +22,7 @@ export default function Administration() {
   
   const { 
     userAddress, 
+    checkIsOwner, 
     checkAuthorizedVVB, 
     approveAndIssueCredits, 
     rejectAndRemoveProject,
@@ -34,10 +32,11 @@ export default function Administration() {
 
   const loadProjects = async () => {
     try {
-        const projectData = await Project.list();
-        setProjects(projectData);
+      const response = await fetch('http://localhost:3001/api/sync-projects');
+      const data = await response.json();
+      setProjects(data.projects || []);
     } catch (e) {
-        console.error("Failed to load projects", e);
+      console.error("Failed to load projects", e);
     }
   };
 
@@ -45,94 +44,102 @@ export default function Administration() {
     const initialize = async () => {
       setIsCheckingOwnership(true);
       try {
-          const { data } = await getContractOwner();
-          if (data && data.owner) {
-            setContractOwner(data.owner);
-            if (userAddress) {
-                setWalletAddress(userAddress);
-                const isOwner = userAddress.toLowerCase() === data.owner.toLowerCase();
-                setIsOwner(isOwner);
-
-                // Check if user is VVB
-                const vvbStatus = await checkAuthorizedVVB(userAddress);
-                setIsVVB(vvbStatus);
-
-                if (isOwner || vvbStatus) {
-                   await loadProjects();
-                }
+        const response = await fetch('http://localhost:3001/api/contract-owner');
+        const { owner } = await response.json();
+        if (owner) {
+          setContractOwner(owner);
+          if (userAddress) {
+            setWalletAddress(userAddress);
+            const isOwner = await checkIsOwner();
+            setIsOwner(isOwner);
+            const vvbStatus = await checkAuthorizedVVB();
+            setIsVVB(vvbStatus);
+            if (isOwner || vvbStatus) {
+              await loadProjects();
             }
           }
+        }
       } catch (error) {
-          console.error("Failed to fetch contract owner:", error);
+        console.error("Failed to fetch contract owner:", error);
       } finally {
-          setIsCheckingOwnership(false);
+        setIsCheckingOwnership(false);
       }
     };
     
     if (userAddress) {
       initialize();
     }
-  }, [userAddress]);
+  }, [userAddress, checkIsOwner, checkAuthorizedVVB]);
 
   const handleSyncProjects = async () => {
     setIsSyncing(true);
     setSyncMessage("");
     try {
-        const { data } = await syncAndFetchProjects();
-        setSyncMessage(`Sync successful! Found ${data.total} projects. Created: ${data.created}, Updated: ${data.synced}.`);
-        await loadProjects();
-    } catch(e) {
-        setSyncMessage("Error: Failed to sync projects.");
-        console.error(e);
+      const response = await fetch('http://localhost:3001/api/sync-projects');
+      const data = await response.json();
+      setSyncMessage(`Sync successful! Found ${data.projects?.length || 0} projects.`);
+      await loadProjects();
+    } catch (e) {
+      setSyncMessage("Error: Failed to sync projects.");
+      console.error(e);
     } finally {
-        setIsSyncing(false);
+      setIsSyncing(false);
     }
   };
 
-  const handleApproveProject = async (projectId, creditAmount, certificateId) => {
+  const handleApproveProject = async (projectAddress, creditAmount, certificateId) => {
     try {
-      await approveAndIssueCredits(projectId, creditAmount, certificateId);
+      const { hash } = await approveAndIssueCredits(projectAddress, creditAmount, certificateId);
+      await fetch('http://localhost:3001/api/transaction', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ transactionHash: hash, projectAddress, userAddress })
+      });
       await loadProjects();
     } catch (error) {
       console.error("Failed to approve project:", error);
     }
   };
 
-  const handleRejectProject = async (projectId) => {
+  const handleRejectProject = async (projectAddress) => {
     try {
-      await rejectAndRemoveProject(projectId);
+      const { hash } = await rejectAndRemoveProject(projectAddress);
+      await fetch('http://localhost:3001/api/transaction', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ transactionHash: hash, projectAddress, userAddress })
+      });
       await loadProjects();
     } catch (error) {
       console.error("Failed to reject project:", error);
     }
   };
 
-  const handleValidateProject = async (projectId) => {
+  const handleValidateProject = async (projectAddress) => {
     try {
-      await validateProject(projectId);
+      const { hash } = await validateProject(projectAddress);
+      await fetch('http://localhost:3001/api/transaction', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ transactionHash: hash, projectAddress, userAddress })
+      });
       await loadProjects();
     } catch (error) {
       console.error("Failed to validate project:", error);
     }
   };
 
-  const handleVerifyProject = async (projectId) => {
+  const handleVerifyProject = async (projectAddress) => {
     try {
-      await verifyProject(projectId);
+      const { hash } = await verifyProject(projectAddress);
+      await fetch('http://localhost:3001/api/transaction', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ transactionHash: hash, projectAddress, userAddress })
+      });
       await loadProjects();
     } catch (error) {
       console.error("Failed to verify project:", error);
-    }
-  };
-
-  const handleGovernanceAction = async (action, params) => {
-    try {
-      // Simulate governance action
-      await new Promise(resolve => setTimeout(resolve, 2000));
-      console.log(`Executing ${action} with params:`, params);
-      return { success: true };
-    } catch (error) {
-      throw new Error(`Failed to execute ${action}`);
     }
   };
 
@@ -164,7 +171,7 @@ export default function Administration() {
               <Alert variant="destructive" className="mb-6">
                 <AlertTriangle className="h-4 w-4" />
                 <AlertDescription>
-                  You don't have permission to access this page. Only the contract owner and authorized VVBs can access administration functions.
+                  You do not have permission to access this page. Only the contract owner and authorized VVBs can access administration functions.
                 </AlertDescription>
               </Alert>
               
@@ -218,24 +225,24 @@ export default function Administration() {
         
         {isOwner && (
           <Card className="mb-6">
-              <CardHeader>
-                  <CardTitle className="flex items-center space-x-2">
-                      <RefreshCw className="w-5 h-5 text-purple-600"/>
-                      <span>Sync with Blockchain</span>
-                  </CardTitle>
-                  <p className="text-sm text-gray-600">
-                      Fetch the latest project list from the smart contract and update the local database.
-                  </p>
-              </CardHeader>
-              <CardContent>
-                  <div className="flex items-center space-x-4">
-                      <Button onClick={handleSyncProjects} disabled={isSyncing}>
-                          <RefreshCw className={`w-4 h-4 mr-2 ${isSyncing ? 'animate-spin' : ''}`} />
-                          {isSyncing ? 'Syncing...' : 'Sync Projects'}
-                      </Button>
-                      {syncMessage && <p className="text-sm text-gray-600">{syncMessage}</p>}
-                  </div>
-              </CardContent>
+            <CardHeader>
+              <CardTitle className="flex items-center space-x-2">
+                <RefreshCw className="w-5 h-5 text-purple-600"/>
+                <span>Sync with Blockchain</span>
+              </CardTitle>
+              <p className="text-sm text-gray-600">
+                Fetch the latest project list from the smart contract and update the local database.
+              </p>
+            </CardHeader>
+            <CardContent>
+              <div className="flex items-center space-x-4">
+                <Button onClick={handleSyncProjects} disabled={isSyncing}>
+                  <RefreshCw className={`w-4 h-4 mr-2 ${isSyncing ? 'animate-spin' : ''}`} />
+                  {isSyncing ? 'Syncing...' : 'Sync Projects'}
+                </Button>
+                {syncMessage && <p className="text-sm text-gray-600">{syncMessage}</p>}
+              </div>
+            </CardContent>
           </Card>
         )}
 
@@ -255,19 +262,19 @@ export default function Administration() {
           </TabsList>
 
           <TabsContent value="approval">
-             <ProjectApproval 
-               projects={projects} 
-               onApprove={handleApproveProject} 
-               onReject={handleRejectProject}
-               onValidate={handleValidateProject}
-               onVerify={handleVerifyProject}
-               isVVB={isVVB}
-               isOwner={isOwner}
-             />
+            <ProjectApproval 
+              projects={projects} 
+              onApprove={handleApproveProject} 
+              onReject={handleRejectProject}
+              onValidate={handleValidateProject}
+              onVerify={handleVerifyProject}
+              isVVB={isVVB}
+              isOwner={isOwner}
+            />
           </TabsContent>
           {isOwner && (
             <TabsContent value="governance">
-              <GovernanceTab onExecuteGovernance={handleGovernanceAction} />
+              <GovernanceTab />
             </TabsContent>
           )}
         </Tabs>

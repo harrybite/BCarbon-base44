@@ -5,48 +5,38 @@ import { Textarea } from "@/components/ui/textarea";
 import { Badge } from "@/components/ui/badge";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { CheckCircle2, XCircle, Clock, MessageSquare, Send } from "lucide-react";
+import useContractInteraction from '../contract/ContractInteraction';
 
-export default function ProjectValidation({ project, onValidate, onComment }) {
+export default function ProjectValidation({ project }) {
+  const { userAddress, validateProject, verifyProject, rejectAndRemoveProject } = useContractInteraction();
   const [comment, setComment] = React.useState("");
   const [isSubmitting, setIsSubmitting] = React.useState(false);
-  const [comments, setComments] = React.useState([
-    {
-      id: 1,
-      author: "VVB Validator",
-      content: "Initial review complete. All documentation provided.",
-      timestamp: "2024-01-15T10:30:00Z",
-      type: "validation"
-    },
-    {
-      id: 2,
-      author: "Technical Reviewer",
-      content: "Methodology verification in progress. Need additional data on baseline calculations.",
-      timestamp: "2024-01-16T14:20:00Z",
-      type: "technical"
-    }
-  ]);
+  const [comments, setComments] = React.useState(project.comments.concat(project.offChainComments) || []);
 
   const handleSubmitComment = async () => {
     if (!comment.trim()) return;
-    
+
     setIsSubmitting(true);
     try {
+      await fetch(`http://localhost:3001/api/project/${project.projectAddress}/comment`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ userAddress, comment }),
+      });
       const newComment = {
         id: Date.now(),
-        author: "Current User",
+        author: userAddress,
         content: comment,
         timestamp: new Date().toISOString(),
         type: "general"
       };
-      
       setComments(prev => [newComment, ...prev]);
       setComment("");
-      
-      if (onComment) {
-        await onComment(project.id, comment);
-      }
     } catch (error) {
       console.error("Error submitting comment:", error);
+      <Alert variant="destructive">
+        <AlertDescription>Error submitting comment: {error.message}</AlertDescription>
+      </Alert>
     } finally {
       setIsSubmitting(false);
     }
@@ -54,9 +44,26 @@ export default function ProjectValidation({ project, onValidate, onComment }) {
 
   const handleValidation = async (action) => {
     try {
-      await onValidate(project.id, action);
+      let hash;
+      if (action === 'approve') {
+        hash = (await validateProject(project.projectAddress)).hash;
+      } else if (action === 'verify') {
+        hash = (await verifyProject(project.projectAddress)).hash;
+      } else if (action === 'reject') {
+        hash = (await rejectAndRemoveProject(project.projectAddress)).hash;
+      }
+      if (hash) {
+        await fetch('http://localhost:3001/api/transaction', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ transactionHash: hash, projectAddress: project.projectAddress, userAddress })
+        });
+      }
     } catch (error) {
       console.error("Error during validation:", error);
+      <Alert variant="destructive">
+        <AlertDescription>Error during validation: {error.message}</AlertDescription>
+      </Alert>
     }
   };
 
@@ -66,10 +73,10 @@ export default function ProjectValidation({ project, onValidate, onComment }) {
       approved: { color: "bg-green-100 text-green-800", icon: CheckCircle2, label: "Approved" },
       rejected: { color: "bg-red-100 text-red-800", icon: XCircle, label: "Rejected" }
     };
-    
+
     const config = statusConfig[status] || statusConfig.pending;
     const Icon = config.icon;
-    
+
     return (
       <Badge className={config.color}>
         <Icon className="w-3 h-3 mr-1" />
@@ -85,7 +92,7 @@ export default function ProjectValidation({ project, onValidate, onComment }) {
         <CardHeader>
           <CardTitle className="flex items-center justify-between">
             <span>Validation Status</span>
-            {getStatusBadge(project.validationStatus || 'pending')}
+            {getStatusBadge(project.isApproved ? 'approved' : 'pending')}
           </CardTitle>
         </CardHeader>
         <CardContent>
@@ -95,18 +102,18 @@ export default function ProjectValidation({ project, onValidate, onComment }) {
               className="bg-green-600 hover:bg-green-700"
             >
               <CheckCircle2 className="w-4 h-4 mr-2" />
-              Approve Project
+              Validate Project
             </Button>
-            
+
             <Button
-              onClick={() => handleValidation('request_changes')}
+              onClick={() => handleValidation('verify')}
               variant="outline"
               className="border-yellow-500 text-yellow-700 hover:bg-yellow-50"
             >
               <Clock className="w-4 h-4 mr-2" />
-              Request Changes
+              Verify Project
             </Button>
-            
+
             <Button
               onClick={() => handleValidation('reject')}
               variant="destructive"

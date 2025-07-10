@@ -1,7 +1,5 @@
-import React, { useState, useEffect } from "react";
+import { useState, useEffect } from "react";
 import { useLocation } from "react-router-dom";
-import { Project } from "@/api/entities";
-import { Transaction } from "@/api/entities"; // Added
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -23,10 +21,11 @@ import {
 } from "lucide-react";
 import { Link } from "react-router-dom";
 import { createPageUrl } from "@/utils";
-import { checkTransactionStatus } from "@/api/functions"; // Added
+import useContractInteraction from "../components/contract/ContractInteraction";
 
 export default function ProjectDetails() {
   const location = useLocation();
+  const { userAddress, mintWithETH, retireCredits } = useContractInteraction();
   const [project, setProject] = useState(null);
   const [isLoading, setIsLoading] = useState(true);
   const [mintAmount, setMintAmount] = useState("");
@@ -38,47 +37,23 @@ export default function ProjectDetails() {
 
   useEffect(() => {
     const params = new URLSearchParams(location.search);
-    const id = params.get('id');
-    if (id) {
-      loadProject(id);
+    const projectAddress = params.get('address');
+    if (projectAddress) {
+      loadProject(projectAddress);
     }
   }, [location]);
 
-  const loadProject = async (id) => {
+  const loadProject = async (projectAddress) => {
     setIsLoading(true);
     try {
-      const projects = await Project.filter({ id: id });
-      if (projects.length > 0) {
-        setProject(projects[0]);
-      }
+      const response = await fetch(`http://localhost:3001/api/project/${projectAddress}?userAddress=${userAddress}`);
+      const data = await response.json();
+      setProject(data);
     } catch (error) {
       console.error("Error loading project:", error);
+      setError("Failed to load project details.");
     } finally {
       setIsLoading(false);
-    }
-  };
-
-  const createAndMonitorTransaction = async (type, amount) => {
-    try {
-        const fakeTxHash = `0x${Math.random().toString(16).substr(2, 64)}`;
-        // Assuming project.id is the project identifier
-        // and project.treasury exists for minting to it.
-        await Transaction.create({
-            transactionHash: fakeTxHash,
-            type: type,
-            projectId: project.id, // Using project.id as per existing structure
-            amount: parseFloat(amount),
-            fromAddress: "0x...", // Wallet address placeholder
-            toAddress: type === "retire" ? "0x0000000000000000000000000000000000000000" : project.treasury, // Assuming treasury exists
-            status: "pending",
-        });
-        setSuccess(`Transaction submitted. Hash: ${fakeTxHash.substring(0,10)}...`);
-        // Start monitoring
-        checkTransactionStatus({ transactionHash: fakeTxHash });
-    } catch (e) {
-        console.error("Error creating and monitoring transaction:", e);
-        setError("Failed to record transaction.");
-        throw e; // Re-throw to propagate the error
     }
   };
 
@@ -90,36 +65,20 @@ export default function ProjectDetails() {
 
     setIsMinting(true);
     setError("");
-    setSuccess(""); // Clear previous success messages
+    setSuccess("");
 
     try {
-      await createAndMonitorTransaction("mint", mintAmount);
+      const { hash } = await mintWithETH(project.projectAddress, parseInt(mintAmount));
+      await fetch('http://localhost:3001/api/transaction', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ transactionHash: hash, projectAddress: project.projectAddress, userAddress })
+      });
+      setSuccess(`Minting initiated! Transaction: ${hash}`);
       setMintAmount("");
-      // Refresh project data after a short delay to reflect changes
-      setTimeout(() => loadProject(project.id), 3000);
+      setTimeout(() => loadProject(project.projectAddress), 3000);
     } catch (error) {
-      setError("Failed to mint with ETH. Please try again.");
-    } finally {
-      setIsMinting(false);
-    }
-  };
-
-  const handleMintRUSD = async () => {
-    if (!mintAmount || parseFloat(mintAmount) <= 0) {
-      setError("Please enter a valid amount to mint");
-      return;
-    }
-
-    setIsMinting(true);
-    setError("");
-    setSuccess(""); // Clear previous success messages
-
-    try {
-      await createAndMonitorTransaction("mint", mintAmount);
-      setMintAmount("");
-      setTimeout(() => loadProject(project.id), 3000);
-    } catch (error) {
-      setError("Failed to mint with RUSD. Please try again.");
+      setError(`Failed to mint with ETH: ${error.message}`);
     } finally {
       setIsMinting(false);
     }
@@ -133,14 +92,20 @@ export default function ProjectDetails() {
 
     setIsRetiring(true);
     setError("");
-    setSuccess(""); // Clear previous success messages
+    setSuccess("");
 
     try {
-      await createAndMonitorTransaction("retire", retireAmount);
+      const { hash } = await retireCredits(project.projectAddress, parseInt(retireAmount));
+      await fetch('http://localhost:3001/api/transaction', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ transactionHash: hash, projectAddress: project.projectAddress, userAddress })
+      });
+      setSuccess(`Retirement initiated! Transaction: ${hash}`);
       setRetireAmount("");
-      setTimeout(() => loadProject(project.id), 3000);
+      setTimeout(() => loadProject(project.projectAddress), 3000);
     } catch (error) {
-      setError("Failed to retire credits. Please try again.");
+      setError(`Failed to retire credits: ${error.message}`);
     } finally {
       setIsRetiring(false);
     }
@@ -173,7 +138,7 @@ export default function ProjectDetails() {
             <TreePine className="w-8 h-8 text-gray-400" />
           </div>
           <h2 className="text-2xl font-bold text-gray-900 mb-2">Project Not Found</h2>
-          <p className="text-gray-600 mb-6">The project you're looking for doesn't exist.</p>
+          <p className="text-gray-600 mb-6">The project you are looking for does not exist.</p>
           <Link to={createPageUrl("Projects")}>
             <Button variant="outline">
               <ArrowLeft className="w-4 h-4 mr-2" />
@@ -203,20 +168,20 @@ export default function ProjectDetails() {
             </div>
             <div>
               <h1 className="text-3xl font-bold text-gray-900">
-                Project #{project.id}
+                {project.metadata?.name}
               </h1>
               <p className="text-gray-600">{project.certificateId}</p>
             </div>
             <div className="ml-auto">
-              {project.mintingActive ? (
+              {project.isApproved ? (
                 <Badge className="bg-green-100 text-green-700 border-green-200">
                   <CheckCircle2 className="w-3 h-3 mr-1" />
-                  Active
+                  Approved
                 </Badge>
               ) : (
                 <Badge variant="outline" className="text-gray-600">
                   <AlertCircle className="w-3 h-3 mr-1" />
-                  Inactive
+                  Pending
                 </Badge>
               )}
             </div>
@@ -252,7 +217,7 @@ export default function ProjectDetails() {
               <div className="grid grid-cols-2 md:grid-cols-4 gap-6">
                 <div className="text-center">
                   <div className="text-2xl font-bold text-gray-900">
-                    {project.totalSupply?.toLocaleString() || '0'}
+                    {project.creditAmount?.toLocaleString() || '0'}
                   </div>
                   <div className="text-sm text-gray-600">Total Supply</div>
                 </div>
@@ -264,13 +229,13 @@ export default function ProjectDetails() {
                 </div>
                 <div className="text-center">
                   <div className="text-2xl font-bold text-green-600">
-                    {project.mintPrice} ETH
+                    0.01 ETH
                   </div>
                   <div className="text-sm text-gray-600">Mint Price</div>
                 </div>
                 <div className="text-center">
                   <div className="text-2xl font-bold text-blue-600">
-                    {((project.totalSupply - project.totalRetired) / project.totalSupply * 100).toFixed(1)}%
+                    {project.creditAmount ? ((project.creditAmount - (project.totalRetired || 0)) / project.creditAmount * 100).toFixed(1) : '0'}%
                   </div>
                   <div className="text-sm text-gray-600">Available</div>
                 </div>
@@ -286,27 +251,27 @@ export default function ProjectDetails() {
             <CardContent>
               <div className="grid md:grid-cols-2 gap-6">
                 <div className="space-y-4">
-                  {project.methodology && (
+                  {project.metadata?.methodology && (
                     <div className="flex items-center space-x-2">
                       <Shield className="w-4 h-4 text-gray-400" />
                       <span className="text-sm text-gray-600">Methodology:</span>
-                      <span className="font-medium">{project.methodology}</span>
+                      <span className="font-medium">{project.metadata.methodology}</span>
                     </div>
                   )}
                   
-                  {project.batchNumber && (
+                  {project.projectAddress && (
                     <div className="flex items-center space-x-2">
                       <GitBranch className="w-4 h-4 text-gray-400" />
-                      <span className="text-sm text-gray-600">Batch:</span>
-                      <span className="font-medium">{project.batchNumber}</span>
+                      <span className="text-sm text-gray-600">Address:</span>
+                      <span className="font-medium">{project.projectAddress}</span>
                     </div>
                   )}
                   
-                  {project.vintage && (
+                  {project.metadata?.vintage && (
                     <div className="flex items-center space-x-2">
                       <Calendar className="w-4 h-4 text-gray-400" />
                       <span className="text-sm text-gray-600">Vintage:</span>
-                      <span className="font-medium">{project.vintage}</span>
+                      <span className="font-medium">{project.metadata.vintage}</span>
                     </div>
                   )}
                 </div>
@@ -320,22 +285,20 @@ export default function ProjectDetails() {
                     </div>
                   )}
                   
-                  {project.isPermanent !== undefined && (
-                    <div className="flex items-center space-x-2">
-                      <Shield className="w-4 h-4 text-gray-400" />
-                      <span className="text-sm text-gray-600">Permanent:</span>
-                      <Badge variant={project.isPermanent ? "default" : "outline"}>
-                        {project.isPermanent ? "Yes" : "No"}
-                      </Badge>
-                    </div>
-                  )}
+                  <div className="flex items-center space-x-2">
+                    <Shield className="w-4 h-4 text-gray-400" />
+                    <span className="text-sm text-gray-600">Permanent:</span>
+                    <Badge variant={project.isPermanent ? "default" : "outline"}>
+                      {project.isPermanent ? "Yes" : "No"}
+                    </Badge>
+                  </div>
                   
-                  {project.repoLink && (
+                  {project.metadata?.repoLink && (
                     <div className="flex items-center space-x-2">
                       <ExternalLink className="w-4 h-4 text-gray-400" />
                       <span className="text-sm text-gray-600">Repository:</span>
                       <a 
-                        href={project.repoLink} 
+                        href={project.metadata.repoLink} 
                         target="_blank" 
                         rel="noopener noreferrer"
                         className="text-blue-600 hover:underline"
@@ -365,34 +328,24 @@ export default function ProjectDetails() {
                   <Input
                     id="mintAmount"
                     type="number"
-                    step="0.01"
+                    step="1"
+                    min="1"
                     placeholder="Enter amount"
                     value={mintAmount}
                     onChange={(e) => setMintAmount(e.target.value)}
-                    disabled={!project.mintingActive}
+                    disabled={!project.isApproved}
                   />
                 </div>
                 
-                <div className="flex space-x-3">
-                  <Button
-                    onClick={handleMintETH}
-                    disabled={isMinting || !project.mintingActive}
-                    className="flex-1 bg-blue-600 hover:bg-blue-700"
-                  >
-                    {isMinting ? "Minting..." : "Mint with ETH"}
-                  </Button>
-                  
-                  <Button
-                    onClick={handleMintRUSD}
-                    disabled={isMinting || !project.mintingActive}
-                    variant="outline"
-                    className="flex-1"
-                  >
-                    {isMinting ? "Minting..." : "Mint with RUSD"}
-                  </Button>
-                </div>
+                <Button
+                  onClick={handleMintETH}
+                  disabled={isMinting || !project.isApproved}
+                  className="w-full bg-blue-600 hover:bg-blue-700"
+                >
+                  {isMinting ? "Minting..." : "Mint with ETH"}
+                </Button>
                 
-                {!project.mintingActive && (
+                {!project.isApproved && (
                   <p className="text-sm text-gray-500">
                     Minting is currently disabled for this project
                   </p>
@@ -414,7 +367,8 @@ export default function ProjectDetails() {
                   <Input
                     id="retireAmount"
                     type="number"
-                    step="0.01"
+                    step="1"
+                    min="1"
                     placeholder="Enter amount"
                     value={retireAmount}
                     onChange={(e) => setRetireAmount(e.target.value)}

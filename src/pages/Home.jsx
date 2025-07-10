@@ -8,7 +8,6 @@ import {
   TrendingUp, 
   Shield, 
   Globe,
-  ArrowRight,
   Leaf,
   Zap,
   Users

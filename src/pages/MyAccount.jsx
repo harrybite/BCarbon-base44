@@ -1,5 +1,4 @@
-import React from "react";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { useEffect, useState } from "react";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { User, Briefcase, ShoppingBag } from "lucide-react";
 import IssuerTab from "../components/account/IssuerTab";
@@ -7,33 +6,36 @@ import BuyerTab from "../components/account/BuyerTab";
 import WalletConnection from "../components/wallet/WalletConnection";
 
 export default function MyAccount() {
-  const [isConnected, setIsConnected] = React.useState(false);
+  const [walletAddress, setWalletAddress] = useState(null);
 
-  React.useEffect(() => {
-    const checkConnection = async () => {
-      if (typeof window !== 'undefined' && window.ethereum) {
+  useEffect(() => {
+    const checkWallet = async () => {
+      if (typeof window !== "undefined" && window.ethereum) {
         try {
-          const accounts = await window.ethereum.request({ method: 'eth_accounts' });
-          setIsConnected(accounts.length > 0);
-        } catch (error) {
-          console.log('Error checking wallet:', error);
+          const accounts = await window.ethereum.request({ method: "eth_accounts" });
+          if (accounts.length > 0) {
+            setWalletAddress(accounts[0]);
+          }
+        } catch (err) {
+          console.error("Wallet check failed:", err);
         }
       }
     };
-    checkConnection();
+    checkWallet();
   }, []);
 
-  if (!isConnected) {
+  if (!walletAddress) {
     return (
-        <div className="min-h-screen py-8 px-4 sm:px-6 lg:px-8 flex items-center justify-center">
-            <WalletConnection />
-        </div>
+      <div className="min-h-screen py-8 px-4 sm:px-6 lg:px-8 flex items-center justify-center">
+        <WalletConnection />
+      </div>
     );
   }
 
   return (
     <div className="min-h-screen py-8 px-4 sm:px-6 lg:px-8">
       <div className="max-w-7xl mx-auto">
+        {/* Header */}
         <div className="mb-8">
           <div className="flex items-center space-x-3 mb-4">
             <div className="w-10 h-10 bg-blue-100 rounded-lg flex items-center justify-center">
@@ -45,12 +47,13 @@ export default function MyAccount() {
             </div>
           </div>
         </div>
-        
+
+        {/* Tab View */}
         <Tabs defaultValue="issuer" className="space-y-6">
           <TabsList className="grid w-full grid-cols-2">
             <TabsTrigger value="issuer" className="flex items-center space-x-2">
               <Briefcase className="w-4 h-4" />
-              <span>Project Issuer</span>
+              <span>Project Owned</span>
             </TabsTrigger>
             <TabsTrigger value="buyer" className="flex items-center space-x-2">
               <ShoppingBag className="w-4 h-4" />
@@ -59,10 +62,10 @@ export default function MyAccount() {
           </TabsList>
 
           <TabsContent value="issuer">
-            <IssuerTab />
+            <IssuerTab walletAddress={walletAddress} />
           </TabsContent>
           <TabsContent value="buyer">
-            <BuyerTab />
+            <BuyerTab walletAddress={walletAddress} />
           </TabsContent>
         </Tabs>
       </div>

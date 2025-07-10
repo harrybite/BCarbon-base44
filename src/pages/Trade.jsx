@@ -1,45 +1,43 @@
-import React, { useState, useEffect, useRef } from "react";
-import { Project } from "@/api/entities";
-import { Transaction } from "@/api/entities";
+import { useState, useEffect, useRef } from "react";
+import axios from "axios";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { TrendingUp, ArrowUpDown, Clock, CheckCircle2, AlertCircle } from "lucide-react";
 
 import TradeForm from "../components/trade/TradeForm";
-import { checkTransactionStatus } from "@/api/functions";
+
+const API_BASE = "http://localhost:3001/api"; // Backend base URL
 
 export default function Trade() {
   const [projects, setProjects] = useState([]);
   const [transactions, setTransactions] = useState([]);
   const [isLoading, setIsLoading] = useState(true);
 
-  // useRef to hold the latest transactions state for the interval callback
   const transactionsRef = useRef(transactions);
 
-  // Update the ref whenever transactions state changes
   useEffect(() => {
     transactionsRef.current = transactions;
   }, [transactions]);
 
   useEffect(() => {
     loadData();
-    // Set up an interval to check pending transactions
     const interval = setInterval(() => {
-        checkAllPendingTransactions();
-    }, 15000); // every 15 seconds
-
+      checkAllPendingTransactions();
+    }, 15000);
     return () => clearInterval(interval);
-  }, []); // Empty dependency array to run once, relying on ref for latest state
+  }, []);
 
   const loadData = async () => {
     setIsLoading(true);
     try {
-      const [projectsData, transactionsData] = await Promise.all([
-        Project.list(),
-        Transaction.list('-created_date', 10)
-      ]);
-      setProjects(projectsData);
-      setTransactions(transactionsData);
+      // Fetch projects
+      const resProjects = await axios.get(`${API_BASE}/sync-projects`);
+      const approvedProjects = resProjects.data.projects.filter(p => p.isApproved);
+      setProjects(approvedProjects);
+
+      // Fetch recent transactions (you can add a route with a limit if needed)
+      const resTransactions = await axios.get(`${API_BASE}/transactions`);
+      setTransactions(resTransactions.data || []);
     } catch (error) {
       console.error("Error loading data:", error);
     } finally {
@@ -48,52 +46,43 @@ export default function Trade() {
   };
 
   const checkAllPendingTransactions = async () => {
-    // Access the latest transactions via the ref
-    const pendingTxs = transactionsRef.current.filter(tx => tx.status === 'pending');
+    const pendingTxs = transactionsRef.current.filter(tx => tx.status === "pending");
     if (pendingTxs.length > 0) {
-        // We can run these in parallel
-        await Promise.all(pendingTxs.map(tx => 
-            checkTransactionStatus({ transactionHash: tx.transactionHash })
-        ));
-        // Refresh the list after checking
-        loadData();
+      await Promise.all(
+        pendingTxs.map((tx) =>
+          axios.get(`${API_BASE}/transaction/${tx.transactionHash}`)
+        )
+      );
+      loadData();
     }
   };
 
   const handleTrade = async (tradeData) => {
     try {
-      // Simulate trade execution
-      await new Promise(resolve => setTimeout(resolve, 2000));
-      
-      // In a real app, this hash would come from the wallet signing response
-      const fakeTxHash = `0x${Math.random().toString(16).substr(2, 64)}`;
-      
-      // Create transaction record
-      await Transaction.create({
-        transactionHash: fakeTxHash,
-        type: "transfer",
-        projectId: tradeData.projectId,
-        amount: parseFloat(tradeData.amount),
-        fromAddress: tradeData.fromAddress || "0x...",
-        toAddress: tradeData.toAddress,
-        status: "pending"
-      });
-      
-      // Refresh transactions immediately to show the new pending one
-      await loadData();
+      // Simulate actual transfer transaction here (or call smart contract via wallet)
+      await new Promise((resolve) => setTimeout(resolve, 2000));
+      const fakeTxHash = `0x${Math.random().toString(16).substring(2, 66)}`;
 
-      // Trigger backend check for the newly created transaction
-      checkTransactionStatus({ transactionHash: fakeTxHash });
-      
+      // Send to backend
+      await axios.post(`${API_BASE}/transaction`, {
+        transactionHash: fakeTxHash,
+        projectAddress: tradeData.projectId,
+        userAddress: tradeData.toAddress,
+      });
+
+      await loadData();
+      checkAllPendingTransactions();
+
       return { success: true };
     } catch (error) {
+      console.error("Trade execution failed:", error);
       throw new Error("Trade execution failed");
     }
   };
 
   const formatAddress = (address) => {
     if (!address) return "";
-    return `${address.substring(0, 6)}...${address.substring(address.length - 4)}`;
+    return `${address.slice(0, 6)}...${address.slice(-4)}`;
   };
 
   const getStatusBadge = (status) => {
@@ -102,15 +91,15 @@ export default function Trade() {
       confirmed: "bg-green-100 text-green-800 border-green-200",
       failed: "bg-red-100 text-red-800 border-red-200"
     };
-    
+
     const icons = {
       pending: Clock,
       confirmed: CheckCircle2,
-      failed: AlertCircle // Changed failed icon
+      failed: AlertCircle
     };
-    
+
     const Icon = icons[status] || Clock;
-    
+
     return (
       <Badge className={styles[status]}>
         <Icon className="w-3 h-3 mr-1" />
@@ -122,7 +111,6 @@ export default function Trade() {
   return (
     <div className="min-h-screen py-8 px-4 sm:px-6 lg:px-8">
       <div className="max-w-6xl mx-auto">
-        {/* Header */}
         <div className="mb-8">
           <div className="flex items-center space-x-3 mb-4">
             <div className="w-10 h-10 bg-blue-100 rounded-lg flex items-center justify-center">
@@ -173,17 +161,17 @@ export default function Trade() {
                           </div>
                           <div>
                             <div className="font-medium text-sm">
-                              {tx.amount} Credits
+                              {tx.amount || '1'} Credits
                             </div>
                             <div className="text-xs text-gray-500">
-                              {formatAddress(tx.fromAddress)} → {formatAddress(tx.toAddress)}
+                              {formatAddress(tx.userAddress)} → {formatAddress(tx.projectAddress)}
                             </div>
                           </div>
                         </div>
                         <div className="text-right">
                           {getStatusBadge(tx.status)}
                           <div className="text-xs text-gray-500 mt-1">
-                            Project #{tx.projectId}
+                            Tx Hash: {formatAddress(tx.transactionHash)}
                           </div>
                         </div>
                       </div>

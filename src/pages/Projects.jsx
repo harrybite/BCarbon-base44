@@ -1,9 +1,7 @@
-import React, { useState, useEffect } from "react";
-import { Project } from "@/api/entities";
-import { Button } from "@/components/ui/button";
+import { useState, useEffect } from "react";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Search, Filter, TreePine } from "lucide-react";
+import { Search, TreePine } from "lucide-react";
 import { Skeleton } from "@/components/ui/skeleton";
 
 import ProjectCard from "../components/projects/ProjectCard";
@@ -15,7 +13,7 @@ export default function Projects() {
   const [isLoading, setIsLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState("");
   const [statusFilter, setStatusFilter] = useState("all");
-  const [sortBy, setSortBy] = useState("projectId");
+  const [sortBy, setSortBy] = useState("projectAddress");
 
   useEffect(() => {
     loadProjects();
@@ -28,8 +26,9 @@ export default function Projects() {
   const loadProjects = async () => {
     setIsLoading(true);
     try {
-      const fetchedProjects = await Project.list();
-      setProjects(fetchedProjects);
+      const response = await fetch('http://localhost:3001/api/sync-projects');
+      const data = await response.json();
+      setProjects(data.projects || []);
     } catch (error) {
       console.error("Error loading projects:", error);
     } finally {
@@ -43,17 +42,17 @@ export default function Projects() {
     // Search filter
     if (searchTerm) {
       filtered = filtered.filter(project => 
-        project.projectId.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        project.certificateId.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        project.methodology?.toLowerCase().includes(searchTerm.toLowerCase())
+        project.projectAddress.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        project.metadata?.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        project.metadata?.methodology.toLowerCase().includes(searchTerm.toLowerCase())
       );
     }
 
     // Status filter
     if (statusFilter !== "all") {
       filtered = filtered.filter(project => {
-        if (statusFilter === "active") return project.mintingActive;
-        if (statusFilter === "inactive") return !project.mintingActive;
+        if (statusFilter === "active") return project.isApproved;
+        if (statusFilter === "inactive") return !project.isApproved;
         return true;
       });
     }
@@ -61,12 +60,12 @@ export default function Projects() {
     // Sort
     filtered.sort((a, b) => {
       switch (sortBy) {
-        case "projectId":
-          return a.projectId.localeCompare(b.projectId);
+        case "projectAddress":
+          return a.projectAddress.localeCompare(b.projectAddress);
         case "mintPrice":
-          return (a.mintPrice || 0) - (b.mintPrice || 0);
+          return 0.01 - 0.01; // Static mint price as per ProjectDetails.jsx
         case "totalSupply":
-          return (b.totalSupply || 0) - (a.totalSupply || 0);
+          return (b.creditAmount || 0) - (a.creditAmount || 0);
         case "totalRetired":
           return (b.totalRetired || 0) - (a.totalRetired || 0);
         default:
@@ -115,8 +114,8 @@ export default function Projects() {
               </SelectTrigger>
               <SelectContent>
                 <SelectItem value="all">All Status</SelectItem>
-                <SelectItem value="active">Active</SelectItem>
-                <SelectItem value="inactive">Inactive</SelectItem>
+                <SelectItem value="active">Approved</SelectItem>
+                <SelectItem value="inactive">Pending</SelectItem>
               </SelectContent>
             </Select>
 
@@ -125,7 +124,7 @@ export default function Projects() {
                 <SelectValue placeholder="Sort by" />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="projectId">Project ID</SelectItem>
+                <SelectItem value="projectAddress">Project Address</SelectItem>
                 <SelectItem value="mintPrice">Mint Price</SelectItem>
                 <SelectItem value="totalSupply">Total Supply</SelectItem>
                 <SelectItem value="totalRetired">Total Retired</SelectItem>
@@ -155,7 +154,7 @@ export default function Projects() {
             ))
           ) : filteredProjects.length > 0 ? (
             filteredProjects.map((project) => (
-              <ProjectCard key={project.id} project={project} />
+              <ProjectCard key={project.projectAddress} project={project} />
             ))
           ) : (
             <div className="col-span-full text-center py-16">

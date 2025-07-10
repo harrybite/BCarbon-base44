@@ -1,4 +1,8 @@
-import React from "react";
+import { useState, useEffect } from 'react';
+import { ethers } from 'ethers';
+import governanceAbi from './Governance.json';
+import registryAbi from './CarbonCreditRegistry.json';
+import bco2Abi from './BCO2.json';
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { AlertCircle } from "lucide-react";
 
@@ -7,16 +11,17 @@ const GOVERNANCE_ADDRESS = '0x5296Bc359E5030d75F3c46613facfdE26eCBF24A';
 const REGISTRY_ADDRESS = '0x2c90169D9A8e8C2999dDBF1Aae14CFFF381A102E';
 
 export const useContractInteraction = () => {
-  const [userAddress, setUserAddress] = React.useState("");
-  const [isConnected, setIsConnected] = React.useState(false);
-  const [error, setError] = React.useState("");
-  const [provider, setProvider] = React.useState(null);
-  const [signer, setSigner] = React.useState(null);
+  const [userAddress, setUserAddress] = useState("");
+  const [isConnected, setIsConnected] = useState(false);
+  const [error, setError] = useState("");
+  const [provider, setProvider] = useState(null);
+  const [signer, setSigner] = useState(null);
+  const [governance, setGovernance] = useState(null);
+  const [registry, setRegistry] = useState(null);
 
-  React.useEffect(() => {
+  useEffect(() => {
     initializeProvider();
-    
-    // Listen for account changes
+
     if (window.ethereum) {
       window.ethereum.on('accountsChanged', handleAccountsChanged);
       window.ethereum.on('chainChanged', () => window.location.reload());
@@ -32,7 +37,14 @@ export const useContractInteraction = () => {
   const initializeProvider = async () => {
     if (typeof window !== 'undefined' && window.ethereum) {
       try {
-        // Use window.ethereum directly for Web3 calls
+        const web3Provider = new ethers.BrowserProvider(window.ethereum);
+        const signer = await web3Provider.getSigner();
+        const governanceContract = new ethers.Contract(GOVERNANCE_ADDRESS, governanceAbi, signer);
+        const registryContract = new ethers.Contract(REGISTRY_ADDRESS, registryAbi, signer);
+        setProvider(web3Provider);
+        setSigner(signer);
+        setGovernance(governanceContract);
+        setRegistry(registryContract);
         const accounts = await window.ethereum.request({ method: 'eth_accounts' });
         if (accounts.length > 0) {
           setUserAddress(accounts[0]);
@@ -44,13 +56,22 @@ export const useContractInteraction = () => {
     }
   };
 
-  const handleAccountsChanged = (accounts) => {
+  const handleAccountsChanged = async (accounts) => {
     if (accounts.length > 0) {
       setUserAddress(accounts[0]);
       setIsConnected(true);
+      if (provider) {
+        const signer = await provider.getSigner();
+        setSigner(signer);
+        setGovernance(new ethers.Contract(GOVERNANCE_ADDRESS, governanceAbi, signer));
+        setRegistry(new ethers.Contract(REGISTRY_ADDRESS, registryAbi, signer));
+      }
     } else {
       setUserAddress("");
       setIsConnected(false);
+      setSigner(null);
+      setGovernance(null);
+      setRegistry(null);
     }
   };
 
@@ -61,237 +82,258 @@ export const useContractInteraction = () => {
     }
 
     try {
-      const accounts = await window.ethereum.request({ 
-        method: 'eth_requestAccounts' 
-      });
-      
+      const accounts = await window.ethereum.request({ method: 'eth_requestAccounts' });
       if (accounts.length > 0) {
         setUserAddress(accounts[0]);
         setIsConnected(true);
         setError("");
+        const web3Provider = new ethers.BrowserProvider(window.ethereum);
+        const signer = await web3Provider.getSigner();
+        setProvider(web3Provider);
+        setSigner(signer);
+        setGovernance(new ethers.Contract(GOVERNANCE_ADDRESS, governanceAbi, signer));
+        setRegistry(new ethers.Contract(REGISTRY_ADDRESS, registryAbi, signer));
       }
     } catch (error) {
       setError("Failed to connect wallet");
     }
   };
 
-  // Convert number to wei (18 decimals)
-  const toWei = (value) => {
-    return (parseFloat(value) * Math.pow(10, 18)).toString();
-  };
-
-  // Convert wei to ether
-  const fromWei = (value) => {
-    return (parseFloat(value) / Math.pow(10, 18)).toString();
-  };
-
-  // Registry Contract Functions
   const createAndListProject = async (projectData) => {
-    if (!isConnected) throw new Error("Wallet not connected");
-    
+    if (!isConnected || !registry) throw new Error("Wallet not connected or contracts not initialized");
     try {
-      // Contract interaction using window.ethereum
-      const mintPriceWei = toWei(projectData.mintPrice.toString());
-      const listingFeeWei = toWei("0.01"); // 0.01 ETH listing fee
-
-      // Prepare contract call data
-      const contractData = {
-        to: REGISTRY_ADDRESS,
-        data: await encodeCreateProjectCall(projectData, mintPriceWei),
-        value: listingFeeWei
-      };
-
-      // Send transaction
-      const txHash = await window.ethereum.request({
-        method: 'eth_sendTransaction',
-        params: [{
-          from: userAddress,
-          to: contractData.to,
-          data: contractData.data,
-          value: `0x${parseInt(contractData.value).toString(16)}`
-        }]
-      });
-
-      return { hash: txHash };
+      const { name, description, location, methodology, totalSupply, listingFee } = projectData;
+      const listingFeeWei = ethers.parseEther(listingFee.toString());
+      const tx = await registry.createAndListProject(
+        name,
+        description,
+        location,
+        methodology,
+        totalSupply,
+        { value: listingFeeWei }
+      );
+      const receipt = await tx.wait();
+      const projectAddress = receipt.logs
+        .map(log => {
+          try {
+            return registry.interface.parseLog(log);
+          } catch {
+            return null;
+          }
+        })
+        .find(event => event?.name === 'ProjectListed')?.args.projectContract;
+      await fetch(`http://localhost:3001/api/transaction/${tx.hash}`);
+      return { hash: tx.hash, projectAddress };
     } catch (error) {
       throw new Error(`Failed to create project: ${error.message}`);
     }
   };
 
-  // Helper function to encode contract call (simplified version)
-  const encodeCreateProjectCall = async (projectData, mintPriceWei) => {
-    // This would normally use ethers.js to encode the function call
-    // For now, we'll return a placeholder that the backend can process
-    return "0x"; // Placeholder - in a real implementation, this would be the encoded function call
-  };
-
-  // Mint functions
   const mintWithETH = async (projectAddress, amount) => {
-    if (!isConnected) throw new Error("Wallet not connected");
-    
+    if (!isConnected || !signer) throw new Error("Wallet not connected");
     try {
-      // Get mint price first (this would need a backend call to fetch)
-      const mintPrice = 0.01; // Placeholder - should fetch from contract
-      const totalCost = toWei((mintPrice * amount).toString());
-
-      const txHash = await window.ethereum.request({
-        method: 'eth_sendTransaction',
-        params: [{
-          from: userAddress,
-          to: projectAddress,
-          data: `0xa0712d68${amount.toString(16).padStart(64, '0')}`, // mint(uint256) function signature + amount
-          value: `0x${parseInt(totalCost).toString(16)}`
-        }]
-      });
-
-      return { hash: txHash };
+      const bco2Contract = new ethers.Contract(projectAddress, bco2Abi, signer);
+      const tx = await bco2Contract.mint(amount, { value: 0 }); // Adjust value if minting requires payment
+      await fetch(`http://localhost:3001/api/transaction/${tx.hash}`);
+      return { hash: tx.hash };
     } catch (error) {
       throw new Error(`Failed to mint: ${error.message}`);
     }
   };
 
   const retireCredits = async (projectAddress, amount) => {
-    if (!isConnected) throw new Error("Wallet not connected");
-    
+    if (!isConnected || !signer) throw new Error("Wallet not connected");
     try {
-      const txHash = await window.ethereum.request({
-        method: 'eth_sendTransaction',
-        params: [{
-          from: userAddress,
-          to: projectAddress,
-          data: `0x9f181b5e${amount.toString(16).padStart(64, '0')}`, // retire(uint256) function signature + amount
-        }]
-      });
-
-      return { hash: txHash };
+      const bco2Contract = new ethers.Contract(projectAddress, bco2Abi, signer);
+      const tx = await bco2Contract.retire(amount);
+      await fetch(`http://localhost:3001/api/transaction/${tx.hash}`);
+      return { hash: tx.hash };
     } catch (error) {
       throw new Error(`Failed to retire credits: ${error.message}`);
     }
   };
 
   const transferCredits = async (projectAddress, to, amount) => {
-    if (!isConnected) throw new Error("Wallet not connected");
-    
+    if (!isConnected || !signer) throw new Error("Wallet not connected");
     try {
-      // safeTransferFrom(from, to, id, amount, data)
-      // This is a simplified version - actual implementation would need proper encoding
-      const txHash = await window.ethereum.request({
-        method: 'eth_sendTransaction',
-        params: [{
-          from: userAddress,
-          to: projectAddress,
-          data: `0xf242432a`, // safeTransferFrom function signature (simplified)
-        }]
-      });
-
-      return { hash: txHash };
+      const bco2Contract = new ethers.Contract(projectAddress, bco2Abi, signer);
+      const tx = await bco2Contract.safeTransferFrom(userAddress, to, 1, amount, '0x');
+      await fetch(`http://localhost:3001/api/transaction/${tx.hash}`);
+      return { hash: tx.hash };
     } catch (error) {
       throw new Error(`Failed to transfer credits: ${error.message}`);
     }
   };
 
-  // Governance functions (for VVBs and admins)
   const validateProject = async (projectAddress) => {
-    if (!isConnected) throw new Error("Wallet not connected");
-    
+    if (!isConnected || !governance) throw new Error("Wallet not connected");
     try {
-      const txHash = await window.ethereum.request({
-        method: 'eth_sendTransaction',
-        params: [{
-          from: userAddress,
-          to: GOVERNANCE_ADDRESS,
-          data: `0x${projectAddress.slice(2).padStart(64, '0')}`, // Simplified encoding
-        }]
-      });
-
-      return { hash: txHash };
+      const tx = await governance.validateProject(projectAddress);
+      await fetch(`http://localhost:3001/api/transaction/${tx.hash}`);
+      return { hash: tx.hash };
     } catch (error) {
       throw new Error(`Failed to validate project: ${error.message}`);
     }
   };
 
   const verifyProject = async (projectAddress) => {
-    if (!isConnected) throw new Error("Wallet not connected");
-    
+    if (!isConnected || !governance) throw new Error("Wallet not connected");
     try {
-      const txHash = await window.ethereum.request({
-        method: 'eth_sendTransaction',
-        params: [{
-          from: userAddress,
-          to: GOVERNANCE_ADDRESS,
-          data: `0x${projectAddress.slice(2).padStart(64, '0')}`, // Simplified encoding
-        }]
-      });
-
-      return { hash: txHash };
+      const tx = await governance.verifyProject(projectAddress);
+      await fetch(`http://localhost:3001/api/transaction/${tx.hash}`);
+      return { hash: tx.hash };
     } catch (error) {
       throw new Error(`Failed to verify project: ${error.message}`);
     }
   };
 
   const approveAndIssueCredits = async (projectAddress, creditAmount, certificateId) => {
-    if (!isConnected) throw new Error("Wallet not connected");
-    
+    if (!isConnected || !governance) throw new Error("Wallet not connected");
     try {
-      const txHash = await window.ethereum.request({
-        method: 'eth_sendTransaction',
-        params: [{
-          from: userAddress,
-          to: GOVERNANCE_ADDRESS,
-          data: `0x`, // Would need proper encoding with all parameters
-        }]
-      });
-
-      return { hash: txHash };
+      const tx = await governance.approveAndIssueCredits(projectAddress, creditAmount, certificateId);
+      await fetch(`http://localhost:3001/api/transaction/${tx.hash}`);
+      return { hash: tx.hash };
     } catch (error) {
       throw new Error(`Failed to approve and issue credits: ${error.message}`);
     }
   };
 
   const rejectAndRemoveProject = async (projectAddress) => {
-    if (!isConnected) throw new Error("Wallet not connected");
-    
+    if (!isConnected || !governance) throw new Error("Wallet not connected");
     try {
-      const txHash = await window.ethereum.request({
-        method: 'eth_sendTransaction',
-        params: [{
-          from: userAddress,
-          to: GOVERNANCE_ADDRESS,
-          data: `0x${projectAddress.slice(2).padStart(64, '0')}`,
-        }]
-      });
-
-      return { hash: txHash };
+      const tx = await governance.rejectAndRemoveProject(projectAddress);
+      await fetch(`http://localhost:3001/api/transaction/${tx.hash}`);
+      return { hash: tx.hash };
     } catch (error) {
       throw new Error(`Failed to reject project: ${error.message}`);
     }
   };
 
-  // Backend integration functions (these call the backend to get blockchain data)
-  const getProjectStats = async (projectAddress) => {
-    // This would call your backend function to get project stats
-    return {
-      totalSupply: 0,
-      totalRetired: 0,
-      mintPrice: "0",
-      mintingActive: false,
-      owner: ""
-    };
+  const pauseContract = async () => {
+    if (!isConnected || !governance) throw new Error("Wallet not connected");
+    try {
+      const tx = await governance.pause();
+      await fetch(`http://localhost:3001/api/transaction/${tx.hash}`);
+      return { hash: tx.hash };
+    } catch (error) {
+      throw new Error(`Failed to pause contract: ${error.message}`);
+    }
   };
 
-  const checkAuthorizedVVB = async (address) => {
-    // This would call your backend to check VVB status
-    return false;
+  const unpauseContract = async () => {
+    if (!isConnected || !governance) throw new Error("Wallet not connected");
+    try {
+      const tx = await unpauseContract();
+      await fetch(`http://localhost:3001/api/transaction/${tx.hash}`);
+      return { hash: tx.hash };
+    } catch (error) {
+      throw new Error(`Failed to unpause contract: ${error.message}`);
+    }
+  };
+
+  const addVVB = async (vvbAddress) => {
+    if (!isConnected || !governance) throw new Error("Wallet not connected");
+    try {
+      const tx = await governance.addVVB(vvbAddress);
+      await fetch(`http://localhost:3001/api/transaction/${tx.hash}`);
+      return { hash: tx.hash };
+    } catch (error) {
+      throw new Error(`Failed to add VVB: ${error.message}`);
+    }
+  };
+
+  const removeVVB = async (vvbAddress) => {
+    if (!isConnected || !governance) throw new Error("Wallet not connected");
+    try {
+      const tx = await governance.removeVVB(vvbAddress);
+      await fetch(`http://localhost:3001/api/transaction/${tx.hash}`);
+      return { hash: tx.hash };
+    } catch (error) {
+      throw new Error(`Failed to remove VVB: ${error.message}`);
+    }
+  };
+
+  const updateRegistryAddress = async (newRegistryAddress) => {
+    if (!isConnected || !governance) throw new Error("Wallet not connected");
+    try {
+      const tx = await governance.updateRegistry(newRegistryAddress);
+      await fetch(`http://localhost:3001/api/transaction/${tx.hash}`);
+      return { hash: tx.hash };
+    } catch (error) {
+      throw new Error(`Failed to update registry: ${error.message}`);
+    }
+  };
+
+  const getProjectStats = async (projectAddress) => {
+    try {
+      const response = await fetch(`http://localhost:3001/api/project/${projectAddress}?userAddress=${userAddress}`);
+      const data = await response.json();
+      return {
+        totalSupply: data.creditAmount,
+        totalRetired: 0, // Add logic in backend if needed
+        mintPrice: "0", // Adjust if BCO2 contract provides mint price
+        mintingActive: data.isApproved,
+        owner: data.metadata.owner,
+        comments: data.comments.concat(data.offChainComments)
+      };
+    } catch (error) {
+      throw new Error(`Failed to fetch project stats: ${error.message}`);
+    }
+  };
+
+  const checkAuthorizedVVB = async () => {
+    if (!userAddress) return false;
+    try {
+      const response = await fetch(`http://localhost:3001/api/contract-owner`);
+      const { owner } = await response.json();
+      const isVVB = await governance.checkAuthorizedVVBs(userAddress);
+      return isVVB || userAddress.toLowerCase() === owner.toLowerCase();
+    } catch (error) {
+      console.error('Error checking VVB status:', error);
+      return false;
+    }
+  };
+
+  const checkIsOwner = async () => {
+    if (!governance || !userAddress) return false;
+    try {
+      const owner = await governance.owner();
+      return userAddress.toLowerCase() === owner.toLowerCase();
+    } catch (error) {
+      console.error('Error checking owner status:', error);
+      return false;
+    }
+  };
+
+  const checkIsProjectOwner = async (projectAddress) => {
+    if (!registry || !userAddress) return false;
+    try {
+      const owners = await registry.getAuthorizedProjectOwners(projectAddress);
+      return owners.map(addr => addr.toLowerCase()).includes(userAddress.toLowerCase());
+    } catch (error) {
+      console.error('Error checking project owner status:', error);
+      return false;
+    }
   };
 
   const getUserBalance = async (projectAddress, tokenId = 1) => {
-    // This would call your backend to get user balance
-    return 0;
+    try {
+      const bco2Contract = new ethers.Contract(projectAddress, bco2Abi, provider || new ethers.JsonRpcProvider('https://data-seed-prebsc-1-s1.binance.org:8545/'));
+      const balance = await bco2Contract.balanceOf(userAddress, tokenId);
+      return balance.toString();
+    } catch (error) {
+      throw new Error(`Failed to fetch user balance: ${error.message}`);
+    }
   };
 
-  const getTokenURI = async (projectAddress, tokenId) => {
-    // This would call your backend to get token URI
-    return "";
+  const getTokenURI = async (projectAddress, tokenId = 1) => {
+    try {
+      const bco2Contract = new ethers.Contract(projectAddress, bco2Abi, provider || new ethers.JsonRpcProvider('https://data-seed-prebsc-1-s1.binance.org:8545/'));
+      const uri = await bco2Contract.uri(tokenId);
+      return uri;
+    } catch (error) {
+      throw new Error(`Failed to fetch token URI: ${error.message}`);
+    }
   };
 
   return {
@@ -299,25 +341,41 @@ export const useContractInteraction = () => {
     isConnected,
     error,
     connectWallet,
-    // Registry functions
     createAndListProject,
-    // BCO2 functions
     mintWithETH,
     retireCredits,
     transferCredits,
-    // Governance functions
     validateProject,
     verifyProject,
     approveAndIssueCredits,
     rejectAndRemoveProject,
-    // Read functions (these would call backend)
+    pauseContract,
+    unpauseContract,
+    addVVB,
+    removeVVB,
+    updateRegistryAddress,
     getProjectStats,
     checkAuthorizedVVB,
+    checkIsOwner,
+    checkIsProjectOwner,
     getUserBalance,
     getTokenURI
   };
 };
 
-export default function ContractInteraction({ children }) {
-  return <>{children}</>;
+export default function ContractInteraction(props) {
+  const { children = null } = props || {};
+  const { error } = useContractInteraction();
+
+  return (
+    <>
+      {error && (
+        <Alert variant="destructive">
+          <AlertCircle className="h-4 w-4" />
+          <AlertDescription>{error}</AlertDescription>
+        </Alert>
+      )}
+      {children}
+    </>
+  );
 }

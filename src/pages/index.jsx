@@ -1,81 +1,68 @@
+import { useEffect } from 'react';
+import { BrowserRouter as Router, Route, Routes, useLocation, Navigate } from 'react-router-dom';
 import Layout from "./Layout.jsx";
 
 import Home from "./Home";
-
 import Projects from "./Projects";
-
 import ProjectDetails from "./ProjectDetails";
-
 import Trade from "./Trade";
-
 import Administration from "./Administration";
-
 import MyAccount from "./MyAccount";
 
-import { BrowserRouter as Router, Route, Routes, useLocation } from 'react-router-dom';
-
+// Page mapping
 const PAGES = {
-    
-    Home: Home,
-    
-    Projects: Projects,
-    
-    ProjectDetails: ProjectDetails,
-    
-    Trade: Trade,
-    
-    Administration: Administration,
-    
-    MyAccount: MyAccount,
-    
-}
+  Home,
+  Projects,
+  ProjectDetails,
+  Trade,
+  Administration,
+  MyAccount
+};
 
+// Derive page name from current URL
 function _getCurrentPage(url) {
-    if (url.endsWith('/')) {
-        url = url.slice(0, -1);
-    }
-    let urlLastPart = url.split('/').pop();
-    if (urlLastPart.includes('?')) {
-        urlLastPart = urlLastPart.split('?')[0];
-    }
-
-    const pageName = Object.keys(PAGES).find(page => page.toLowerCase() === urlLastPart.toLowerCase());
-    return pageName || Object.keys(PAGES)[0];
+  let path = url.endsWith("/") ? url.slice(0, -1) : url;
+  const last = path.split("/").pop().split("?")[0];
+  return Object.keys(PAGES).find(page => page.toLowerCase() === last.toLowerCase()) || "Home";
 }
 
-// Create a wrapper component that uses useLocation inside the Router context
+// Optional: scroll to top on route change
+function ScrollToTop() {
+  const { pathname } = useLocation();
+  useEffect(() => {
+    window.scrollTo(0, 0);
+  }, [pathname]);
+  return null;
+}
+
+// Main router content inside Layout
 function PagesContent() {
-    const location = useLocation();
-    const currentPage = _getCurrentPage(location.pathname);
-    
-    return (
-        <Layout currentPageName={currentPage}>
-            <Routes>            
-                
-                    <Route path="/" element={<Home />} />
-                
-                
-                <Route path="/Home" element={<Home />} />
-                
-                <Route path="/Projects" element={<Projects />} />
-                
-                <Route path="/ProjectDetails" element={<ProjectDetails />} />
-                
-                <Route path="/Trade" element={<Trade />} />
-                
-                <Route path="/Administration" element={<Administration />} />
-                
-                <Route path="/MyAccount" element={<MyAccount />} />
-                
-            </Routes>
-        </Layout>
-    );
+  const location = useLocation();
+  const currentPage = _getCurrentPage(location.pathname);
+
+  return (
+    <Layout currentPageName={currentPage}>
+      <ScrollToTop />
+      <Routes>
+        <Route path="/" element={<Home />} />
+        <Route path="/Home" element={<Home />} />
+        <Route path="/Projects" element={<Projects />} />
+        <Route path="/ProjectDetails" element={<ProjectDetails />} />
+        <Route path="/Trade" element={<Trade />} />
+        <Route path="/Administration" element={<Administration />} />
+        <Route path="/MyAccount" element={<MyAccount />} />
+        {/* Optional: redirect unknown paths */}
+        <Route path="*" element={<Navigate to="/" replace />} />
+      </Routes>
+    </Layout>
+  );
 }
 
+// App-wide routing provider
 export default function Pages() {
-    return (
-        <Router>
-            <PagesContent />
-        </Router>
-    );
+  return (
+    <Router>
+      <PagesContent />
+    </Router>
+  );
 }

@@ -6,10 +6,12 @@ import { Label } from "@/components/ui/label";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { ArrowRight, AlertCircle, CheckCircle2 } from "lucide-react";
+import useContractInteraction from '../contract/ContractInteraction';
 
-export default function TradeForm({ projects, onTrade }) {
+export default function TradeForm({ projects }) {
+  const { userAddress, transferCredits } = useContractInteraction();
   const [formData, setFormData] = React.useState({
-    projectId: "",
+    projectAddress: "",
     amount: "",
     toAddress: "",
     fromAddress: ""
@@ -27,7 +29,7 @@ export default function TradeForm({ projects, onTrade }) {
   const handleSubmit = async (e) => {
     e.preventDefault();
     
-    if (!formData.projectId || !formData.amount || !formData.toAddress) {
+    if (!formData.projectAddress || !formData.amount || !formData.toAddress) {
       setError("Please fill in all required fields");
       return;
     }
@@ -46,10 +48,15 @@ export default function TradeForm({ projects, onTrade }) {
     setError("");
 
     try {
-      await onTrade(formData);
+      const { hash } = await transferCredits(formData.projectAddress, formData.toAddress, parseInt(formData.amount));
+      await fetch('http://localhost:3001/api/transaction', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ transactionHash: hash, projectAddress: formData.projectAddress, userAddress })
+      });
       setSuccess("Trade transaction submitted successfully!");
       setFormData({
-        projectId: "",
+        projectAddress: "",
         amount: "",
         toAddress: "",
         fromAddress: ""
@@ -92,16 +99,16 @@ export default function TradeForm({ projects, onTrade }) {
           <div className="space-y-2">
             <Label htmlFor="project">Select Project</Label>
             <Select
-              value={formData.projectId}
-              onValueChange={(value) => handleInputChange('projectId', value)}
+              value={formData.projectAddress}
+              onValueChange={(value) => handleInputChange('projectAddress', value)}
             >
               <SelectTrigger>
                 <SelectValue placeholder="Choose a project" />
               </SelectTrigger>
               <SelectContent>
                 {projects.map((project) => (
-                  <SelectItem key={project.projectId} value={project.projectId}>
-                    Project #{project.projectId} - {project.certificateId}
+                  <SelectItem key={project.projectAddress} value={project.projectAddress}>
+                    {project.metadata?.name} ({project.projectAddress})
                   </SelectItem>
                 ))}
               </SelectContent>
@@ -113,8 +120,8 @@ export default function TradeForm({ projects, onTrade }) {
             <Input
               id="amount"
               type="number"
-              step="0.01"
-              min="0"
+              step="1"
+              min="1"
               placeholder="Enter amount"
               value={formData.amount}
               onChange={(e) => handleInputChange('amount', e.target.value)}
@@ -129,6 +136,7 @@ export default function TradeForm({ projects, onTrade }) {
               placeholder="0x... (leave empty for your address)"
               value={formData.fromAddress}
               onChange={(e) => handleInputChange('fromAddress', e.target.value)}
+              disabled
             />
           </div>
 
