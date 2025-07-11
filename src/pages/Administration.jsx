@@ -8,7 +8,7 @@ import { Settings, Shield, AlertTriangle, RefreshCw, CheckSquare } from "lucide-
 
 import GovernanceTab from "../components/admin/GovernanceTab";
 import ProjectApproval from "../components/admin/ProjectApproval";
-import useContractInteraction from "../components/contract/ContractInteraction";
+import {useContractInteraction} from "../components/contract/ContractInteraction";
 
 export default function Administration() {
   const [isOwner, setIsOwner] = useState(false);
@@ -23,6 +23,7 @@ export default function Administration() {
   const { 
     userAddress, 
     checkIsOwner, 
+    getOwner,
     checkAuthorizedVVB, 
     approveAndIssueCredits, 
     rejectAndRemoveProject,
@@ -42,13 +43,14 @@ export default function Administration() {
 
   useEffect(() => {
     const initialize = async () => {
+      console.log("Initializing Administration page...");
       setIsCheckingOwnership(true);
       try {
-        const response = await fetch('http://localhost:3001/api/contract-owner');
-        const { owner } = await response.json();
-        if (owner) {
-          setContractOwner(owner);
+        // const response = await fetch('http://localhost:3001/api/contract-owner');
+        // const { owner } = await response.json();
           if (userAddress) {
+            const owner = await getOwner();
+            setContractOwner(owner);
             setWalletAddress(userAddress);
             const isOwner = await checkIsOwner();
             setIsOwner(isOwner);
@@ -58,7 +60,7 @@ export default function Administration() {
               await loadProjects();
             }
           }
-        }
+        
       } catch (error) {
         console.error("Failed to fetch contract owner:", error);
       } finally {
@@ -70,6 +72,7 @@ export default function Administration() {
       initialize();
     }
   }, [userAddress, checkIsOwner, checkAuthorizedVVB]);
+
 
   const handleSyncProjects = async () => {
     setIsSyncing(true);
@@ -155,6 +158,7 @@ export default function Administration() {
       </div>
     );
   }
+
 
   if (!isOwner && !isVVB) {
     return (

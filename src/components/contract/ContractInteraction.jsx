@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { ethers } from 'ethers';
+import { BrowserProvider, Contract, JsonRpcProvider, parseEther } from 'ethers';
 import governanceAbi from './Governance.json';
 import registryAbi from './CarbonCreditRegistry.json';
 import bco2Abi from './BCO2.json';
@@ -8,7 +8,7 @@ import { AlertCircle } from "lucide-react";
 
 // Contract addresses
 const GOVERNANCE_ADDRESS = '0x5296Bc359E5030d75F3c46613facfdE26eCBF24A';
-const REGISTRY_ADDRESS = '0x2c90169D9A8e8C2999dDBF1Aae14CFFF381A102E';
+const REGISTRY_ADDRESS = '0x680a0D6aA3af9328d466a721322e38e90A104D42';
 
 export const useContractInteraction = () => {
   const [userAddress, setUserAddress] = useState("");
@@ -37,10 +37,10 @@ export const useContractInteraction = () => {
   const initializeProvider = async () => {
     if (typeof window !== 'undefined' && window.ethereum) {
       try {
-        const web3Provider = new ethers.BrowserProvider(window.ethereum);
+        const web3Provider = new BrowserProvider(window.ethereum);
         const signer = await web3Provider.getSigner();
-        const governanceContract = new ethers.Contract(GOVERNANCE_ADDRESS, governanceAbi, signer);
-        const registryContract = new ethers.Contract(REGISTRY_ADDRESS, registryAbi, signer);
+        const governanceContract = new Contract(GOVERNANCE_ADDRESS, governanceAbi, signer);
+        const registryContract = new Contract(REGISTRY_ADDRESS, registryAbi, signer);
         setProvider(web3Provider);
         setSigner(signer);
         setGovernance(governanceContract);
@@ -51,7 +51,7 @@ export const useContractInteraction = () => {
           setIsConnected(true);
         }
       } catch (error) {
-        setError("Failed to initialize wallet connection");
+        setError("Failed to initialize wallet connection", error);
       }
     }
   };
@@ -63,8 +63,8 @@ export const useContractInteraction = () => {
       if (provider) {
         const signer = await provider.getSigner();
         setSigner(signer);
-        setGovernance(new ethers.Contract(GOVERNANCE_ADDRESS, governanceAbi, signer));
-        setRegistry(new ethers.Contract(REGISTRY_ADDRESS, registryAbi, signer));
+        setGovernance(new Contract(GOVERNANCE_ADDRESS, governanceAbi, signer));
+        setRegistry(new Contract(REGISTRY_ADDRESS, registryAbi, signer));
       }
     } else {
       setUserAddress("");
@@ -87,52 +87,101 @@ export const useContractInteraction = () => {
         setUserAddress(accounts[0]);
         setIsConnected(true);
         setError("");
-        const web3Provider = new ethers.BrowserProvider(window.ethereum);
+        const web3Provider = new BrowserProvider(window.ethereum);
         const signer = await web3Provider.getSigner();
         setProvider(web3Provider);
         setSigner(signer);
-        setGovernance(new ethers.Contract(GOVERNANCE_ADDRESS, governanceAbi, signer));
-        setRegistry(new ethers.Contract(REGISTRY_ADDRESS, registryAbi, signer));
+        setGovernance(new Contract(GOVERNANCE_ADDRESS, governanceAbi, signer));
+        setRegistry(new Contract(REGISTRY_ADDRESS, registryAbi, signer));
       }
     } catch (error) {
-      setError("Failed to connect wallet");
+      setError("Failed to connect wallet", error);
     }
   };
+ 
 
-  const createAndListProject = async (projectData) => {
-    if (!isConnected || !registry) throw new Error("Wallet not connected or contracts not initialized");
-    try {
-      const { name, description, location, methodology, totalSupply, listingFee } = projectData;
-      const listingFeeWei = ethers.parseEther(listingFee.toString());
-      const tx = await registry.createAndListProject(
-        name,
-        description,
-        location,
-        methodology,
-        totalSupply,
-        { value: listingFeeWei }
-      );
-      const receipt = await tx.wait();
-      const projectAddress = receipt.logs
-        .map(log => {
-          try {
-            return registry.interface.parseLog(log);
-          } catch {
-            return null;
-          }
-        })
-        .find(event => event?.name === 'ProjectListed')?.args.projectContract;
-      await fetch(`http://localhost:3001/api/transaction/${tx.hash}`);
-      return { hash: tx.hash, projectAddress };
-    } catch (error) {
-      throw new Error(`Failed to create project: ${error.message}`);
+const createAndListProject = async (projectData) => {
+  if (!isConnected || !registry) throw new Error("Wallet not connected or contracts not initialized");
+
+  // List of required fields
+  const requiredFields = [
+    "mintPrice",
+    "treasury",
+    "defaultIsPermanent",
+    "defaultValidity",
+    "defaultVintage",
+    "RUSD",
+    "nonRetiredURI",
+    "retiredURI",
+    "methodology",
+    "emissionReductions",
+    "projectDetails"
+  ];
+
+  // Check for missing fields
+  for (const field of requiredFields) {
+    if (
+      projectData[field] === undefined ||
+      projectData[field] === null ||
+      (typeof projectData[field] === "string" && projectData[field].trim() === "")
+    ) {
+      throw new Error(`Missing required parameter: ${field}`);
     }
-  };
+  }
+
+  try {
+    const {
+      mintPrice,
+      treasury,
+      defaultIsPermanent,
+      defaultValidity,
+      defaultVintage,
+      RUSD,
+      nonRetiredURI,
+      retiredURI,
+      methodology,
+      emissionReductions,
+      projectDetails,
+      listingFee
+    } = projectData;
+
+    const mintPriceWei = parseEther(mintPrice.toString());
+    const listingFeeWei = listingFee ? parseEther(listingFee.toString()) : 0n;
+
+    const tx = await registry.createAndListProject(
+      mintPriceWei,
+      treasury,
+      defaultIsPermanent,
+      defaultValidity,
+      defaultVintage,
+      RUSD,
+      nonRetiredURI,
+      retiredURI,
+      methodology,
+      emissionReductions,
+      projectDetails,
+      { value: listingFeeWei }
+    );
+    const receipt = await tx.wait();
+    const projectAddress = receipt.logs
+      .map(log => {
+        try {
+          return registry.interface.parseLog(log);
+        } catch {
+          return null;
+        }
+      })
+      .find(event => event?.name === 'ProjectListed')?.args.projectContract;
+    return { hash: tx.hash, projectAddress };
+  } catch (error) {
+    throw new Error(`Failed to create project: ${error.message}`);
+  }
+};
 
   const mintWithETH = async (projectAddress, amount) => {
     if (!isConnected || !signer) throw new Error("Wallet not connected");
     try {
-      const bco2Contract = new ethers.Contract(projectAddress, bco2Abi, signer);
+      const bco2Contract = new Contract(projectAddress, bco2Abi, signer);
       const tx = await bco2Contract.mint(amount, { value: 0 }); // Adjust value if minting requires payment
       await fetch(`http://localhost:3001/api/transaction/${tx.hash}`);
       return { hash: tx.hash };
@@ -144,7 +193,7 @@ export const useContractInteraction = () => {
   const retireCredits = async (projectAddress, amount) => {
     if (!isConnected || !signer) throw new Error("Wallet not connected");
     try {
-      const bco2Contract = new ethers.Contract(projectAddress, bco2Abi, signer);
+      const bco2Contract = new Contract(projectAddress, bco2Abi, signer);
       const tx = await bco2Contract.retire(amount);
       await fetch(`http://localhost:3001/api/transaction/${tx.hash}`);
       return { hash: tx.hash };
@@ -156,7 +205,7 @@ export const useContractInteraction = () => {
   const transferCredits = async (projectAddress, to, amount) => {
     if (!isConnected || !signer) throw new Error("Wallet not connected");
     try {
-      const bco2Contract = new ethers.Contract(projectAddress, bco2Abi, signer);
+      const bco2Contract = new Contract(projectAddress, bco2Abi, signer);
       const tx = await bco2Contract.safeTransferFrom(userAddress, to, 1, amount, '0x');
       await fetch(`http://localhost:3001/api/transaction/${tx.hash}`);
       return { hash: tx.hash };
@@ -305,6 +354,17 @@ export const useContractInteraction = () => {
     }
   };
 
+  const getOwner = async () => {
+    if (!governance || !userAddress) return false;
+    try {
+      const owner = await governance.owner();
+      return owner
+    } catch (error) {
+      console.error('Error checking owner status:', error);
+      return false;
+    }
+  };
+
   const checkIsProjectOwner = async (projectAddress) => {
     if (!registry || !userAddress) return false;
     try {
@@ -316,9 +376,44 @@ export const useContractInteraction = () => {
     }
   };
 
+  const getListedProjects = async () => {
+  if (!registry) throw new Error("Registry contract not initialized");
+  try {
+    const projects = await registry.getListedProjects();
+    return projects;
+  } catch (error) {
+    throw new Error(`Failed to fetch listed projects: ${error.message}`);
+  }
+};
+
+// const getApprovedProjects = async () => {
+//   if (!registry) throw new Error("Registry contract not initialized");
+//   try {
+//     const projects = await registry.getApprovedProjects();
+//     return projects;
+//   } catch (error) {
+//     throw new Error(`Failed to fetch approved projects: ${error.message}`);
+//   }
+// };
+
+const getProjectDetails = async () => {
+  if (!registry) throw new Error("Registry contract not initialized");
+  try {
+    const listedProjects = await getListedProjects();
+    const details = [];
+    for (const projectAddress of listedProjects) {
+      const projectDetail = await registry.getProjectDetails(projectAddress);
+      details.push({ projectAddress, ...projectDetail });
+    }
+    return details;
+  } catch (error) {
+    throw new Error(`Failed to fetch project details: ${error.message}`);
+  }
+};
+
   const getUserBalance = async (projectAddress, tokenId = 1) => {
     try {
-      const bco2Contract = new ethers.Contract(projectAddress, bco2Abi, provider || new ethers.JsonRpcProvider('https://data-seed-prebsc-1-s1.binance.org:8545/'));
+      const bco2Contract = new Contract(projectAddress, bco2Abi, provider || new JsonRpcProvider('https://data-seed-prebsc-1-s1.binance.org:8545/'));
       const balance = await bco2Contract.balanceOf(userAddress, tokenId);
       return balance.toString();
     } catch (error) {
@@ -328,7 +423,7 @@ export const useContractInteraction = () => {
 
   const getTokenURI = async (projectAddress, tokenId = 1) => {
     try {
-      const bco2Contract = new ethers.Contract(projectAddress, bco2Abi, provider || new ethers.JsonRpcProvider('https://data-seed-prebsc-1-s1.binance.org:8545/'));
+      const bco2Contract = new Contract(projectAddress, bco2Abi, provider || new JsonRpcProvider('https://data-seed-prebsc-1-s1.binance.org:8545/'));
       const uri = await bco2Contract.uri(tokenId);
       return uri;
     } catch (error) {
@@ -355,8 +450,10 @@ export const useContractInteraction = () => {
     removeVVB,
     updateRegistryAddress,
     getProjectStats,
+    getProjectDetails,
     checkAuthorizedVVB,
     checkIsOwner,
+    getOwner,
     checkIsProjectOwner,
     getUserBalance,
     getTokenURI

@@ -1,7 +1,6 @@
-import React from "react";
+/* eslint-disable no-constant-condition */
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Link } from "react-router-dom";
 import { createPageUrl } from "@/utils";
 import { 
   TreePine, 
@@ -13,23 +12,25 @@ import {
   Users
 } from "lucide-react";
 import WalletConnection from "../components/wallet/WalletConnection";
+import { useContractInteraction } from "@/components/contract/ContractInteraction";
+import { useNavigate } from "react-router-dom";
 
 export default function Home() {
-  const [isConnected, setIsConnected] = React.useState(false);
+  const { isConnected, connectWallet, userAddress } = useContractInteraction()
+   const navigate = useNavigate();
 
-  React.useEffect(() => {
-    const checkConnection = async () => {
-      if (typeof window !== 'undefined' && window.ethereum) {
-        try {
-          const accounts = await window.ethereum.request({ method: 'eth_accounts' });
-          setIsConnected(accounts.length > 0);
-        } catch (error) {
-          console.log('Error checking wallet:', error);
-        }
+    // Helper to handle button click
+  const handleProtectedNavigate = async (url) => {
+    if (!userAddress) {
+      try {
+        await connectWallet();
+      } catch (err) {
+        console.error('Connection failed:', err);
+        return; // Optionally handle error
       }
-    };
-    checkConnection();
-  }, []);
+    }
+    navigate(url);
+  };
 
   const features = [
     {
@@ -89,27 +90,24 @@ export default function Home() {
           </div>
 
           {/* CTA Buttons */}
-          <div className="flex flex-col sm:flex-row gap-4 justify-center mb-16">
-            {isConnected ? (
-              <div className="flex flex-col sm:flex-row gap-4">
-                <Link to={createPageUrl("Projects")}>
-                  <Button size="lg" className="bg-green-600 hover:bg-green-700 text-white px-8 py-3">
-                    <TreePine className="w-5 h-5 mr-2" />
-                    Browse Projects
-                  </Button>
-                </Link>
-                <Link to={createPageUrl("Trade")}>
-                  <Button size="lg" variant="outline" className="px-8 py-3">
-                    <TrendingUp className="w-5 h-5 mr-2" />
-                    Start Trading
-                  </Button>
-                </Link>
-              </div>
-            ) : (
-              <div className="max-w-md mx-auto">
-                <WalletConnection />
-              </div>
-            )}
+        <div className="flex flex-col sm:flex-row gap-4 justify-center mb-16">
+            <Button
+              size="lg"
+              className="bg-green-600 hover:bg-green-700 text-white px-8 py-3"
+              onClick={() => handleProtectedNavigate(createPageUrl("Projects"))}
+            >
+              <TreePine className="w-5 h-5 mr-2" />
+              Browse Projects
+            </Button>
+            <Button
+              size="lg"
+              variant="outline"
+              className="px-8 py-3"
+              onClick={() => handleProtectedNavigate(createPageUrl("Trade"))}
+            >
+              <TrendingUp className="w-5 h-5 mr-2" />
+              Start Trading
+            </Button>
           </div>
 
           {/* Stats */}
