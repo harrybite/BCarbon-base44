@@ -1,9 +1,13 @@
+/* eslint-disable no-unused-vars */
 import { useState, useEffect } from 'react';
 import {useContractInteraction} from '../contract/ContractInteraction';
 import ProjectCard from '../projects/ProjectCard';
 
 const ProjectApproval = () => {
-  const { userAddress, approveAndIssueCredits, rejectAndRemoveProject, validateProject, verifyProject, checkIsOwner, checkAuthorizedVVB } = useContractInteraction();
+  const { userAddress, approveAndIssueCredits, 
+    rejectAndRemoveProject, validateProject, 
+    verifyProject, checkIsOwner, checkAuthorizedVVB, 
+    getListedProjects } = useContractInteraction();
   const [projects, setProjects] = useState([]);
   const [loading, setLoading] = useState(true);
   const [isOwner, setIsOwner] = useState(false);
@@ -13,28 +17,34 @@ const ProjectApproval = () => {
     const fetchProjects = async () => {
       setLoading(true);
       try {
-        const response = await fetch('http://localhost:3001/api/sync-projects');
-        const data = await response.json();
-        setProjects(data.projects || []);
-        setIsOwner(await checkIsOwner());
-        setIsVVB(await checkAuthorizedVVB());
+        const data = await getListedProjects();
+        setProjects(data);
+        const owner = await checkIsOwner();
+        const vvb = await checkAuthorizedVVB();
+        setIsOwner(owner);
+        setIsVVB(vvb);
       } catch (error) {
-        console.error('Error fetching projects:', error);
+        console.error('Error fetching projects:');
       }
       setLoading(false);
     };
     fetchProjects();
-  }, [userAddress, checkIsOwner, checkAuthorizedVVB]);
+  }, [userAddress]);
 
   const handleApprove = async (projectAddress, creditAmount, certificateId) => {
     try {
-      const { hash } = await approveAndIssueCredits(projectAddress, creditAmount, certificateId || 'CERT-' + Date.now());
-      await fetch('http://localhost:3001/api/transaction', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ transactionHash: hash, projectAddress, userAddress })
-      });
-      alert(`Project approved! Transaction: ${hash}`);
+      const tx = await approveAndIssueCredits(projectAddress, creditAmount, certificateId || 'CERT-' + Date.now());
+      const receipt = await tx.wait();
+      if (receipt.status === 1) {
+        alert(`Project Approved! Transaction: ${tx.hash}`);
+      } else {
+        alert(`Transaction failed!`);
+      }
+      // await fetch('http://localhost:3001/api/transaction', {
+      //   method: 'POST',
+      //   headers: { 'Content-Type': 'application/json' },
+      //   body: JSON.stringify({ transactionHash: hash, projectAddress, userAddress })
+      // });
     } catch (error) {
       console.error('Approval failed:', error);
       alert(`Approval failed: ${error.message}`);
@@ -43,13 +53,19 @@ const ProjectApproval = () => {
 
   const handleReject = async (projectAddress) => {
     try {
-      const { hash } = await rejectAndRemoveProject(projectAddress);
-      await fetch('http://localhost:3001/api/transaction', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ transactionHash: hash, projectAddress, userAddress })
-      });
-      alert(`Project rejected! Transaction: ${hash}`);
+      const tx = await rejectAndRemoveProject(projectAddress);
+      const receipt = await tx.wait();
+      if (receipt.status === 1) {
+        alert(`Project rejected! Transaction: ${tx.hash}`);
+      } else {
+        alert(`Transaction failed!`);
+      }
+      // await fetch('http://localhost:3001/api/transaction', {
+      //   method: 'POST',
+      //   headers: { 'Content-Type': 'application/json' },
+      //   body: JSON.stringify({ transactionHash: hash, projectAddress, userAddress })
+      // });
+
     } catch (error) {
       console.error('Rejection failed:', error);
       alert(`Rejection failed: ${error.message}`);
@@ -58,13 +74,19 @@ const ProjectApproval = () => {
 
   const handleValidate = async (projectAddress) => {
     try {
-      const { hash } = await validateProject(projectAddress);
-      await fetch('http://localhost:3001/api/transaction', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ transactionHash: hash, projectAddress, userAddress })
-      });
-      alert(`Project validated! Transaction: ${hash}`);
+      const tx  = await validateProject(projectAddress);
+      const receipt = await tx.wait();
+      if (receipt.status === 1) {
+        alert(`Project validated! Transaction: ${tx.hash}`);
+      } else {
+        alert(`Transaction failed!`);
+      }
+      // await fetch('http://localhost:3001/api/transaction', {
+      //   method: 'POST',
+      //   headers: { 'Content-Type': 'application/json' },
+      //   body: JSON.stringify({ transactionHash: hash, projectAddress, userAddress })
+      // });
+      // alert(`Project validated! Transaction: ${hash}`);
     } catch (error) {
       console.error('Validation failed:', error);
       alert(`Validation failed: ${error.message}`);
@@ -73,13 +95,13 @@ const ProjectApproval = () => {
 
   const handleVerify = async (projectAddress) => {
     try {
-      const { hash } = await verifyProject(projectAddress);
-      await fetch('http://localhost:3001/api/transaction', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ transactionHash: hash, projectAddress, userAddress })
-      });
-      alert(`Project verified! Transaction: ${hash}`);
+      const tx = await verifyProject(projectAddress);
+      const receipt = await tx.wait();
+      if (receipt.status === 1) {
+        alert(`Project verified! Transaction: ${tx.hash}`);
+      } else {
+        alert(`Transaction failed!`);
+      }
     } catch (error) {
       console.error('Verification failed:', error);
       alert(`Verification failed: ${error.message}`);
@@ -93,21 +115,21 @@ const ProjectApproval = () => {
         <p>Loading...</p>
       ) : (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-          {projects.map(project => (
-            <div key={project.projectAddress}>
-              <ProjectCard project={project} />
-              {!project.isApproved && (
+          {projects.map(projectAddress => (
+            <div key={projectAddress}>
+              <ProjectCard project={projectAddress} />
+              {!projectAddress.isApproved && (
                 <div className="mt-2">
                   {isOwner && (
                     <>
                       <button
-                        onClick={() => handleApprove(project.projectAddress, prompt('Enter credit amount:'), prompt('Enter certificate ID:'))}
+                        onClick={() => handleApprove(projectAddress, prompt('Enter credit amount:'), prompt('Enter certificate ID:'))}
                         className="bg-green-500 text-white px-4 py-2 rounded mr-2"
                       >
                         Approve & Issue Credits
                       </button>
                       <button
-                        onClick={() => handleReject(project.projectAddress)}
+                        onClick={() => handleReject(projectAddress)}
                         className="bg-red-500 text-white px-4 py-2 rounded mr-2"
                       >
                         Reject
@@ -117,13 +139,13 @@ const ProjectApproval = () => {
                   {isVVB && (
                     <>
                       <button
-                        onClick={() => handleValidate(project.projectAddress)}
+                        onClick={() => handleValidate(projectAddress)}
                         className="bg-blue-500 text-white px-4 py-2 rounded mr-2"
                       >
                         Validate
                       </button>
                       <button
-                        onClick={() => handleVerify(project.projectAddress)}
+                        onClick={() => handleVerify(projectAddress)}
                         className="bg-blue-500 text-white px-4 py-2 rounded"
                       >
                         Verify

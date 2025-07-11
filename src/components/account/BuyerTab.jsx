@@ -1,8 +1,6 @@
 import { useState, useEffect } from 'react';
-import { ethers } from 'ethers';
-import useContractInteraction from '../contract/ContractInteraction';
+import {useContractInteraction} from '../contract/ContractInteraction';
 import ProjectCard from '../projects/ProjectCard';
-import bco2Abi from '../contract/BCO2.json';
 
 const BuyerTab = () => {
   const { userAddress, mintWithRUSD, transferCredits, retireCredits, getUserBalance } = useContractInteraction();

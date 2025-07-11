@@ -1,31 +1,41 @@
+/* eslint-disable no-unused-vars */
+/* eslint-disable react/prop-types */
 import { useState } from 'react';
-import useContractInteraction from '../contract/ContractInteraction';
+import {useContractInteraction} from '../contract/ContractInteraction';
+import { RUSD } from '../contract/address';
 
-const CreateProjectTab = ({ onCreate }) => {
-  const { userAddress } = useContractInteraction();
+const CreateProjectTab = () => {
+  const { userAddress, createAndListProject } = useContractInteraction();
   const [formData, setFormData] = useState({
-    name: '',
-    description: '',
-    location: '',
+    mintPrice: '',
+    treasury: '',
+    defaultIsPermanent: false,
+    defaultValidity: '',
+    defaultVintage: '',
+    RUSD: RUSD,
+    nonRetiredURI: '',
+    retiredURI: '',
     methodology: '',
-    totalSupply: '',
-    listingFee: '0.01', // Example fee in ETH
+    emissionReductions: '',
+    projectDetails: '',
   });
 
   const handleChange = (e) => {
-    setFormData({ ...formData, [e.target.name]: e.target.value });
+    const { name, value, type, checked } = e.target;
+    setFormData({ ...formData, [name]: type === 'checkbox' ? checked : value });
   };
 
   const handleSubmit = async (e) => {
     e.preventDefault();
     try {
-      const { hash, projectAddress } = await onCreate(formData);
-      await fetch('http://localhost:3001/api/transaction', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ transactionHash: hash, projectAddress, userAddress })
-      });
-      alert(`Project created! Address: ${projectAddress}, Transaction: ${hash}`);
+      console.log("formdata", formData)
+      const tx = await createAndListProject(formData);
+      const receipt = await tx.wait();
+      if (receipt.status === 1) {
+        alert(`Project created successfully! Transaction: ${tx.hash}`);
+      } else {
+        alert(`Transaction failed!`);
+      }
     } catch (error) {
       console.error('Project creation failed:', error);
       alert('Project creation failed: ' + error.message);
@@ -37,32 +47,88 @@ const CreateProjectTab = ({ onCreate }) => {
       <h2 className="text-2xl font-bold mb-4">Create New Project</h2>
       <form onSubmit={handleSubmit} className="space-y-4">
         <div>
-          <label className="block">Project Name</label>
+          <label className="block">Mint Price</label>
           <input
             type="text"
-            name="name"
-            value={formData.name}
+            name="mintPrice"
+            value={formData.mintPrice}
             onChange={handleChange}
             className="w-full border rounded px-2 py-1"
             required
           />
         </div>
         <div>
-          <label className="block">Description</label>
-          <textarea
-            name="description"
-            value={formData.description}
+          <label className="block">Treasury Address</label>
+          <input
+            type="text"
+            name="treasury"
+            value={formData.treasury}
+            onChange={handleChange}
+            className="w-full border rounded px-2 py-1"
+            required
+          />
+        </div>
+        <div className="flex items-center">
+          <input
+            type="checkbox"
+            name="defaultIsPermanent"
+            checked={formData.defaultIsPermanent}
+            onChange={handleChange}
+            className="mr-2"
+          />
+          <label className="block">Default Is Permanent</label>
+        </div>
+        <div>
+          <label className="block">Default Validity</label>
+          <input
+            type="text"
+            name="defaultValidity"
+            value={formData.defaultValidity}
             onChange={handleChange}
             className="w-full border rounded px-2 py-1"
             required
           />
         </div>
         <div>
-          <label className="block">Location</label>
+          <label className="block">Default Vintage</label>
           <input
             type="text"
-            name="location"
-            value={formData.location}
+            name="defaultVintage"
+            value={formData.defaultVintage}
+            onChange={handleChange}
+            className="w-full border rounded px-2 py-1"
+            required
+          />
+        </div>
+        {/* <div>
+          <label className="block">RUSD</label>
+          <input
+            type="text"
+            name="RUSD"
+            value={RUSD}
+            disabled
+            onChange={handleChange}
+            className="w-full border rounded px-2 py-1"
+            required
+          />
+        </div> */}
+        <div>
+          <label className="block">Non-Retired URI</label>
+          <input
+            type="text"
+            name="nonRetiredURI"
+            value={formData.nonRetiredURI}
+            onChange={handleChange}
+            className="w-full border rounded px-2 py-1"
+            required
+          />
+        </div>
+        <div>
+          <label className="block">Retired URI</label>
+          <input
+            type="text"
+            name="retiredURI"
+            value={formData.retiredURI}
             onChange={handleChange}
             className="w-full border rounded px-2 py-1"
             required
@@ -80,17 +146,27 @@ const CreateProjectTab = ({ onCreate }) => {
           />
         </div>
         <div>
-          <label className="block">Total Supply</label>
+          <label className="block">Emission Reductions</label>
           <input
-            type="number"
-            name="totalSupply"
-            value={formData.totalSupply}
+            type="text"
+            name="emissionReductions"
+            value={formData.emissionReductions}
             onChange={handleChange}
             className="w-full border rounded px-2 py-1"
             required
           />
         </div>
         <div>
+          <label className="block">Project Details</label>
+          <textarea
+            name="projectDetails"
+            value={formData.projectDetails}
+            onChange={handleChange}
+            className="w-full border rounded px-2 py-1"
+            required
+          />
+        </div>
+        {/* <div>
           <label className="block">Listing Fee (RUSD)</label>
           <input
             type="number"
@@ -101,7 +177,7 @@ const CreateProjectTab = ({ onCreate }) => {
             step="0.01"
             required
           />
-        </div>
+        </div> */}
         <button type="submit" className="bg-blue-500 text-white px-4 py-2 rounded">
           Create Project
         </button>
