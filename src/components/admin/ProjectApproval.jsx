@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import useContractInteraction from '../contract/ContractInteraction';
+import {useContractInteraction} from '../contract/ContractInteraction';
 import ProjectCard from '../projects/ProjectCard';
 
 const ProjectApproval = () => {
