@@ -5,10 +5,8 @@ import registryAbi from './CarbonCreditRegistry.json';
 import bco2Abi from './BCO2.json';
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { AlertCircle } from "lucide-react";
+import { GOVERNANCE_ADDRESS, REGISTRY_ADDRESS } from './address';
 
-// Contract addresses
-const GOVERNANCE_ADDRESS = '0x5296Bc359E5030d75F3c46613facfdE26eCBF24A';
-const REGISTRY_ADDRESS = '0x680a0D6aA3af9328d466a721322e38e90A104D42';
 
 export const useContractInteraction = () => {
   const [userAddress, setUserAddress] = useState("");
@@ -110,7 +108,6 @@ const createAndListProject = async (projectData) => {
     "defaultIsPermanent",
     "defaultValidity",
     "defaultVintage",
-    "RUSD",
     "nonRetiredURI",
     "retiredURI",
     "methodology",
@@ -136,17 +133,14 @@ const createAndListProject = async (projectData) => {
       defaultIsPermanent,
       defaultValidity,
       defaultVintage,
-      RUSD,
       nonRetiredURI,
       retiredURI,
       methodology,
       emissionReductions,
       projectDetails,
-      listingFee
     } = projectData;
 
     const mintPriceWei = parseEther(mintPrice.toString());
-    const listingFeeWei = listingFee ? parseEther(listingFee.toString()) : 0n;
 
     const tx = await registry.createAndListProject(
       mintPriceWei,
@@ -154,13 +148,11 @@ const createAndListProject = async (projectData) => {
       defaultIsPermanent,
       defaultValidity,
       defaultVintage,
-      RUSD,
       nonRetiredURI,
       retiredURI,
       methodology,
       emissionReductions,
       projectDetails,
-      { value: listingFeeWei }
     );
     const receipt = await tx.wait();
     const projectAddress = receipt.logs
@@ -218,8 +210,7 @@ const createAndListProject = async (projectData) => {
     if (!isConnected || !governance) throw new Error("Wallet not connected");
     try {
       const tx = await governance.validateProject(projectAddress);
-      await fetch(`http://localhost:3001/api/transaction/${tx.hash}`);
-      return { hash: tx.hash };
+      return tx;
     } catch (error) {
       throw new Error(`Failed to validate project: ${error.message}`);
     }
@@ -229,8 +220,7 @@ const createAndListProject = async (projectData) => {
     if (!isConnected || !governance) throw new Error("Wallet not connected");
     try {
       const tx = await governance.verifyProject(projectAddress);
-      await fetch(`http://localhost:3001/api/transaction/${tx.hash}`);
-      return { hash: tx.hash };
+      return tx;
     } catch (error) {
       throw new Error(`Failed to verify project: ${error.message}`);
     }
@@ -240,8 +230,7 @@ const createAndListProject = async (projectData) => {
     if (!isConnected || !governance) throw new Error("Wallet not connected");
     try {
       const tx = await governance.approveAndIssueCredits(projectAddress, creditAmount, certificateId);
-      await fetch(`http://localhost:3001/api/transaction/${tx.hash}`);
-      return { hash: tx.hash };
+      return tx;
     } catch (error) {
       throw new Error(`Failed to approve and issue credits: ${error.message}`);
     }
@@ -251,8 +240,8 @@ const createAndListProject = async (projectData) => {
     if (!isConnected || !governance) throw new Error("Wallet not connected");
     try {
       const tx = await governance.rejectAndRemoveProject(projectAddress);
-      await fetch(`http://localhost:3001/api/transaction/${tx.hash}`);
-      return { hash: tx.hash };
+      // await fetch(`http://localhost:3001/api/transaction/${tx.hash}`);
+      return tx;
     } catch (error) {
       throw new Error(`Failed to reject project: ${error.message}`);
     }
@@ -273,8 +262,7 @@ const createAndListProject = async (projectData) => {
     if (!isConnected || !governance) throw new Error("Wallet not connected");
     try {
       const tx = await unpauseContract();
-      await fetch(`http://localhost:3001/api/transaction/${tx.hash}`);
-      return { hash: tx.hash };
+      return tx;
     } catch (error) {
       throw new Error(`Failed to unpause contract: ${error.message}`);
     }
@@ -284,8 +272,7 @@ const createAndListProject = async (projectData) => {
     if (!isConnected || !governance) throw new Error("Wallet not connected");
     try {
       const tx = await governance.addVVB(vvbAddress);
-      await fetch(`http://localhost:3001/api/transaction/${tx.hash}`);
-      return { hash: tx.hash };
+      return tx;
     } catch (error) {
       throw new Error(`Failed to add VVB: ${error.message}`);
     }
@@ -295,8 +282,7 @@ const createAndListProject = async (projectData) => {
     if (!isConnected || !governance) throw new Error("Wallet not connected");
     try {
       const tx = await governance.removeVVB(vvbAddress);
-      await fetch(`http://localhost:3001/api/transaction/${tx.hash}`);
-      return { hash: tx.hash };
+        return tx;
     } catch (error) {
       throw new Error(`Failed to remove VVB: ${error.message}`);
     }
@@ -333,10 +319,11 @@ const createAndListProject = async (projectData) => {
   const checkAuthorizedVVB = async () => {
     if (!userAddress) return false;
     try {
-      const response = await fetch(`http://localhost:3001/api/contract-owner`);
-      const { owner } = await response.json();
-      const isVVB = await governance.checkAuthorizedVVBs(userAddress);
-      return isVVB || userAddress.toLowerCase() === owner.toLowerCase();
+      // const response = await fetch(`http://localhost:3001/api/contract-owner`);
+      // const { owner } = await response.json();
+
+      const isVVB = await governance.authorizedVVBs(userAddress);
+      return isVVB 
     } catch (error) {
       console.error('Error checking VVB status:', error);
       return false;
@@ -376,11 +363,12 @@ const createAndListProject = async (projectData) => {
     }
   };
 
-  const getListedProjects = async () => {
+ const getListedProjects = async () => {
   if (!registry) throw new Error("Registry contract not initialized");
   try {
     const projects = await registry.getListedProjects();
-    return projects;
+    // retunr aray of projectaddress's object
+    return projects
   } catch (error) {
     throw new Error(`Failed to fetch listed projects: ${error.message}`);
   }
@@ -396,16 +384,26 @@ const createAndListProject = async (projectData) => {
 //   }
 // };
 
-const getProjectDetails = async () => {
+const getListedProjectDetails = async (address) => {
   if (!registry) throw new Error("Registry contract not initialized");
   try {
-    const listedProjects = await getListedProjects();
-    const details = [];
-    for (const projectAddress of listedProjects) {
-      const projectDetail = await registry.getProjectDetails(projectAddress);
-      details.push({ projectAddress, ...projectDetail });
-    }
-    return details;
+      const detail = await registry.getProjectDetails(address);
+    return {
+      projectContract: detail.projectContract,
+      projectId: detail.projectId,
+      certificateId: detail.certificateId,
+      methodology: detail.methodology,
+      emissionReductions: detail.emissionReductions,
+      projectDetails: detail.projectDetails,
+      proposer: detail.proposer,
+      listingTimestamp: detail.listingTimestamp,
+      commentPeriodEnd: detail.commentPeriodEnd,
+      credits: detail.credits,
+      comments: detail.comments,
+      isValidated: detail.isValidated,
+      isVerified: detail.isVerified,
+      isApproved: detail.creditsIssued
+    };
   } catch (error) {
     throw new Error(`Failed to fetch project details: ${error.message}`);
   }
@@ -450,7 +448,8 @@ const getProjectDetails = async () => {
     removeVVB,
     updateRegistryAddress,
     getProjectStats,
-    getProjectDetails,
+    getListedProjectDetails,
+    getListedProjects,
     checkAuthorizedVVB,
     checkIsOwner,
     getOwner,

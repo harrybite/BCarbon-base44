@@ -1,22 +1,37 @@
+/* eslint-disable no-constant-binary-expression */
 import { useState, useEffect } from 'react';
-import useContractInteraction from '../contract/ContractInteraction';
+import {useContractInteraction} from '../contract/ContractInteraction';
 import { useParams } from 'react-router-dom';
 
 // eslint-disable-next-line react/prop-types
 const ProjectCard = ({ project }) => {
-  const { userAddress, checkAuthorizedVVB, checkIsProjectOwner, checkIsOwner, rejectAndRemoveProject, mintWithETH } = useContractInteraction();
+  const { userAddress, checkAuthorizedVVB, 
+    checkIsProjectOwner, 
+    checkIsOwner, 
+    rejectAndRemoveProject, 
+    getListedProjectDetails,
+    mintWithETH 
+  } = useContractInteraction();
   const { projectAddress } = useParams();
-  const [details, setDetails] = useState(project);
+  const [details, setDetails] = useState({
+    projectAddress:'',
+    metadata: {},
+    isApproved: false,
+    creditAmount: 0,
+    comments: [],
+    offChainComments: [],
+    methodology: ''
+  });
   const [canComment, setCanComment] = useState(false);
   const [comment, setComment] = useState('');
   const [isOwner, setIsOwner] = useState(false);
 
   useEffect(() => {
     const fetchDetails = async () => {
-      if (projectAddress) {
+      if (project) {
         try {
-          const response = await fetch(`http://localhost:3001/api/project/${projectAddress}?userAddress=${userAddress}`);
-          const data = await response.json();
+          const data = await getListedProjectDetails(project);
+          console.log('Project details:', data);
           setDetails(data);
           setCanComment((await checkAuthorizedVVB()) || (await checkIsProjectOwner(projectAddress)));
           setIsOwner(await checkIsOwner());
@@ -26,7 +41,7 @@ const ProjectCard = ({ project }) => {
       }
     };
     fetchDetails();
-  }, [userAddress, projectAddress, checkAuthorizedVVB, checkIsProjectOwner, checkIsOwner]);
+  }, [userAddress, projectAddress]);
 
   const handleComment = async () => {
     if (!comment) return;
@@ -44,30 +59,30 @@ const ProjectCard = ({ project }) => {
     }
   };
 
-  const handleReject = async () => {
-    try {
-      const { hash } = await rejectAndRemoveProject(details.projectAddress);
-      await fetch('http://localhost:3001/api/transaction', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ transactionHash: hash, projectAddress: details.projectAddress, userAddress })
-      });
-      alert(`Project rejected! Transaction: ${hash}`);
-    } catch (error) {
-      alert(`Rejection failed: ${error.message}`);
+const handleReject = async () => {
+  try {
+    const tx = await rejectAndRemoveProject(project);
+    const receipt = await tx.wait();
+    if (receipt.status === 1) {
+      alert(`Project rejected! Transaction: ${tx.hash}`);
+    } else {
+      alert(`Transaction failed!`);
     }
-  };
+  } catch (error) {
+    alert(`Rejection failed: ${error.message}`);
+  }
+};
 
   const handleMint = async () => {
     try {
       const amount = prompt('Enter amount to mint:');
       if (amount) {
-        const { hash } = await mintWithETH(details.projectAddress, amount);
-        await fetch('http://localhost:3001/api/transaction', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ transactionHash: hash, projectAddress: details.projectAddress, userAddress })
-        });
+        const { hash } = await mintWithETH(project, amount);
+        // await fetch('http://localhost:3001/api/transaction', {
+        //   method: 'POST',
+        //   headers: { 'Content-Type': 'application/json' },
+        //   body: JSON.stringify({ transactionHash: hash, projectAddress: project, userAddress })
+        // });
         alert(`Minting initiated! Transaction: ${hash}`);
       }
     } catch (error) {
@@ -75,18 +90,33 @@ const ProjectCard = ({ project }) => {
     }
   };
 
+  // empty space code is &nbsp; in HTML
   return (
     <div className="border rounded p-4">
-      <h3 className="text-lg font-bold">{details.metadata?.name}</h3>
-      <p>{details.metadata?.description}</p>
-      <p>Location: {details.metadata?.location}</p>
-      <p>Methodology: {details.metadata?.methodology}</p>
-      <p>Status: {details.isApproved ? 'Approved' : 'Pending'}</p>
-      <p>Credits Issued: {details.creditAmount}</p>
+      <h3 className="text-lg font-bold">{details.projectId}</h3>
+      <p className='font-semibold' >{details.projectDetails}</p>
+    <div className="space-y-2">
+    <div className="flex w-full justify-between">
+      <span className="">Location:</span>
+      <span className="font-semibold">{details.metadata?.location}</span>
+    </div>
+    <div className="flex w-full justify-between">
+      <span className="">Methodology:</span>
+      <span className="font-semibold">{details.methodology}</span>
+    </div>
+    <div className="flex w-full justify-between">
+      <span className="">Status:</span>
+      <span className="font-semibold">{details.isApproved ? 'Approved' : 'Pending'}</span>
+    </div>
+    <div className="flex w-full justify-between">
+      <span className="">Credits Issued:</span>
+      <span className="font-semibold">{Number(details.credits)}</span>
+    </div>
+  </div>
       {details.isApproved && (
         <button
           onClick={handleMint}
-          className="bg-green-500 text-white px-4 py-2 rounded mt-2"
+          className="bg-green-500 text-white px-4 py-2 rounded mt-2 mr-2"
         >
           Mint Credits
         </button>
@@ -102,9 +132,9 @@ const ProjectCard = ({ project }) => {
       {canComment && (
         <div className="mt-4">
           <h4 className="font-semibold">Comments</h4>
-          {details.comments.concat(details.offChainComments).map((c, i) => (
+          {/* {details.comments.concat(details.offChainComments).map((c, i) => (
             <p key={i}>{c.author}: {c.text} ({new Date(c.timestamp).toLocaleString()})</p>
-          ))}
+          ))} */}
           <textarea
             value={comment}
             onChange={(e) => setComment(e.target.value)}

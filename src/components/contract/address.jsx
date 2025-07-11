@@ -1,0 +1,3 @@
+export const RUSD = "0x46Ac89B6C11c12984C9464AdDd2f5eb0Ef41aa0C"; // Replace with actual RUSD contract address
+export const GOVERNANCE_ADDRESS = '0x5296Bc359E5030d75F3c46613facfdE26eCBF24A';
+export const REGISTRY_ADDRESS = '0x680a0D6aA3af9328d466a721322e38e90A104D42';

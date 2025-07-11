@@ -1,5 +1,6 @@
+/* eslint-disable no-unused-vars */
 import { useState, useEffect } from 'react';
-import useContractInteraction from '../contract/ContractInteraction';
+import {useContractInteraction} from '../contract/ContractInteraction';
 import CreateProjectTab from '../admin/CreateProjectTab';
 import ProjectCard from '../projects/ProjectCard';
 
@@ -27,8 +28,8 @@ const IssuerTab = () => {
           }) || []
         );
         setProjects(userProjects.filter(p => p));
-      } catch (error) {
-        console.error('Error fetching projects:', error);
+      } catch (erro) {
+        console.error('Error fetching projects:');
       }
       setLoading(false);
     };
@@ -38,7 +39,7 @@ const IssuerTab = () => {
   return (
     <div className="p-4">
       <h2 className="text-2xl font-bold mb-4">Issuer Dashboard</h2>
-      <CreateProjectTab onCreate={createAndListProject} />
+      <CreateProjectTab createAndListProject={createAndListProject} />
       <h3 className="text-xl font-semibold mt-6">Your Projects</h3>
       {loading ? (
         <p>Loading...</p>
