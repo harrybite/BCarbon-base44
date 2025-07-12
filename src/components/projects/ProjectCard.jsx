@@ -1,3 +1,4 @@
+/* eslint-disable no-unused-vars */
 /* eslint-disable no-constant-binary-expression */
 import { useState, useEffect } from 'react';
 import { useContractInteraction } from '../contract/ContractInteraction';
@@ -98,6 +99,25 @@ const ProjectCard = ({ project }) => {
     }
   };
 
+const getStatusText = (details) => {
+  if (details.isApproved) {
+    return 'Approved';
+  }
+  
+  if (!details.isValidated) {
+    return 'Pending Validation';
+  }
+  
+  if (!details.isVerified) {
+    return 'Pending Verification';
+  }
+  
+  if (details.isValidated && details.isVerified) {
+    return 'Pending Approval';
+  }
+  
+  return 'Pending';
+};
   // empty space code is &nbsp; in HTML
 return (
   <div className="border rounded p-4 w-full md:min-w-[450px]">
@@ -125,7 +145,7 @@ return (
       
       <div className="flex items-center">
         <span className="font-medium text-gray-700 w-[180px]">Status:</span>
-        <span className="font-semibold flex-grow text-right">{details.isApproved ? 'Approved' : 'Pending'}</span>
+        <span className="font-semibold flex-grow text-right">  {getStatusText(details)}</span>
       </div>
       
       <div className="flex items-center">
@@ -144,14 +164,14 @@ return (
           Mint Credits
         </button>
       )}
-      {!details.isApproved && isOwner && (
+      {/* {!details.isApproved && isOwner && (
         <button
           onClick={handleReject}
           className="bg-red-500 hover:bg-red-600 text-white px-4 py-2 rounded"
         >
           Reject Project
         </button>
-      )}
+      )} */}
     </div>
 
     {/* Improved comment section */}

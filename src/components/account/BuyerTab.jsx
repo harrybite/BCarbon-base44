@@ -2,6 +2,7 @@
 import { useState, useEffect } from 'react';
 import {useContractInteraction} from '../contract/ContractInteraction';
 import ProjectCard from '../projects/ProjectCard';
+import { set } from 'date-fns';
 
 const BuyerTab = () => {
   const { userAddress, mintWithRUSD, 
@@ -10,9 +11,12 @@ const BuyerTab = () => {
     getUserProjects,  
     approveRUSD,
     checkRUSDAllowance,
+    getRUSDBalance,
   } = useContractInteraction();
   const [projects, setProjects] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [update, setUpdate] = useState(0);
+  const [rusdBalance, setRUSDBalance] = useState(0);
 
   useEffect(() => {
     const fetchUserProjects = async () => {
@@ -21,13 +25,15 @@ const BuyerTab = () => {
       try {
         const userProjects = await getUserProjects();
         setProjects(userProjects);
+        const balance = await getRUSDBalance();
+        setRUSDBalance(balance);
       } catch (error) {
         console.error('Error fetching projects:', error);
       }
       setLoading(false);
     };
     fetchUserProjects();
-  }, [userAddress]);
+  }, [userAddress, update]);
 
 const handleMint = async (projectAddress, amount) => {
   try {
@@ -56,6 +62,7 @@ const handleMint = async (projectAddress, amount) => {
     
     if (receipt.status === 1) {
       alert(`Minting successful! Transaction: ${tx.hash}`);
+      setUpdate(update + 1); // Trigger re-fetch of projects
     } else {
       alert(`Transaction failed!`);
     }
@@ -86,6 +93,7 @@ const handleMint = async (projectAddress, amount) => {
       const receipt = await tx.wait();
       if (receipt.status === 1) {
         alert(`Retirement initiated! Transaction: ${tx.hash}`);
+        setUpdate(update + 1);
       } else {
         alert(`Transaction failed!`);
       }
@@ -107,6 +115,7 @@ const handleMint = async (projectAddress, amount) => {
               <ProjectCard project={project.projectContract} />
               <div className="mt-2">
                 <p>Balance: {project.balance}</p>
+                <p>RUSD Balance: {rusdBalance}</p>
                 <button
                   onClick={() => handleMint(project.projectContract, 1)}
                   className="bg-green-500 text-white px-4 py-2 rounded mr-2"

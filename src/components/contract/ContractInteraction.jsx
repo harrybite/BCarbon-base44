@@ -208,8 +208,29 @@ const createAndListProject = async (projectData) => {
         }
   };
 
+  const getRUSDBalance = async (address = null) => {
+  try {
+    // Use provided address or default to current user's address
+    const targetAddress = address || userAddress;
+    
+    if (!targetAddress) throw new Error("No address provided");
+    
+    // Create contract instance for RUSD token with read-only methods
+    const rusdContract = new Contract(
+      RUSD,
+      ERC20Abi,
+      provider || new JsonRpcProvider('https://data-seed-prebsc-1-s1.binance.org:8545/')
+    );
+    
+    // Call balanceOf function to get token balance
+    const balance = await rusdContract.balanceOf(targetAddress);
+    return balance.toString();
+  } catch (error) {
+    throw new Error(`Failed to fetch RUSD balance: ${error.message}`);
+  }
+};
 
-    const checkRUSDAllowance = async (spenderAddress) => {
+  const checkRUSDAllowance = async (spenderAddress) => {
       if (!userAddress) throw new Error("User wallet not connected");
       try {
         // Create contract instance for RUSD token with read-only methods
@@ -218,14 +239,13 @@ const createAndListProject = async (projectData) => {
           ERC20Abi,
           provider || new JsonRpcProvider('https://data-seed-prebsc-1-s1.binance.org:8545/')
         );
-        
         // Call allowance function to check how many tokens the spender is allowed to use
         const allowance = await rusdContract.allowance(userAddress, spenderAddress);
         return allowance.toString();
       } catch (error) {
         throw new Error(`Failed to check RUSD allowance: ${error.message}`);
       }
-    };
+  };
 
   const retireCredits = async (projectAddress, amount) => {
     if (!isConnected || !signer) throw new Error("Wallet not connected");
@@ -343,6 +363,17 @@ const createAndListProject = async (projectData) => {
     }
   };
 
+     //projectCounter
+      const getProjectCounter = async () => {
+      if (!projectDataContract) throw new Error("projectDataContract contract not initialized");
+      try {
+        const counter = await projectDataContract.projectCounter();
+        return Number(counter);
+      } catch (error) {
+        throw new Error(`Failed to fetch project counter: ${error.message}`);
+      }
+    };
+
   const getProjectStats = async (projectAddress) => {
     try {
       const response = await fetch(`http://localhost:3001/api/project/${projectAddress}?userAddress=${userAddress}`);
@@ -447,15 +478,32 @@ const submitComment = async (projectContractAddress, comment) => {
   }
 };
 
-// const getApprovedProjects = async () => {
-//   if (!projectDataContract) throw new Error("projectDataContract contract not initialized");
-//   try {
-//     const projects = await projectDataContract.getApprovedProjects();
-//     return projects;
-//   } catch (error) {
-//     throw new Error(`Failed to fetch approved projects: ${error.message}`);
-//   }
-// };
+const getApprovedProjects = async () => {
+  if (!projectDataContract) throw new Error("projectDataContract contract not initialized");
+  try {
+    const projects = await projectDataContract.getApprovedProjects();
+    return projects;
+  } catch (error) {
+    throw new Error(`Failed to fetch approved projects: ${error.message}`);
+  }
+};
+
+const getTotalIssuedCredits = async () => {
+  if (!projectDataContract) throw new Error("projectDataContract contract not initialized");
+  try {
+    const approvedProjects = await projectDataContract.getApprovedProjects();
+    let totalCredits = 0;
+    for (const projectAddress of approvedProjects) {
+      const details = await getListedProjectDetails(projectAddress);
+      totalCredits += Number(details.credits);
+    }
+    return totalCredits;
+  } catch (error) {
+    throw new Error(`Failed to fetch total issued credits: ${error.message}`);
+  }
+};
+
+
 
 const getListedProjectDetails = async (address) => {
   if (!projectDataContract) throw new Error("projectDataContract contract not initialized");
@@ -527,11 +575,14 @@ const getListedProjectDetails = async (address) => {
     getUserProjects,
     getListedProjects,
     checkAuthorizedVVB,
+    getProjectCounter,
+    getTotalIssuedCredits,
     submitComment,
     checkIsOwner,
     getOwner,
     checkIsProjectOwner,
     getUserBalance,
+    getRUSDBalance,
     getTokenURI
   };
 };

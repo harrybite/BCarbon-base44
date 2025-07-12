@@ -1,12 +1,12 @@
 /* eslint-disable no-unused-vars */
 import { useState, useEffect } from 'react';
-import {useContractInteraction} from '../contract/ContractInteraction';
+import { useContractInteraction } from '../contract/ContractInteraction';
 import ProjectCard from '../projects/ProjectCard';
 
 const ProjectApproval = () => {
-  const { userAddress, approveAndIssueCredits, 
-    rejectAndRemoveProject, validateProject, 
-    verifyProject, checkIsOwner, checkAuthorizedVVB, 
+  const { userAddress, approveAndIssueCredits,
+    rejectAndRemoveProject, validateProject,
+    verifyProject, checkIsOwner, checkAuthorizedVVB,
     getListedProjects } = useContractInteraction();
   const [projects, setProjects] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -31,31 +31,31 @@ const ProjectApproval = () => {
     fetchProjects();
   }, [userAddress]);
 
-const handleApprove = async (projectAddress, creditAmount) => {
-  // Find the project details to get emissionReductions
-  const project = projects.find(p => p.projectContract === projectAddress);
-  const emissionReductions = Number(project?.emissionReductions ?? 0);
+  const handleApprove = async (projectAddress, creditAmount) => {
+    // Find the project details to get emissionReductions
+    const project = projects.find(p => p.projectContract === projectAddress);
+    const emissionReductions = Number(project?.emissionReductions ?? 0);
 
-  console.log("Project :", project);
-  console.log("Credit Amount:", emissionReductions);
-  if (Number(creditAmount) <= Number(emissionReductions)) {
-    alert("Credit amount must be greater than emission reductions.");
-    return;
-  }
-
-  try {
-    const tx = await approveAndIssueCredits(projectAddress, creditAmount);
-    const receipt = await tx.wait();
-    if (receipt.status === 1) {
-      alert(`Project Approved! Transaction: ${tx.hash}`);
-    } else {
-      alert(`Transaction failed!`);
+    console.log("Project :", project);
+    console.log("Credit Amount:", emissionReductions);
+    if (Number(creditAmount) <= Number(emissionReductions)) {
+      alert("Credit amount must be greater than emission reductions.");
+      return;
     }
-  } catch (error) {
-    console.error('Approval failed:', error);
-    alert(`Approval failed: ${error.message}`);
-  }
-};
+
+    try {
+      const tx = await approveAndIssueCredits(projectAddress, creditAmount);
+      const receipt = await tx.wait();
+      if (receipt.status === 1) {
+        alert(`Project Approved! Transaction: ${tx.hash}`);
+      } else {
+        alert(`Transaction failed!`);
+      }
+    } catch (error) {
+      console.error('Approval failed:', error);
+      alert(`Approval failed: ${error.message}`);
+    }
+  };
 
   const handleReject = async (projectAddress) => {
     try {
@@ -75,7 +75,7 @@ const handleApprove = async (projectAddress, creditAmount) => {
 
   const handleValidate = async (projectAddress) => {
     try {
-      const tx  = await validateProject(projectAddress);
+      const tx = await validateProject(projectAddress);
       const receipt = await tx.wait();
       if (receipt.status === 1) {
         alert(`Project validated! Transaction: ${tx.hash}`);
@@ -113,40 +113,63 @@ const handleApprove = async (projectAddress, creditAmount) => {
           {projects.map(projectAddress => (
             <div key={projectAddress.projectContract}>
               <ProjectCard project={projectAddress.projectContract} />
-              {!projectAddress.isApproved && (
+              {!projectAddress.isApproved && (  // Only show buttons if not approved
                 <div className="mt-2">
                   {isOwner && (
                     <>
                       <button
                         onClick={() => handleApprove(projectAddress.projectContract, prompt('Enter credit amount:'))}
-                        className="bg-green-500 text-white px-4 py-2 rounded mr-2"
+                        className={`${projectAddress.isValidated && projectAddress.isVerified
+                            ? "bg-green-500 hover:bg-green-600"
+                            : "bg-gray-400 cursor-not-allowed"
+                          } text-white px-4 py-2 rounded mr-2`}
+                        disabled={!projectAddress.isValidated || !projectAddress.isVerified}
+
                       >
                         Approve & Issue Credits
                       </button>
                       <button
                         onClick={() => handleReject(projectAddress.projectContract)}
-                        className="bg-red-500 text-white px-4 py-2 rounded mr-2"
+                        className="bg-red-500 hover:bg-red-600 text-white px-4 py-2 rounded mr-2"
                       >
                         Reject
                       </button>
                     </>
                   )}
+
                   {isVVB && (
                     <>
-                      <button
-                        onClick={() => handleValidate(projectAddress.projectContract)}
-                        className="bg-blue-500 text-white px-4 py-2 rounded mr-2"
-                      >
-                        Validate
-                      </button>
-                      <button
-                        onClick={() => handleVerify(projectAddress.projectContract)}
-                        className="bg-blue-500 text-white px-4 py-2 rounded"
-                      >
-                        Verify
-                      </button>
+                      {!projectAddress.isValidated && (
+                        <button
+                          onClick={() => handleValidate(projectAddress.projectContract)}
+                          className="bg-blue-500 hover:bg-blue-600 text-white px-4 py-2 rounded mr-2"
+                        >
+                          Validate
+                        </button>
+                      )}
+                      {!projectAddress.isVerified && (
+                        <button
+                          onClick={() => handleVerify(projectAddress.projectContract)}
+                          className="bg-blue-500 hover:bg-blue-600 text-white px-4 py-2 rounded"
+                        >
+                          Verify
+                        </button>
+                      )}
+                      {projectAddress.isValidated && projectAddress.isVerified && (
+                        <span className="text-green-600 font-medium">
+                          ✓ Project validated and verified
+                        </span>
+                      )}
                     </>
                   )}
+                </div>
+              )}
+
+              {projectAddress.isApproved && isOwner && (
+                <div className="mt-2">
+                  <span className="text-green-600 font-medium">
+                    ✓ Project approved and credits issued
+                  </span>
                 </div>
               )}
             </div>
