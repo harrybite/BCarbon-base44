@@ -12,10 +12,8 @@ const CreateProjectTab = () => {
     defaultIsPermanent: false,
     defaultValidity: '',
     defaultVintage: '',
-    RUSD: RUSD,
-    nonRetiredURI: '',
-    retiredURI: '',
-    methodology: '',
+    methodologyIndex: '',
+    location: '',
     emissionReductions: '',
     projectDetails: '',
   });
@@ -27,6 +25,44 @@ const CreateProjectTab = () => {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
+    // Validation logic based on smart contract
+    const {
+      mintPrice,
+      treasury,
+      defaultIsPermanent,
+      defaultValidity,
+      defaultVintage,
+      methodologyIndex,
+      emissionReductions,
+      projectDetails,
+    } = formData;
+
+    if (!treasury || treasury === '0x0000000000000000000000000000000000000000') {
+      return alert('Invalid treasury address');
+    }
+
+    if ((defaultIsPermanent && defaultValidity !== '0') || (!defaultIsPermanent && defaultValidity === '0')) {
+      return alert('Invalid validity: must be 0 if permanent, non-zero otherwise');
+    }
+
+
+    if (
+      !emissionReductions ||
+      isNaN(emissionReductions) ||
+      emissionReductions <= 0 ||
+      emissionReductions > 1000000000
+    ) {
+      return alert('Invalid emission reductions');
+    }
+
+    if (!projectDetails || projectDetails.trim().length === 0) {
+      return alert('Empty project details');
+    }
+
+    if (methodologyIndex === '' || parseInt(methodologyIndex) > 31) {
+      return alert('Invalid methodology index (must be 0-31)');
+    }
+
     try {
       console.log("formdata", formData)
       const tx = await createAndListProject(formData);
@@ -113,33 +149,22 @@ const CreateProjectTab = () => {
           />
         </div> */}
         <div>
-          <label className="block">Non-Retired URI</label>
+          <label className="block">Methodology Index</label>
           <input
-            type="text"
-            name="nonRetiredURI"
-            value={formData.nonRetiredURI}
+            type="number"
+            name="methodologyIndex"
+            value={formData.methodologyIndex}
             onChange={handleChange}
             className="w-full border rounded px-2 py-1"
             required
           />
         </div>
         <div>
-          <label className="block">Retired URI</label>
+          <label className="block">Location</label>
           <input
             type="text"
-            name="retiredURI"
-            value={formData.retiredURI}
-            onChange={handleChange}
-            className="w-full border rounded px-2 py-1"
-            required
-          />
-        </div>
-        <div>
-          <label className="block">Methodology</label>
-          <input
-            type="text"
-            name="methodology"
-            value={formData.methodology}
+            name="location"
+            value={formData.location}
             onChange={handleChange}
             className="w-full border rounded px-2 py-1"
             required

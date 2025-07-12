@@ -1,9 +1,10 @@
+/* eslint-disable no-unused-vars */
 import { useState, useEffect } from 'react';
 import {useContractInteraction} from '../contract/ContractInteraction';
 import ProjectCard from '../projects/ProjectCard';
 
 const BuyerTab = () => {
-  const { userAddress, mintWithRUSD, transferCredits, retireCredits, getUserBalance } = useContractInteraction();
+  const { userAddress, mintWithRUSD, transferCredits, retireCredits,getUserProjects, getUserBalance } = useContractInteraction();
   const [projects, setProjects] = useState([]);
   const [loading, setLoading] = useState(true);
 
@@ -12,20 +13,8 @@ const BuyerTab = () => {
       if (!userAddress) return;
       setLoading(true);
       try {
-        const response = await fetch('http://localhost:3001/api/sync-projects');
-        const data = await response.json();
-        const userProjects = await Promise.all(
-          data.projects?.map(async (project) => {
-            const response = await fetch(`http://localhost:3001/api/project/${project.projectAddress}?userAddress=${userAddress}`);
-            const projectData = await response.json();
-            if (projectData.isApproved) {
-              const balance = await getUserBalance(project.projectAddress, 1);
-              if (balance > 0) return { ...projectData, balance };
-            }
-            return null;
-          }) || []
-        );
-        setProjects(userProjects.filter(p => p));
+        const userProjects = await getUserProjects();
+        setProjects(userProjects);
       } catch (error) {
         console.error('Error fetching projects:', error);
       }
@@ -43,12 +32,6 @@ const BuyerTab = () => {
       } else {
         alert(`Transaction failed!`);
       }
-      // await fetch('http://localhost:3001/api/transaction', {
-      //   method: 'POST',
-      //   headers: { 'Content-Type': 'application/json' },
-      //   body: JSON.stringify({ transactionHash: hash, projectAddress, userAddress })
-      // });
-      // alert(`Minting initiated! Transaction: ${hash}`);
     } catch (error) {
       console.error('Minting failed:', error);
       alert(`Minting failed: ${error.message}`);
@@ -64,12 +47,6 @@ const BuyerTab = () => {
       } else {
         alert(`Transaction failed!`);
       }
-      // await fetch('http://localhost:3001/api/transaction', {
-      //   method: 'POST',
-      //   headers: { 'Content-Type': 'application/json' },
-      //   body: JSON.stringify({ transactionHash: hash, projectAddress, userAddress })
-      // });
-      // alert(`Transfer initiated! Transaction: ${hash}`);
     } catch (error) {
       console.error('Transfer failed:', error);
       alert(`Transfer failed: ${error.message}`);
@@ -85,12 +62,6 @@ const BuyerTab = () => {
       } else {
         alert(`Transaction failed!`);
       }
-      // await fetch('http://localhost:3001/api/transaction', {
-      //   method: 'POST',
-      //   headers: { 'Content-Type': 'application/json' },
-      //   body: JSON.stringify({ transactionHash: hash, projectAddress, userAddress })
-      // });
-      // alert(`Retirement initiated! Transaction: ${hash}`);
     } catch (error) {
       console.error('Retirement failed:', error);
       alert(`Retirement failed: ${error.message}`);
@@ -105,24 +76,24 @@ const BuyerTab = () => {
       ) : (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
           {projects.map(project => (
-            <div key={project.projectAddress}>
-              <ProjectCard project={project} />
+            <div key={project.projectContract}>
+              <ProjectCard project={project.projectContract} />
               <div className="mt-2">
                 <p>Balance: {project.balance}</p>
                 <button
-                  onClick={() => handleMint(project.projectAddress, 1)}
+                  onClick={() => handleMint(project.projectContract, 1)}
                   className="bg-green-500 text-white px-4 py-2 rounded mr-2"
                 >
                   Mint Credits
                 </button>
-                <button
-                  onClick={() => handleTransfer(project.projectAddress, prompt('Enter recipient address:'), 1)}
+                {/* <button
+                  onClick={() => handleTransfer(project.projectContract, prompt('Enter recipient address:'), 1)}
                   className="bg-blue-500 text-white px-4 py-2 rounded mr-2"
                 >
                   Transfer
-                </button>
+                </button> */}
                 <button
-                  onClick={() => handleRetire(project.projectAddress, 1)}
+                  onClick={() => handleRetire(project.projectContract, 1)}
                   className="bg-red-500 text-white px-4 py-2 rounded"
                 >
                   Retire

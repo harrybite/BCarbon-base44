@@ -5,7 +5,7 @@ import CreateProjectTab from '../admin/CreateProjectTab';
 import ProjectCard from '../projects/ProjectCard';
 
 const IssuerTab = () => {
-  const { userAddress, createAndListProject, checkIsProjectOwner } = useContractInteraction();
+  const { userAddress, createAndListProject, getUserProjects } = useContractInteraction();
   const [projects, setProjects] = useState([]);
   const [loading, setLoading] = useState(true);
 
@@ -14,20 +14,9 @@ const IssuerTab = () => {
       if (!userAddress) return;
       setLoading(true);
       try {
-        const response = await fetch('http://localhost:3001/api/sync-projects');
-        const data = await response.json();
-        const userProjects = await Promise.all(
-          data.projects?.map(async (project) => {
-            const isOwner = await checkIsProjectOwner(project.projectAddress);
-            if (isOwner) {
-              const response = await fetch(`http://localhost:3001/api/project/${project.projectAddress}?userAddress=${userAddress}`);
-              const projectData = await response.json();
-              return projectData;
-            }
-            return null;
-          }) || []
-        );
-        setProjects(userProjects.filter(p => p));
+        const userProjects = await getUserProjects();
+        console.log("User Projects:", userProjects);
+        setProjects(userProjects);
       } catch (erro) {
         console.error('Error fetching projects:');
       }
@@ -40,13 +29,13 @@ const IssuerTab = () => {
     <div className="p-4">
       <h2 className="text-2xl font-bold mb-4">Issuer Dashboard</h2>
       <CreateProjectTab createAndListProject={createAndListProject} />
-      <h3 className="text-xl font-semibold mt-6">Your Projects</h3>
+      {projects.length > 0 ? <h3 className="text-xl font-semibold mt-6">Your Projects</h3> : ''}
       {loading ? (
         <p>Loading...</p>
       ) : (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
           {projects.map(project => (
-            <ProjectCard key={project.projectAddress} project={project} />
+            <ProjectCard key={project.projectContract} project={project.projectContract}/>
           ))}
         </div>
       )}

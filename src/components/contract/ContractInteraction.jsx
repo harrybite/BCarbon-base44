@@ -169,11 +169,11 @@ const createAndListProject = async (projectData) => {
       mintPriceWei,
       treasury,
       defaultIsPermanent,
-      validity,
-      vintage,
-      methodology,
+      defaultValidity,
+      defaultVintage,
+      methodologyIndex,
       location,
-      emissionReductionsWei,
+      emissionReductions,
       projectDetails
     );
     return tx;
@@ -182,13 +182,12 @@ const createAndListProject = async (projectData) => {
   }
 };
 
-  const mintWithETH = async (projectAddress, amount) => {
+  const mintWithRUSD = async (projectAddress, amount) => {
     if (!isConnected || !signer) throw new Error("Wallet not connected");
     try {
       const bco2Contract = new Contract(projectAddress, bco2Abi, signer);
-      const tx = await bco2Contract.mint(amount, { value: 0 }); // Adjust value if minting requires payment
-      await fetch(`http://localhost:3001/api/transaction/${tx.hash}`);
-      return { hash: tx.hash };
+      const tx = await bco2Contract.mintWithRUSD(amount); // Adjust value if minting requires payment
+      return tx
     } catch (error) {
       throw new Error(`Failed to mint: ${error.message}`);
     }
@@ -199,8 +198,7 @@ const createAndListProject = async (projectData) => {
     try {
       const bco2Contract = new Contract(projectAddress, bco2Abi, signer);
       const tx = await bco2Contract.retire(amount);
-      await fetch(`http://localhost:3001/api/transaction/${tx.hash}`);
-      return { hash: tx.hash };
+      return tx
     } catch (error) {
       throw new Error(`Failed to retire credits: ${error.message}`);
     }
@@ -211,8 +209,7 @@ const createAndListProject = async (projectData) => {
     try {
       const bco2Contract = new Contract(projectAddress, bco2Abi, signer);
       const tx = await bco2Contract.safeTransferFrom(userAddress, to, 1, amount, '0x');
-      await fetch(`http://localhost:3001/api/transaction/${tx.hash}`);
-      return { hash: tx.hash };
+       return tx;
     } catch (error) {
       throw new Error(`Failed to transfer credits: ${error.message}`);
     }
@@ -388,6 +385,34 @@ const createAndListProject = async (projectData) => {
   }
 };
 
+const getUserProjects = async () => {
+  try {
+  if (!userAddress) throw new Error("User address not set");
+  const projects = await getListedProjects();
+  // const userProjects = projects.filter(p => p.proposer?.toLowerCase() === userAddress.toLowerCase());
+const userProjects = projects.filter(p => p.proposer?.toLowerCase() === "0xBA43b24B591ac215337a55247cc7ACAcd744aD94".toLowerCase());
+  for (const project of userProjects) {
+    project.balance = await getUserBalance(project.projectContract);
+  }
+  return userProjects
+  } catch (error) {
+    throw new Error(`Failed to fetch user projects: ${error}`);
+  }
+};
+
+const submitComment = async (projectContractAddress, comment) => {
+  if (!isConnected || !projectManagerContract) throw new Error("Wallet not connected or contract not initialized");
+  if (!projectContractAddress || typeof projectContractAddress !== "string" || !comment || typeof comment !== "string") {
+    throw new Error("Invalid parameters: projectContractAddress and comment are required");
+  }
+  try {
+    const tx = await projectManagerContract.submitComment(projectContractAddress, comment);
+    return tx;
+  } catch (error) {
+    throw new Error(`Failed to submit comment: ${error.message}`);
+  }
+};
+
 // const getApprovedProjects = async () => {
 //   if (!projectDataContract) throw new Error("projectDataContract contract not initialized");
 //   try {
@@ -449,7 +474,7 @@ const getListedProjectDetails = async (address) => {
     error,
     connectWallet,
     createAndListProject,
-    mintWithETH,
+    mintWithRUSD,
     retireCredits,
     transferCredits,
     validateProject,
@@ -463,8 +488,10 @@ const getListedProjectDetails = async (address) => {
     updateRegistryAddress,
     getProjectStats,
     getListedProjectDetails,
+    getUserProjects,
     getListedProjects,
     checkAuthorizedVVB,
+    submitComment,
     checkIsOwner,
     getOwner,
     checkIsProjectOwner,
