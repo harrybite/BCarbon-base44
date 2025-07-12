@@ -2,6 +2,7 @@
 import { useState, useEffect } from 'react';
 import { useContractInteraction } from '../contract/ContractInteraction';
 import { useParams } from 'react-router-dom';
+import { methodology } from '../contract/address';
 
 // eslint-disable-next-line react/prop-types
 const ProjectCard = ({ project }) => {
@@ -98,32 +99,47 @@ const ProjectCard = ({ project }) => {
   };
 
   // empty space code is &nbsp; in HTML
-  return (
-    <div className="border rounded p-4">
-      <h3 className="text-lg font-bold">{details.projectId}</h3>
-      <p className='font-semibold' >{details.projectDetails}</p>
-      <div className="space-y-2">
-        <div className="flex w-full justify-between">
-          <span className="">Emission Reductions:</span>
-          <span className="font-semibold">{Number(details.emissionReductions)}</span>
-        </div>
-        <div className="flex w-full justify-between">
-          <span className="">Methodology:</span>
-          <span className="font-semibold">{Number(details.methodology)}</span>
-        </div>
-        <div className="flex w-full justify-between">
-          <span className="">Status:</span>
-          <span className="font-semibold">{details.isApproved ? 'Approved' : 'Pending'}</span>
-        </div>
-        <div className="flex w-full justify-between">
-          <span className="">Credits Issued:</span>
-          <span className="font-semibold">{Number(details.credits)}</span>
-        </div>
+return (
+  <div className="border rounded p-4 w-full md:min-w-[450px]">
+    <h3 className="text-lg font-bold mb-2">{details.projectId}</h3>
+    <p className="font-semibold mb-4">{details.projectDetails}</p>
+    
+    <div className="space-y-3">
+      {/* Key-value pairs with labels on left, values on right */}
+      <div className="flex items-center">
+        <span className="font-medium text-gray-700 w-[180px]">Emission Reductions:</span>
+        <span className="font-semibold flex-grow text-right">{Number(details.emissionReductions)}</span>
       </div>
+      
+      <div className="flex items-center">
+        <span className="font-medium text-gray-700 w-[180px]">Methodology:</span>
+        <span 
+          className="font-semibold flex-grow text-right truncate cursor-help"
+          title={methodology[Number(details.methodology)] || "Unknown"}
+        >
+          {methodology[Number(details.methodology)]?.length > 30 
+            ? `${methodology[Number(details.methodology)].substring(0, 30)}...` 
+            : methodology[Number(details.methodology)] || "Unknown"}
+        </span>
+      </div>
+      
+      <div className="flex items-center">
+        <span className="font-medium text-gray-700 w-[180px]">Status:</span>
+        <span className="font-semibold flex-grow text-right">{details.isApproved ? 'Approved' : 'Pending'}</span>
+      </div>
+      
+      <div className="flex items-center">
+        <span className="font-medium text-gray-700 w-[180px]">Credits Issued:</span>
+        <span className="font-semibold flex-grow text-right">{Number(details.credits)}</span>
+      </div>
+    </div>
+
+    {/* Buttons */}
+    <div className="flex mt-4 space-x-2">
       {details.isApproved && (
         <button
           onClick={handleMint}
-          className="bg-green-500 text-white px-4 py-2 rounded mt-2 mr-2"
+          className="bg-green-500 hover:bg-green-600 text-white px-4 py-2 rounded"
         >
           Mint Credits
         </button>
@@ -131,25 +147,42 @@ const ProjectCard = ({ project }) => {
       {!details.isApproved && isOwner && (
         <button
           onClick={handleReject}
-          className="bg-red-500 text-white px-4 py-2 rounded mt-2"
+          className="bg-red-500 hover:bg-red-600 text-white px-4 py-2 rounded"
         >
           Reject Project
         </button>
       )}
-      {canComment && (
-        <div className="mt-4">
-          <h4 className="font-semibold">Comments</h4>
-          {details.comments.map((c, i) => (
-            <p key={i}>
-              {`${c.commenter.slice(0, 6)}...${c.commenter.slice(-4)}`}
-              <br />
-              {c.comment}
-            </p>
-          ))}
+    </div>
+
+    {/* Improved comment section */}
+    {canComment && (
+      <div className="mt-6 border-t pt-4">
+        <h4 className="text-lg font-semibold mb-3">Comments</h4>
+        
+        {details.comments && details.comments.length > 0 ? (
+          <div className="space-y-3 mb-4">
+            {details.comments.map((c, i) => (
+              <div key={i} className="bg-gray-50 p-3 rounded">
+                <div className="flex justify-between text-sm text-gray-500 mb-1">
+                  <span className="font-medium">
+                    {c.commenter && `${c.commenter.slice(0, 6)}...${c.commenter.slice(-4)}`}
+                  </span>
+                  {/* <span>{c.timestamp && new Date(Number(c.timestamp) * 1000).toLocaleString()}</span> */}
+                </div>
+                <p className="text-gray-800">{c.comment}</p>
+              </div>
+            ))}
+          </div>
+        ) : (
+          <p className="text-gray-500 italic mb-4">No comments yet</p>
+        )}
+        
+        <div className="border rounded overflow-hidden">
           <textarea
             value={comment}
             onChange={(e) => setComment(e.target.value)}
-            className="w-full border rounded px-2 py-1 mt-2"
+            className="w-full px-3 py-2 border-b"
+            rows="3"
             placeholder={
               Date.now() / 1000 > Number(details.commentPeriodEnd)
                 ? "Comment period is over"
@@ -157,17 +190,24 @@ const ProjectCard = ({ project }) => {
             }
             disabled={Date.now() / 1000 > Number(details.commentPeriodEnd)}
           />
-          <button
-            onClick={handleComment}
-            disabled={Date.now() / 1000 > Number(details.commentPeriodEnd)}
-            className="bg-blue-500 text-white px-4 py-2 rounded mt-2"
-          >
-            Submit Comment
-          </button>
+          <div className="bg-gray-50 px-3 py-2 text-center">
+            <button
+              onClick={handleComment}
+              disabled={!comment || Date.now() / 1000 > Number(details.commentPeriodEnd)}
+              className={`px-4 py-1 rounded text-white ${
+                !comment || Date.now() / 1000 > Number(details.commentPeriodEnd)
+                  ? "bg-blue-300 cursor-not-allowed" 
+                  : "bg-blue-500 hover:bg-blue-600"
+              }`}
+            >
+              Submit Comment
+            </button>
+          </div>
         </div>
-      )}
-    </div>
-  );
+      </div>
+    )}
+  </div>
+);
 };
 
 export default ProjectCard;

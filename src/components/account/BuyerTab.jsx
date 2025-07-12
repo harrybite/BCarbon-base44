@@ -4,7 +4,13 @@ import {useContractInteraction} from '../contract/ContractInteraction';
 import ProjectCard from '../projects/ProjectCard';
 
 const BuyerTab = () => {
-  const { userAddress, mintWithRUSD, transferCredits, retireCredits,getUserProjects, getUserBalance } = useContractInteraction();
+  const { userAddress, mintWithRUSD, 
+    transferCredits, 
+    retireCredits,
+    getUserProjects,  
+    approveRUSD,
+    checkRUSDAllowance,
+  } = useContractInteraction();
   const [projects, setProjects] = useState([]);
   const [loading, setLoading] = useState(true);
 
@@ -23,20 +29,41 @@ const BuyerTab = () => {
     fetchUserProjects();
   }, [userAddress]);
 
-  const handleMint = async (projectAddress, amount) => {
-    try {
-      const tx = await mintWithRUSD(projectAddress, amount);
-      const receipt = await tx.wait();
-      if (receipt.status === 1) {
-        alert(`Minting initiated! Transaction: ${tx.hash}`);
-      } else {
-        alert(`Transaction failed!`);
+const handleMint = async (projectAddress, amount) => {
+  try {
+    // First check if we have sufficient allowance
+    const allowance = await checkRUSDAllowance(projectAddress);
+    
+    // If allowance is insufficient, approve first
+    if (BigInt(allowance) <= BigInt(0)) {
+      console.log("Insufficient allowance, approving RUSD first...");
+      
+      // Request RUSD approval
+      const approveTx = await approveRUSD(projectAddress);
+      const approveReceipt = await approveTx.wait();
+      
+      if (approveReceipt.status !== 1) {
+        alert("RUSD approval failed");
+        return;
       }
-    } catch (error) {
-      console.error('Minting failed:', error);
-      alert(`Minting failed: ${error.message}`);
+      
+      console.log("RUSD approved successfully");
     }
-  };
+    
+    // Now proceed with minting
+    const tx = await mintWithRUSD(projectAddress, amount);
+    const receipt = await tx.wait();
+    
+    if (receipt.status === 1) {
+      alert(`Minting successful! Transaction: ${tx.hash}`);
+    } else {
+      alert(`Transaction failed!`);
+    }
+  } catch (error) {
+    console.error('Minting failed:', error);
+    alert(`Minting failed: ${error.message}`);
+  }
+};
 
   const handleTransfer = async (projectAddress, to, amount) => {
     try {

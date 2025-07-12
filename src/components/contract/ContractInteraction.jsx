@@ -2,14 +2,14 @@
 import { useState, useEffect } from 'react';
 import { BrowserProvider, Contract, JsonRpcProvider, parseEther } from 'ethers';
 import governanceAbi from './Governance.json';
-import registryAbi from './CarbonCreditRegistry.json';
+import ERC20Abi from './ERC20.json';
 import projectFactoryabi from './ProjectFactory.json';
 import projectManagerabi from './ProjectManager.json';
 import projectDataabi from './ProjectData.json';
 import bco2Abi from './BCO2.json';
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { AlertCircle } from "lucide-react";
-import { GOVERNANCE_ADDRESS, projectData, projectFactory, projectManager } from './address';
+import { GOVERNANCE_ADDRESS, projectData, projectFactory, projectManager, RUSD } from './address';
 
 
 export const useContractInteraction = () => {
@@ -192,6 +192,40 @@ const createAndListProject = async (projectData) => {
       throw new Error(`Failed to mint: ${error.message}`);
     }
   };
+
+  const approveRUSD = async (projectAddress) => {
+        if (!isConnected || !signer) throw new Error("Wallet not connected");
+        try {
+
+          const MAX_UINT256 = "0xffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff";
+        
+          const rusdContract = new Contract(RUSD, ERC20Abi, signer);
+        
+          const tx = await rusdContract.approve(projectAddress, MAX_UINT256);
+          return tx;
+        } catch (error) {
+          throw new Error(`Failed to approve RUSD: ${error.message}`);
+        }
+  };
+
+
+    const checkRUSDAllowance = async (spenderAddress) => {
+      if (!userAddress) throw new Error("User wallet not connected");
+      try {
+        // Create contract instance for RUSD token with read-only methods
+        const rusdContract = new Contract(
+          RUSD, 
+          ERC20Abi,
+          provider || new JsonRpcProvider('https://data-seed-prebsc-1-s1.binance.org:8545/')
+        );
+        
+        // Call allowance function to check how many tokens the spender is allowed to use
+        const allowance = await rusdContract.allowance(userAddress, spenderAddress);
+        return allowance.toString();
+      } catch (error) {
+        throw new Error(`Failed to check RUSD allowance: ${error.message}`);
+      }
+    };
 
   const retireCredits = async (projectAddress, amount) => {
     if (!isConnected || !signer) throw new Error("Wallet not connected");
@@ -389,8 +423,8 @@ const getUserProjects = async () => {
   try {
   if (!userAddress) throw new Error("User address not set");
   const projects = await getListedProjects();
-  // const userProjects = projects.filter(p => p.proposer?.toLowerCase() === userAddress.toLowerCase());
-const userProjects = projects.filter(p => p.proposer?.toLowerCase() === "0xBA43b24B591ac215337a55247cc7ACAcd744aD94".toLowerCase());
+  const userProjects = projects.filter(p => p.proposer?.toLowerCase() === userAddress.toLowerCase());
+// const userProjects = projects.filter(p => p.proposer?.toLowerCase() === "0xBA43b24B591ac215337a55247cc7ACAcd744aD94".toLowerCase());
   for (const project of userProjects) {
     project.balance = await getUserBalance(project.projectContract);
   }
@@ -486,6 +520,8 @@ const getListedProjectDetails = async (address) => {
     addVVB,
     removeVVB,
     updateRegistryAddress,
+    approveRUSD,
+    checkRUSDAllowance,
     getProjectStats,
     getListedProjectDetails,
     getUserProjects,

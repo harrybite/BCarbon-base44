@@ -2,7 +2,7 @@
 /* eslint-disable react/prop-types */
 import { useState } from 'react';
 import {useContractInteraction} from '../contract/ContractInteraction';
-import { RUSD } from '../contract/address';
+import { methodology } from '../contract/address';
 
 const CreateProjectTab = () => {
   const { userAddress, createAndListProject } = useContractInteraction();
@@ -20,7 +20,15 @@ const CreateProjectTab = () => {
 
   const handleChange = (e) => {
     const { name, value, type, checked } = e.target;
-    setFormData({ ...formData, [name]: type === 'checkbox' ? checked : value });
+    if (name === 'defaultIsPermanent') {
+      setFormData({
+        ...formData,
+        [name]: checked,
+        defaultValidity: checked ? '0' : formData.defaultValidity
+      });
+    } else {
+      setFormData({ ...formData, [name]: type === 'checkbox' ? checked : value });
+    }
   };
 
   const handleSubmit = async (e) => {
@@ -44,6 +52,14 @@ const CreateProjectTab = () => {
     if ((defaultIsPermanent && defaultValidity !== '0') || (!defaultIsPermanent && defaultValidity === '0')) {
       return alert('Invalid validity: must be 0 if permanent, non-zero otherwise');
     }
+    if (
+      !defaultIsPermanent &&
+      (isNaN(defaultValidity) ||
+        defaultValidity <= 0 ||
+        defaultValidity > 100)
+    ) {
+      return alert('Validity must be a number between 1 and 100 years if not permanent');
+    }
 
 
     if (
@@ -59,7 +75,7 @@ const CreateProjectTab = () => {
       return alert('Empty project details');
     }
 
-    if (methodologyIndex === '' || parseInt(methodologyIndex) > 31) {
+    if (parseInt(methodology.length) <= parseInt(methodologyIndex) || parseInt(methodologyIndex) < 0) {
       return alert('Invalid methodology index (must be 0-31)');
     }
 
@@ -104,27 +120,31 @@ const CreateProjectTab = () => {
             required
           />
         </div>
-        <div className="flex items-center">
-          <input
-            type="checkbox"
-            name="defaultIsPermanent"
-            checked={formData.defaultIsPermanent}
-            onChange={handleChange}
-            className="mr-2"
-          />
-          <label className="block">Default Is Permanent</label>
-        </div>
-        <div>
-          <label className="block">Default Validity</label>
-          <input
-            type="text"
-            name="defaultValidity"
-            value={formData.defaultValidity}
-            onChange={handleChange}
-            className="w-full border rounded px-2 py-1"
-            required
-          />
-        </div>
+      <div className="flex items-center">
+        <input
+          type="checkbox"
+          name="defaultIsPermanent"
+          checked={formData.defaultIsPermanent}
+          onChange={handleChange}
+          className="mr-2"
+        />
+        <label className="block">Is Validity Permanent?</label>
+      </div>
+      <div>
+        <label className="block">Default Validity (in years)</label>
+        <input
+          type="text"
+          name="defaultValidity"
+          value={formData.defaultValidity}
+          onChange={handleChange}
+          className="w-full border rounded px-2 py-1"
+          disabled={formData.defaultIsPermanent}
+          required={!formData.defaultIsPermanent}
+        />
+        {formData.defaultIsPermanent && (
+          <p className="text-sm text-gray-500 mt-1">Disabled because validity is set to permanent.</p>
+        )}
+      </div>
         <div>
           <label className="block">Default Vintage</label>
           <input
@@ -148,17 +168,23 @@ const CreateProjectTab = () => {
             required
           />
         </div> */}
-        <div>
-          <label className="block">Methodology Index</label>
-          <input
-            type="number"
-            name="methodologyIndex"
-            value={formData.methodologyIndex}
-            onChange={handleChange}
-            className="w-full border rounded px-2 py-1"
-            required
-          />
-        </div>
+          <div>
+        <label className="block">Methodology</label>
+        <select
+          name="methodologyIndex"
+          value={formData.methodologyIndex}
+          onChange={handleChange}
+          className="w-full border rounded px-2 py-1"
+          required
+        >
+          <option value="">Select Methodology</option>
+          {methodology.map((method, index) => (
+            <option key={index} value={index}>
+              {method}
+            </option>
+          ))}
+        </select>
+      </div>
         <div>
           <label className="block">Location</label>
           <input
