@@ -32,17 +32,23 @@ const BuyerTab = () => {
       setLoading(false);
     };
     fetchUserProjects();
-  }, [userAddress, getUserBalance]);
+  }, [userAddress]);
 
   const handleMint = async (projectAddress, amount) => {
     try {
-      const { hash } = await mintWithRUSD(projectAddress, amount);
-      await fetch('http://localhost:3001/api/transaction', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ transactionHash: hash, projectAddress, userAddress })
-      });
-      alert(`Minting initiated! Transaction: ${hash}`);
+      const tx = await mintWithRUSD(projectAddress, amount);
+      const receipt = await tx.wait();
+      if (receipt.status === 1) {
+        alert(`Minting initiated! Transaction: ${tx.hash}`);
+      } else {
+        alert(`Transaction failed!`);
+      }
+      // await fetch('http://localhost:3001/api/transaction', {
+      //   method: 'POST',
+      //   headers: { 'Content-Type': 'application/json' },
+      //   body: JSON.stringify({ transactionHash: hash, projectAddress, userAddress })
+      // });
+      // alert(`Minting initiated! Transaction: ${hash}`);
     } catch (error) {
       console.error('Minting failed:', error);
       alert(`Minting failed: ${error.message}`);
@@ -51,13 +57,19 @@ const BuyerTab = () => {
 
   const handleTransfer = async (projectAddress, to, amount) => {
     try {
-      const { hash } = await transferCredits(projectAddress, to, amount);
-      await fetch('http://localhost:3001/api/transaction', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ transactionHash: hash, projectAddress, userAddress })
-      });
-      alert(`Transfer initiated! Transaction: ${hash}`);
+      const tx = await transferCredits(projectAddress, to, amount);
+      const receipt = await tx.wait();
+      if (receipt.status === 1) {
+        alert(`Transfer initiated! Transaction: ${tx.hash}`);
+      } else {
+        alert(`Transaction failed!`);
+      }
+      // await fetch('http://localhost:3001/api/transaction', {
+      //   method: 'POST',
+      //   headers: { 'Content-Type': 'application/json' },
+      //   body: JSON.stringify({ transactionHash: hash, projectAddress, userAddress })
+      // });
+      // alert(`Transfer initiated! Transaction: ${hash}`);
     } catch (error) {
       console.error('Transfer failed:', error);
       alert(`Transfer failed: ${error.message}`);
@@ -66,13 +78,19 @@ const BuyerTab = () => {
 
   const handleRetire = async (projectAddress, amount) => {
     try {
-      const { hash } = await retireCredits(projectAddress, amount);
-      await fetch('http://localhost:3001/api/transaction', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ transactionHash: hash, projectAddress, userAddress })
-      });
-      alert(`Retirement initiated! Transaction: ${hash}`);
+      const tx = await retireCredits(projectAddress, amount);
+      const receipt = await tx.wait();
+      if (receipt.status === 1) {
+        alert(`Retirement initiated! Transaction: ${tx.hash}`);
+      } else {
+        alert(`Transaction failed!`);
+      }
+      // await fetch('http://localhost:3001/api/transaction', {
+      //   method: 'POST',
+      //   headers: { 'Content-Type': 'application/json' },
+      //   body: JSON.stringify({ transactionHash: hash, projectAddress, userAddress })
+      // });
+      // alert(`Retirement initiated! Transaction: ${hash}`);
     } catch (error) {
       console.error('Retirement failed:', error);
       alert(`Retirement failed: ${error.message}`);

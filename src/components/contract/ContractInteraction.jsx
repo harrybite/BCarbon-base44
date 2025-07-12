@@ -1,11 +1,15 @@
+/* eslint-disable no-unused-vars */
 import { useState, useEffect } from 'react';
 import { BrowserProvider, Contract, JsonRpcProvider, parseEther } from 'ethers';
 import governanceAbi from './Governance.json';
 import registryAbi from './CarbonCreditRegistry.json';
+import projectFactoryabi from './ProjectFactory.json';
+import projectManagerabi from './ProjectManager.json';
+import projectDataabi from './ProjectData.json';
 import bco2Abi from './BCO2.json';
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { AlertCircle } from "lucide-react";
-import { GOVERNANCE_ADDRESS, REGISTRY_ADDRESS } from './address';
+import { GOVERNANCE_ADDRESS, projectData, projectFactory, projectManager } from './address';
 
 
 export const useContractInteraction = () => {
@@ -16,6 +20,9 @@ export const useContractInteraction = () => {
   const [signer, setSigner] = useState(null);
   const [governance, setGovernance] = useState(null);
   const [registry, setRegistry] = useState(null);
+  const [projectManagerContract, setProjectManagerContract] = useState(null);
+  const [projectDataContract, setProjectDataContract] = useState(null);
+  const [projectFactoryContract, setProjectFactoryContract] = useState(null);
 
   useEffect(() => {
     initializeProvider();
@@ -38,11 +45,15 @@ export const useContractInteraction = () => {
         const web3Provider = new BrowserProvider(window.ethereum);
         const signer = await web3Provider.getSigner();
         const governanceContract = new Contract(GOVERNANCE_ADDRESS, governanceAbi, signer);
-        const registryContract = new Contract(REGISTRY_ADDRESS, registryAbi, signer);
+        const ProjectManagerContract = new Contract(projectManager, projectManagerabi, signer);
+        const ProjectDataContract = new Contract(projectData, projectDataabi, signer);
+        const ProjectFactoryContract = new Contract(projectFactory, projectFactoryabi, signer);
+        setProjectManagerContract(ProjectManagerContract);
+        setProjectDataContract(ProjectDataContract);
+        setProjectFactoryContract(ProjectFactoryContract);
         setProvider(web3Provider);
         setSigner(signer);
         setGovernance(governanceContract);
-        setRegistry(registryContract);
         const accounts = await window.ethereum.request({ method: 'eth_accounts' });
         if (accounts.length > 0) {
           setUserAddress(accounts[0]);
@@ -62,7 +73,12 @@ export const useContractInteraction = () => {
         const signer = await provider.getSigner();
         setSigner(signer);
         setGovernance(new Contract(GOVERNANCE_ADDRESS, governanceAbi, signer));
-        setRegistry(new Contract(REGISTRY_ADDRESS, registryAbi, signer));
+        const ProjectManagerContract = new Contract(projectManager, projectManagerabi, signer);
+        const ProjectDataContract = new Contract(projectData, projectDataabi, signer);
+        const ProjectFactoryContract = new Contract(projectFactory, projectFactoryabi, signer);
+        setProjectManagerContract(ProjectManagerContract);
+        setProjectDataContract(ProjectDataContract);
+        setProjectFactoryContract(ProjectFactoryContract);
       }
     } else {
       setUserAddress("");
@@ -90,7 +106,12 @@ export const useContractInteraction = () => {
         setProvider(web3Provider);
         setSigner(signer);
         setGovernance(new Contract(GOVERNANCE_ADDRESS, governanceAbi, signer));
-        setRegistry(new Contract(REGISTRY_ADDRESS, registryAbi, signer));
+        const ProjectManagerContract = new Contract(projectManager, projectManagerabi, signer);
+        const ProjectDataContract = new Contract(projectData, projectDataabi, signer);
+        const ProjectFactoryContract = new Contract(projectFactory, projectFactoryabi, signer);
+        setProjectManagerContract(ProjectManagerContract);
+        setProjectDataContract(ProjectDataContract);
+        setProjectFactoryContract(ProjectFactoryContract);
       }
     } catch (error) {
       setError("Failed to connect wallet", error);
@@ -99,7 +120,7 @@ export const useContractInteraction = () => {
  
 
 const createAndListProject = async (projectData) => {
-  if (!isConnected || !registry) throw new Error("Wallet not connected or contracts not initialized");
+  if (!isConnected || !projectFactoryContract) throw new Error("Wallet not connected or contracts not initialized");
 
   // List of required fields
   const requiredFields = [
@@ -108,9 +129,8 @@ const createAndListProject = async (projectData) => {
     "defaultIsPermanent",
     "defaultValidity",
     "defaultVintage",
-    "nonRetiredURI",
-    "retiredURI",
-    "methodology",
+    "methodologyIndex",
+    "location",
     "emissionReductions",
     "projectDetails"
   ];
@@ -133,38 +153,30 @@ const createAndListProject = async (projectData) => {
       defaultIsPermanent,
       defaultValidity,
       defaultVintage,
-      nonRetiredURI,
-      retiredURI,
-      methodology,
+      methodologyIndex,
+      location,
       emissionReductions,
       projectDetails,
     } = projectData;
 
     const mintPriceWei = parseEther(mintPrice.toString());
+    const validity = BigInt(defaultValidity);
+    const vintage = BigInt(defaultVintage);
+    const methodology = Number(methodologyIndex); // uint8
+    const emissionReductionsWei = BigInt(emissionReductions);
 
-    const tx = await registry.createAndListProject(
+    const tx = await projectFactoryContract.createAndListProject(
       mintPriceWei,
       treasury,
       defaultIsPermanent,
-      defaultValidity,
-      defaultVintage,
-      nonRetiredURI,
-      retiredURI,
+      validity,
+      vintage,
       methodology,
-      emissionReductions,
-      projectDetails,
+      location,
+      emissionReductionsWei,
+      projectDetails
     );
-    const receipt = await tx.wait();
-    const projectAddress = receipt.logs
-      .map(log => {
-        try {
-          return registry.interface.parseLog(log);
-        } catch {
-          return null;
-        }
-      })
-      .find(event => event?.name === 'ProjectListed')?.args.projectContract;
-    return { hash: tx.hash, projectAddress };
+    return tx;
   } catch (error) {
     throw new Error(`Failed to create project: ${error.message}`);
   }
@@ -226,10 +238,10 @@ const createAndListProject = async (projectData) => {
     }
   };
 
-  const approveAndIssueCredits = async (projectAddress, creditAmount, certificateId) => {
+  const approveAndIssueCredits = async (projectAddress, creditAmount) => {
     if (!isConnected || !governance) throw new Error("Wallet not connected");
     try {
-      const tx = await governance.approveAndIssueCredits(projectAddress, creditAmount, certificateId);
+      const tx = await governance.approveAndIssueCredits(projectAddress, creditAmount);
       return tx;
     } catch (error) {
       throw new Error(`Failed to approve and issue credits: ${error.message}`);
@@ -261,7 +273,7 @@ const createAndListProject = async (projectData) => {
   const unpauseContract = async () => {
     if (!isConnected || !governance) throw new Error("Wallet not connected");
     try {
-      const tx = await unpauseContract();
+      const tx = await governance.unpause();
       return tx;
     } catch (error) {
       throw new Error(`Failed to unpause contract: ${error.message}`);
@@ -288,6 +300,7 @@ const createAndListProject = async (projectData) => {
     }
   };
 
+  // not using anymore
   const updateRegistryAddress = async (newRegistryAddress) => {
     if (!isConnected || !governance) throw new Error("Wallet not connected");
     try {
@@ -319,9 +332,6 @@ const createAndListProject = async (projectData) => {
   const checkAuthorizedVVB = async () => {
     if (!userAddress) return false;
     try {
-      // const response = await fetch(`http://localhost:3001/api/contract-owner`);
-      // const { owner } = await response.json();
-
       const isVVB = await governance.authorizedVVBs(userAddress);
       return isVVB 
     } catch (error) {
@@ -353,9 +363,9 @@ const createAndListProject = async (projectData) => {
   };
 
   const checkIsProjectOwner = async (projectAddress) => {
-    if (!registry || !userAddress) return false;
+    if (!projectDataContract || !userAddress) return false;
     try {
-      const owners = await registry.getAuthorizedProjectOwners(projectAddress);
+      const owners = await projectDataContract.getAuthorizedProjectOwners(projectAddress);
       return owners.map(addr => addr.toLowerCase()).includes(userAddress.toLowerCase());
     } catch (error) {
       console.error('Error checking project owner status:', error);
@@ -364,9 +374,9 @@ const createAndListProject = async (projectData) => {
   };
 
  const getListedProjects = async () => {
-  if (!registry) throw new Error("Registry contract not initialized");
+  if (!projectDataContract) throw new Error("projectDataContract contract not initialized");
   try {
-    const projects = await registry.getListedProjects();
+    const projects = await projectDataContract.getListedProjects();
     // retunr aray of projectaddress's object
     return projects
   } catch (error) {
@@ -375,9 +385,9 @@ const createAndListProject = async (projectData) => {
 };
 
 // const getApprovedProjects = async () => {
-//   if (!registry) throw new Error("Registry contract not initialized");
+//   if (!projectDataContract) throw new Error("projectDataContract contract not initialized");
 //   try {
-//     const projects = await registry.getApprovedProjects();
+//     const projects = await projectDataContract.getApprovedProjects();
 //     return projects;
 //   } catch (error) {
 //     throw new Error(`Failed to fetch approved projects: ${error.message}`);
@@ -385,9 +395,9 @@ const createAndListProject = async (projectData) => {
 // };
 
 const getListedProjectDetails = async (address) => {
-  if (!registry) throw new Error("Registry contract not initialized");
+  if (!projectDataContract) throw new Error("projectDataContract contract not initialized");
   try {
-      const detail = await registry.getProjectDetails(address);
+      const detail = await projectDataContract.getProjectDetails(address);
     return {
       projectContract: detail.projectContract,
       projectId: detail.projectId,

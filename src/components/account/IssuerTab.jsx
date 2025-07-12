@@ -34,7 +34,7 @@ const IssuerTab = () => {
       setLoading(false);
     };
     fetchProjects();
-  }, [userAddress, checkIsProjectOwner]);
+  }, [userAddress]);
 
   return (
     <div className="p-4">
