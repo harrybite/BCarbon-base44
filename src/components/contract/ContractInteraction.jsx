@@ -374,11 +374,15 @@ const createAndListProject = async (projectData) => {
   };
 
  const getListedProjects = async () => {
-  if (!projectDataContract) throw new Error("projectDataContract contract not initialized");
+    if (!projectDataContract) throw new Error("projectDataContract contract not initialized");
   try {
     const projects = await projectDataContract.getListedProjects();
-    // retunr aray of projectaddress's object
-    return projects
+    const details = []
+    for (const project of projects) {
+      const detail = await getListedProjectDetails(project);
+      details.push(detail);
+    }
+    return details
   } catch (error) {
     throw new Error(`Failed to fetch listed projects: ${error.message}`);
   }

@@ -1,3 +1,4 @@
+/* eslint-disable no-unused-vars */
 import { useState, useEffect } from 'react';
 import {useContractInteraction} from '../contract/ContractInteraction';
 
@@ -35,12 +36,6 @@ const GovernanceTab = () => {
       } else {
         alert(`Transaction failed!`);
       }
-      // await fetch('http://localhost:3001/api/transaction', {
-      //   method: 'POST',
-      //   headers: { 'Content-Type': 'application/json' },
-      //   body: JSON.stringify({ transactionHash: hash, userAddress })
-      // });
-      // alert(`Contract unpaused! Transaction: ${hash}`);
     } catch (error) {
       alert(`Unpause failed: ${error.message}`);
     }
@@ -115,9 +110,9 @@ const GovernanceTab = () => {
         <button onClick={handleRemoveVVB} className="bg-blue-500 text-white px-4 py-2 rounded mr-2">
           Remove VVB
         </button>
-        <button onClick={handleUpdateRegistry} className="bg-blue-500 text-white px-4 py-2 rounded mr-2">
+        {/* <button onClick={handleUpdateRegistry} className="bg-blue-500 text-white px-4 py-2 rounded mr-2">
           Update Registry Address
-        </button>
+        </button> */}
       </div>
     </div>
   );

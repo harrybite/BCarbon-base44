@@ -97,12 +97,12 @@ const handleReject = async () => {
       <p className='font-semibold' >{details.projectDetails}</p>
     <div className="space-y-2">
     <div className="flex w-full justify-between">
-      <span className="">Location:</span>
-      <span className="font-semibold">{details.metadata?.location}</span>
+      <span className="">Emission Reductions:</span>
+      <span className="font-semibold">{Number(details.emissionReductions)}</span>
     </div>
     <div className="flex w-full justify-between">
       <span className="">Methodology:</span>
-      <span className="font-semibold">{details.methodology}</span>
+      <span className="font-semibold">{Number(details.methodology)}</span>
     </div>
     <div className="flex w-full justify-between">
       <span className="">Status:</span>

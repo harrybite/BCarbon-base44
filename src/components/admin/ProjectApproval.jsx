@@ -31,25 +31,31 @@ const ProjectApproval = () => {
     fetchProjects();
   }, [userAddress]);
 
-  const handleApprove = async (projectAddress, creditAmount, certificateId) => {
-    try {
-      const tx = await approveAndIssueCredits(projectAddress, creditAmount, certificateId || 'CERT-' + Date.now());
-      const receipt = await tx.wait();
-      if (receipt.status === 1) {
-        alert(`Project Approved! Transaction: ${tx.hash}`);
-      } else {
-        alert(`Transaction failed!`);
-      }
-      // await fetch('http://localhost:3001/api/transaction', {
-      //   method: 'POST',
-      //   headers: { 'Content-Type': 'application/json' },
-      //   body: JSON.stringify({ transactionHash: hash, projectAddress, userAddress })
-      // });
-    } catch (error) {
-      console.error('Approval failed:', error);
-      alert(`Approval failed: ${error.message}`);
+const handleApprove = async (projectAddress, creditAmount) => {
+  // Find the project details to get emissionReductions
+  const project = projects.find(p => p.projectContract === projectAddress);
+  const emissionReductions = Number(project?.emissionReductions ?? 0);
+
+  console.log("Project :", project);
+  console.log("Credit Amount:", emissionReductions);
+  if (Number(creditAmount) <= Number(emissionReductions)) {
+    alert("Credit amount must be greater than emission reductions.");
+    return;
+  }
+
+  try {
+    const tx = await approveAndIssueCredits(projectAddress, creditAmount);
+    const receipt = await tx.wait();
+    if (receipt.status === 1) {
+      alert(`Project Approved! Transaction: ${tx.hash}`);
+    } else {
+      alert(`Transaction failed!`);
     }
-  };
+  } catch (error) {
+    console.error('Approval failed:', error);
+    alert(`Approval failed: ${error.message}`);
+  }
+};
 
   const handleReject = async (projectAddress) => {
     try {
@@ -60,11 +66,6 @@ const ProjectApproval = () => {
       } else {
         alert(`Transaction failed!`);
       }
-      // await fetch('http://localhost:3001/api/transaction', {
-      //   method: 'POST',
-      //   headers: { 'Content-Type': 'application/json' },
-      //   body: JSON.stringify({ transactionHash: hash, projectAddress, userAddress })
-      // });
 
     } catch (error) {
       console.error('Rejection failed:', error);
@@ -81,12 +82,6 @@ const ProjectApproval = () => {
       } else {
         alert(`Transaction failed!`);
       }
-      // await fetch('http://localhost:3001/api/transaction', {
-      //   method: 'POST',
-      //   headers: { 'Content-Type': 'application/json' },
-      //   body: JSON.stringify({ transactionHash: hash, projectAddress, userAddress })
-      // });
-      // alert(`Project validated! Transaction: ${hash}`);
     } catch (error) {
       console.error('Validation failed:', error);
       alert(`Validation failed: ${error.message}`);
@@ -116,20 +111,20 @@ const ProjectApproval = () => {
       ) : (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
           {projects.map(projectAddress => (
-            <div key={projectAddress}>
-              <ProjectCard project={projectAddress} />
+            <div key={projectAddress.projectContract}>
+              <ProjectCard project={projectAddress.projectContract} />
               {!projectAddress.isApproved && (
                 <div className="mt-2">
                   {isOwner && (
                     <>
                       <button
-                        onClick={() => handleApprove(projectAddress, prompt('Enter credit amount:'), prompt('Enter certificate ID:'))}
+                        onClick={() => handleApprove(projectAddress.projectContract, prompt('Enter credit amount:'))}
                         className="bg-green-500 text-white px-4 py-2 rounded mr-2"
                       >
                         Approve & Issue Credits
                       </button>
                       <button
-                        onClick={() => handleReject(projectAddress)}
+                        onClick={() => handleReject(projectAddress.projectContract)}
                         className="bg-red-500 text-white px-4 py-2 rounded mr-2"
                       >
                         Reject
@@ -139,13 +134,13 @@ const ProjectApproval = () => {
                   {isVVB && (
                     <>
                       <button
-                        onClick={() => handleValidate(projectAddress)}
+                        onClick={() => handleValidate(projectAddress.projectContract)}
                         className="bg-blue-500 text-white px-4 py-2 rounded mr-2"
                       >
                         Validate
                       </button>
                       <button
-                        onClick={() => handleVerify(projectAddress)}
+                        onClick={() => handleVerify(projectAddress.projectContract)}
                         className="bg-blue-500 text-white px-4 py-2 rounded"
                       >
                         Verify
