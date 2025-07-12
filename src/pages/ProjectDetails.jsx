@@ -12,9 +12,14 @@ import {
   TreePine,
   TrendingUp,
   Recycle,
-  ExternalLink,
+  DockIcon,
   Calendar,
+  CoinsIcon,
+  LockOpen,
   Shield,
+  Locate,
+  User,
+  IdCard,
   GitBranch,
   Coins,
   AlertCircle,
@@ -81,9 +86,8 @@ export default function ProjectDetails() {
     }
     setIsMinting(true);
 
-       // First check if we have sufficient allowance
+    // First check if we have sufficient allowance
     const allowance = await checkRUSDAllowance(project.projectContract);
-     console.log("Allowance:", allowance);
     if (BigInt(allowance) <= BigInt(0)) {
       console.log("Insufficient allowance, approving RUSD first...");
       const approveTx = await approveRUSD(project.projectContract);
@@ -94,11 +98,18 @@ export default function ProjectDetails() {
       }
       console.log("RUSD approved successfully");
     }
+
+    // RUSD balance validation
+    if (Number(rusdBalance) < Number(mintAmount)) {
+      alert(`Insufficient RUSD balance. You have ${rusdBalance} RUSD, but trying to mint ${mintAmount} RUSD.`);
+      setIsMinting(false);
+      return;
+    }
     
     try {
       const tx = await mintWithRUSD(project.projectContract, parseInt(mintAmount));
       const receipt = await tx.wait();
-      setSuccess(`Minting initiated! Transaction: ${receipt.transactionHash}`);
+      setSuccess(`Minting initiated! Transaction: ${receipt.hash}`);
       setMintAmount("");
       setTimeout(() => loadProject(project.projectContract), 3000);
     } catch (error) {
@@ -124,7 +135,7 @@ export default function ProjectDetails() {
     try {
       const tx = await retireCredits(project.projectContract, parseInt(retireAmount));
       const receipt = await tx.wait();
-      setSuccess(`Credits retired! Transaction: ${receipt.transactionHash}`);
+      setSuccess(`Credits retired! Transaction: ${receipt.hash}`);
       setTimeout(() => loadProject(project.projectContract), 3000);
     } catch (error) {
       setError(`Failed to retire credits: ${error.message}`);
@@ -291,41 +302,41 @@ export default function ProjectDetails() {
               <dl className="grid grid-cols-1 md:grid-cols-2 gap-x-8 gap-y-4">
                 {/* Methodology */}
                  <div className="flex items-center col-span-2">
-                  <Shield className="w-4 h-4 text-gray-400 mr-2" />
+                  <IdCard className="w-4 h-4 text-gray-400 mr-2" />
                   <dt className="text-sm text-gray-600 min-w-[90px]">Project ID:</dt>
                   <dd className="ml-2 font-medium">{project.projectId}</dd>
                 </div>
                  <div className="flex items-center col-span-2">
-                  <Shield className="w-4 h-4 text-gray-400 mr-2" />
+                  <IdCard className="w-4 h-4 text-gray-400 mr-2" />
                   <dt className="text-sm text-gray-600 min-w-[90px]">Certificate ID:</dt>
                   <dd className="ml-2 font-medium">{project.certificateId}</dd>
                 </div>
                  <div className="flex items-center col-span-2">
-                  <Shield className="w-4 h-4 text-gray-400 mr-2" />
+                  <User className="w-4 h-4 text-gray-400 mr-2" />
                   <dt className="text-sm text-gray-600 min-w-[90px]">Owner address</dt>
                   <dd className="ml-2 font-medium">{project.proposer}</dd>
                 </div>
                 <div className="flex items-center col-span-2">
-                  <Shield className="w-4 h-4 text-gray-400 mr-2" />
+                  <DockIcon className="w-4 h-4 text-gray-400 mr-2" />
                   <dt className="text-sm text-gray-600 min-w-[90px]">Methodology:</dt>
                   <dd className="ml-2 font-medium">{methodology[Number(project.methodology)]}</dd>
                 </div>
 
                 <div className="flex items-center col-span-2">
-                  <Shield className="w-4 h-4 text-gray-400 mr-2" />
+                  <Calendar className="w-4 h-4 text-gray-400 mr-2" />
                   <dt className="text-sm text-gray-600 min-w-[90px]">Listing date</dt>
                   <dd className="ml-2 font-medium">
                       {new Date( Number(project.listingTimestamp) * 1000).toLocaleDateString()}
                   </dd>
                 </div>
                  <div className="flex items-center col-span-2">
-                  <Shield className="w-4 h-4 text-gray-400 mr-2" />
+                  <CoinsIcon className="w-4 h-4 text-gray-400 mr-2" />
                   <dt className="text-sm text-gray-600 min-w-[90px]">Credits tCO<sub>2</sub></dt>
                   <dd className="ml-2 font-medium">{Number(project.credits)}</dd>
                 </div>
                 {/* Permanent */}
                 <div className="flex items-center col-span-2">
-                  <Shield className="w-4 h-4 text-gray-400 mr-2" />
+                  <LockOpen className="w-4 h-4 text-gray-400 mr-2" />
                   <dt className="text-sm text-gray-600 min-w-[90px]">Permanent:</dt>
                   <dd className="ml-2">
                     <Badge variant={project.defaultIsPermanent ? "default" : "outline"}>
@@ -360,7 +371,7 @@ export default function ProjectDetails() {
                 {/* Location */}
                 {(
                   <div className="flex items-center col-span-2">
-                    <AlertCircle className="w-4 h-4 text-gray-400 mr-2" />
+                    <Locate className="w-4 h-4 text-gray-400 mr-2" />
                     <dt className="text-sm text-gray-600 min-w-[90px]">Location:</dt>
                     <dd className="ml-2 font-medium">{project.location}</dd>
                   </div>

@@ -212,6 +212,9 @@ const createAndListProject = async (projectData) => {
   const setTokenURI = async (projectAddress, nonRetiredURI, retiredURI) => {
     if (!isConnected || !signer) throw new Error("Wallet not connected");
     try {
+      console.log("Setting token URI for project:", projectAddress);
+      console.log("Non-retired URI:", nonRetiredURI); 
+      console.log("Retired URI:", retiredURI);
       const bco2Contract = new Contract(projectAddress, bco2Abi, signer);
       const tx = await bco2Contract.setTokenURI(nonRetiredURI, retiredURI);
       return tx;

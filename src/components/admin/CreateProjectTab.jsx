@@ -1,7 +1,9 @@
 /* eslint-disable no-unused-vars */
 /* eslint-disable react/prop-types */
 import { useState } from 'react';
-import {useContractInteraction} from '../contract/ContractInteraction';
+import ReactDatePicker from "react-datepicker";
+import "react-datepicker/dist/react-datepicker.css";
+import { useContractInteraction } from '../contract/ContractInteraction';
 import { methodology } from '../contract/address';
 
 const CreateProjectTab = () => {
@@ -11,7 +13,7 @@ const CreateProjectTab = () => {
     treasury: '',
     defaultIsPermanent: false,
     defaultValidity: '',
-    defaultVintage: '',
+    defaultVintage: new Date(),
     methodologyIndex: '',
     location: '',
     emissionReductions: '',
@@ -24,7 +26,7 @@ const CreateProjectTab = () => {
       setFormData({
         ...formData,
         [name]: checked,
-        defaultValidity: checked ? '100+ years' : formData.defaultValidity
+        defaultValidity: checked ? '100' : formData.defaultValidity
       });
     } else {
       setFormData({ ...formData, [name]: type === 'checkbox' ? checked : value });
@@ -49,6 +51,7 @@ const CreateProjectTab = () => {
       return alert('Invalid treasury address');
     }
 
+    console.log(defaultIsPermanent, defaultValidity);
     if ((defaultIsPermanent && defaultValidity !== '0') || (!defaultIsPermanent && defaultValidity === '0')) {
       return alert('Invalid validity: must be 0 if permanent, non-zero otherwise');
     }
@@ -79,16 +82,17 @@ const CreateProjectTab = () => {
       return alert('Invalid methodology index (must be 0-31)');
     }
 
-      // Convert vintage to timestamp (seconds)
-      const vintageTimestamp = formData.defaultVintage
-        ? Math.floor(new Date(formData.defaultVintage).getTime() / 1000)
-        : "";
+    // Convert vintage to timestamp (seconds)
+  const vintageTimestamp = formData.defaultVintage
+    ? Math.floor(new Date(formData.defaultVintage).getTime() / 1000)
+    : "";
+  
 
-      // Prepare the data to send to the contract
-      const preparedData = {
-        ...formData,
-        defaultVintage: vintageTimestamp,
-      };
+    // Prepare the data to send to the contract
+    const preparedData = {
+      ...formData,
+       defaultVintage: vintageTimestamp,
+    };
 
     try {
       console.log("formdata", preparedData)
@@ -131,42 +135,66 @@ const CreateProjectTab = () => {
             required
           />
         </div>
-      <div className="flex items-center">
-        <input
-          type="checkbox"
-          name="defaultIsPermanent"
-          checked={formData.defaultIsPermanent}
-          onChange={handleChange}
-          className="mr-2"
-        />
-        <label className="block">Is Validity Permanent?</label>
-      </div>
-      <div>
-        <label className="block">Default Validity (in years)</label>
-        <input
-          type="text"
-          name="defaultValidity"
-          value={formData.defaultValidity}
-          onChange={handleChange}
+        <div className="flex items-center">
+
+          {<button
+            type="button"
+            onClick={() =>
+              setFormData((prev) => ({
+                ...prev,
+                defaultIsPermanent: !prev.defaultIsPermanent,
+                defaultValidity: !prev.defaultIsPermanent ? '0' : prev.defaultValidity,
+              }))
+            }
+            className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors focus:outline-none ${formData.defaultIsPermanent ? 'bg-blue-600' : 'bg-gray-300'
+              }`}
+          >
+            <span
+              className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${formData.defaultIsPermanent ? 'translate-x-6' : 'translate-x-1'
+                }`}
+            />
+          </button>
+          }
+          <label className="block ml-4">Is Validity Permanent?</label>
+       
+        </div>
+        <div>
+          <label className="block">Default Validity (in years)</label>
+         {!formData.defaultIsPermanent ? <input
+            type="text"
+            name="defaultValidity"
+            value={formData.defaultValidity}
+            onChange={handleChange}
+            className="w-full border rounded px-2 py-1"
+            disabled={formData.defaultIsPermanent}
+            required={!formData.defaultIsPermanent}
+          /> : 
+          <input
+            type="text"
+            name="defaultValidity"
+            value={'100+ years'}
+            disabled={formData.defaultIsPermanent}
+             className="w-full border rounded px-2 py-1"
+          />
+          }
+          {formData.defaultIsPermanent && (
+            <p className="text-sm text-gray-500 mt-1">Disabled because validity is set to permanent.</p>
+          )}
+        </div>
+      <div className="relative">
+        <label className="block">Vintage</label>
+        <ReactDatePicker
+          selected={formData.defaultVintage}
+          onChange={(date) =>
+            setFormData((prev) => ({ ...prev, defaultVintage: date }))
+          }
+          showTimeSelect
+          dateFormat="Pp"
           className="w-full border rounded px-2 py-1"
-          disabled={formData.defaultIsPermanent}
-          required={!formData.defaultIsPermanent}
+          wrapperClassName="w-full"
+          required
         />
-        {formData.defaultIsPermanent && (
-          <p className="text-sm text-gray-500 mt-1">Disabled because validity is set to permanent.</p>
-        )}
       </div>
-    <div>
-  <label className="block">Default Vintage</label>
-  <input
-    type="datetime-local"
-    name="defaultVintage"
-    value={formData.defaultVintage}
-    onChange={handleChange}
-    className="w-full border rounded px-2 py-1"
-    required
-  />
-</div>
         {/* <div>
           <label className="block">RUSD</label>
           <input
@@ -179,23 +207,23 @@ const CreateProjectTab = () => {
             required
           />
         </div> */}
-          <div>
-        <label className="block">Methodology</label>
-        <select
-          name="methodologyIndex"
-          value={formData.methodologyIndex}
-          onChange={handleChange}
-          className="w-full border rounded px-2 py-1"
-          required
-        >
-          <option value="">Select Methodology</option>
-          {methodology.map((method, index) => (
-            <option key={index} value={index}>
-              {method}
-            </option>
-          ))}
-        </select>
-      </div>
+        <div>
+          <label className="block">Methodology</label>
+          <select
+            name="methodologyIndex"
+            value={formData.methodologyIndex}
+            onChange={handleChange}
+            className="w-full border rounded px-2 py-1"
+            required
+          >
+            <option value="">Select Methodology</option>
+            {methodology.map((method, index) => (
+              <option key={index} value={index}>
+                {method}
+              </option>
+            ))}
+          </select>
+        </div>
         <div>
           <label className="block">Location</label>
           <input
