@@ -39,24 +39,18 @@ const handleMint = async (projectAddress, amount) => {
   try {
     // First check if we have sufficient allowance
     const allowance = await checkRUSDAllowance(projectAddress);
-    
-    // If allowance is insufficient, approve first
     if (BigInt(allowance) <= BigInt(0)) {
       console.log("Insufficient allowance, approving RUSD first...");
-      
-      // Request RUSD approval
       const approveTx = await approveRUSD(projectAddress);
       const approveReceipt = await approveTx.wait();
-      
       if (approveReceipt.status !== 1) {
         alert("RUSD approval failed");
         return;
       }
-      
       console.log("RUSD approved successfully");
     }
     
-    // Now proceed with minting
+
     const tx = await mintWithRUSD(projectAddress, amount);
     const receipt = await tx.wait();
     
@@ -113,28 +107,22 @@ const handleMint = async (projectAddress, amount) => {
           {projects.map(project => (
             <div key={project.projectContract}>
               <ProjectCard project={project.projectContract} />
-              <div className="mt-2">
+              {/* {project.isApproved && <div className="mt-2">
                 <p>Balance: {project.balance}</p>
                 <p>RUSD Balance: {rusdBalance}</p>
                 <button
-                  onClick={() => handleMint(project.projectContract, 1)}
+                  onClick={() => handleMint(project.projectContract, prompt('Enter amount to mint:'))}
                   className="bg-green-500 text-white px-4 py-2 rounded mr-2"
                 >
                   Mint Credits
                 </button>
-                {/* <button
-                  onClick={() => handleTransfer(project.projectContract, prompt('Enter recipient address:'), 1)}
-                  className="bg-blue-500 text-white px-4 py-2 rounded mr-2"
-                >
-                  Transfer
-                </button> */}
                 <button
-                  onClick={() => handleRetire(project.projectContract, 1)}
+                  onClick={() => handleRetire(project.projectContract, prompt('Enter amount to retire:'))}
                   className="bg-red-500 text-white px-4 py-2 rounded"
                 >
                   Retire
                 </button>
-              </div>
+              </div>} */}
             </div>
           ))}
         </div>

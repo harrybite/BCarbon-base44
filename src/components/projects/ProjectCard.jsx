@@ -3,6 +3,7 @@
 import { useState, useEffect } from 'react';
 import { useContractInteraction } from '../contract/ContractInteraction';
 import { useParams } from 'react-router-dom';
+import { Link } from 'react-router-dom';
 import { methodology } from '../contract/address';
 
 // eslint-disable-next-line react/prop-types
@@ -14,7 +15,9 @@ const ProjectCard = ({ project }) => {
     rejectAndRemoveProject,
     getListedProjectDetails,
     mintWithETH,
-    submitComment
+    submitComment,
+    checkRUSDAllowance,
+    approveRUSD
   } = useContractInteraction();
   const { projectAddress } = useParams();
   const [details, setDetails] = useState({
@@ -83,9 +86,22 @@ const ProjectCard = ({ project }) => {
 
   const handleMint = async () => {
     try {
+      const allowance = await checkRUSDAllowance(details.projectContract);
+      if (BigInt(allowance) <= BigInt(0)) {
+      console.log("Insufficient allowance, approving RUSD first...");
+      const approveTx = await approveRUSD(details.projectContract);
+      const approveReceipt = await approveTx.wait();
+      if (approveReceipt.status !== 1) {
+        alert("RUSD approval failed");
+        return;
+      }
+      console.log("RUSD approved successfully");
+    }
+    
+
       const amount = prompt('Enter amount to mint:');
       if (amount) {
-        const tx = await mintWithETH(project, amount);
+        const tx = await mintWithETH(details.projectContract, amount);
         const receipt = await tx.wait();
         if (receipt.status === 1) {
           alert(`Credits minted! Transaction: ${tx.hash}`);
@@ -128,7 +144,7 @@ return (
       {/* Key-value pairs with labels on left, values on right */}
       <div className="flex items-center">
         <span className="font-medium text-gray-700 w-[180px]">Emission Reductions:</span>
-        <span className="font-semibold flex-grow text-right">{Number(details.emissionReductions)}</span>
+        <span className="font-semibold flex-grow text-right">{Number(details.emissionReductions)} tCO<sub>2</sub></span>
       </div>
       
       <div className="flex items-center">
@@ -150,20 +166,27 @@ return (
       
       <div className="flex items-center">
         <span className="font-medium text-gray-700 w-[180px]">Credits Issued:</span>
-        <span className="font-semibold flex-grow text-right">{Number(details.credits)}</span>
+        <span className="font-semibold flex-grow text-right">{Number(details.credits)} tCO<sub>2</sub></span>
       </div>
+    </div>
+     <div className="mt-6">
+      <Link to={`/ProjectDetails/${details.projectContract}`}>
+     <button className="w-full bg-transparent border border-blue-600 text-blue-600 py-2 px-4 rounded-2xl font-semibold transition hover:bg-blue-50">
+          View Project Details
+        </button>
+      </Link>
     </div>
 
     {/* Buttons */}
     <div className="flex mt-4 space-x-2">
-      {details.isApproved && (
+      {/* {details.isApproved && (
         <button
           onClick={handleMint}
           className="bg-green-500 hover:bg-green-600 text-white px-4 py-2 rounded"
         >
           Mint Credits
         </button>
-      )}
+      )} */}
       {/* {!details.isApproved && isOwner && (
         <button
           onClick={handleReject}

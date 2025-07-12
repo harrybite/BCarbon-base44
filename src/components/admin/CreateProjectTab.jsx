@@ -24,7 +24,7 @@ const CreateProjectTab = () => {
       setFormData({
         ...formData,
         [name]: checked,
-        defaultValidity: checked ? '0' : formData.defaultValidity
+        defaultValidity: checked ? '100+ years' : formData.defaultValidity
       });
     } else {
       setFormData({ ...formData, [name]: type === 'checkbox' ? checked : value });
@@ -79,9 +79,20 @@ const CreateProjectTab = () => {
       return alert('Invalid methodology index (must be 0-31)');
     }
 
+      // Convert vintage to timestamp (seconds)
+      const vintageTimestamp = formData.defaultVintage
+        ? Math.floor(new Date(formData.defaultVintage).getTime() / 1000)
+        : "";
+
+      // Prepare the data to send to the contract
+      const preparedData = {
+        ...formData,
+        defaultVintage: vintageTimestamp,
+      };
+
     try {
-      console.log("formdata", formData)
-      const tx = await createAndListProject(formData);
+      console.log("formdata", preparedData)
+      const tx = await createAndListProject(preparedData);
       const receipt = await tx.wait();
       if (receipt.status === 1) {
         alert(`Project created successfully! Transaction: ${tx.hash}`);
@@ -145,17 +156,17 @@ const CreateProjectTab = () => {
           <p className="text-sm text-gray-500 mt-1">Disabled because validity is set to permanent.</p>
         )}
       </div>
-        <div>
-          <label className="block">Default Vintage</label>
-          <input
-            type="text"
-            name="defaultVintage"
-            value={formData.defaultVintage}
-            onChange={handleChange}
-            className="w-full border rounded px-2 py-1"
-            required
-          />
-        </div>
+    <div>
+  <label className="block">Default Vintage</label>
+  <input
+    type="datetime-local"
+    name="defaultVintage"
+    value={formData.defaultVintage}
+    onChange={handleChange}
+    className="w-full border rounded px-2 py-1"
+    required
+  />
+</div>
         {/* <div>
           <label className="block">RUSD</label>
           <input
@@ -197,7 +208,7 @@ const CreateProjectTab = () => {
           />
         </div>
         <div>
-          <label className="block">Emission Reductions</label>
+          <label className="block">Emission Reduction goal in tCO<sub>2</sub></label>
           <input
             type="text"
             name="emissionReductions"
@@ -209,9 +220,10 @@ const CreateProjectTab = () => {
         </div>
         <div>
           <label className="block">Project Details</label>
-          <textarea
+          <input
             name="projectDetails"
             value={formData.projectDetails}
+            placeholder='Upload all the project-related files to a public GitHub repository and paste the link here.'
             onChange={handleChange}
             className="w-full border rounded px-2 py-1"
             required

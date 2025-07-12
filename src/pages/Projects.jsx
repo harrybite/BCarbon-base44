@@ -2,6 +2,7 @@ import { useState, useEffect } from "react";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Search, TreePine } from "lucide-react";
+import { Link } from "react-router-dom";
 import { Skeleton } from "@/components/ui/skeleton";
 
 import ProjectCard from "../components/projects/ProjectCard";
@@ -138,7 +139,14 @@ const filterProjects = () => {
             ))
           ) : filteredProjects.length > 0 ? (
             filteredProjects.map((project) => (
-              <ProjectCard key={project.projectContract} project={project.projectContract} />
+                <Link
+                  key={project.projectContract}
+                  to={`/ProjectDetails/${project.projectContract}`}
+                  className="block hover:shadow-lg transition-shadow duration-200"
+                  style={{ textDecoration: "none", color: "inherit" }}
+                >
+                  <ProjectCard project={project.projectContract} />
+                </Link>
             ))
           ) : (
             <div className="col-span-full text-center py-16">

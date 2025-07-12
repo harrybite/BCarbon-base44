@@ -12,6 +12,7 @@ const ProjectApproval = () => {
   const [loading, setLoading] = useState(true);
   const [isOwner, setIsOwner] = useState(false);
   const [isVVB, setIsVVB] = useState(false);
+  const [update, setUpdate] = useState(0);
 
   useEffect(() => {
     const fetchProjects = async () => {
@@ -29,17 +30,15 @@ const ProjectApproval = () => {
       setLoading(false);
     };
     fetchProjects();
-  }, [userAddress]);
+  }, [userAddress, update]);
 
   const handleApprove = async (projectAddress, creditAmount) => {
     // Find the project details to get emissionReductions
     const project = projects.find(p => p.projectContract === projectAddress);
     const emissionReductions = Number(project?.emissionReductions ?? 0);
 
-    console.log("Project :", project);
-    console.log("Credit Amount:", emissionReductions);
-    if (Number(creditAmount) <= Number(emissionReductions)) {
-      alert("Credit amount must be greater than emission reductions.");
+    if (Number(creditAmount) < Number(emissionReductions)) {
+      alert("Credit amount must be less than emission reductions.");
       return;
     }
 
@@ -48,6 +47,7 @@ const ProjectApproval = () => {
       const receipt = await tx.wait();
       if (receipt.status === 1) {
         alert(`Project Approved! Transaction: ${tx.hash}`);
+        setUpdate(update + 1); // Trigger re-fetch of projects
       } else {
         alert(`Transaction failed!`);
       }
@@ -63,6 +63,7 @@ const ProjectApproval = () => {
       const receipt = await tx.wait();
       if (receipt.status === 1) {
         alert(`Project rejected! Transaction: ${tx.hash}`);
+        setUpdate(update + 1); // Trigger re-fetch of projects
       } else {
         alert(`Transaction failed!`);
       }
@@ -79,6 +80,7 @@ const ProjectApproval = () => {
       const receipt = await tx.wait();
       if (receipt.status === 1) {
         alert(`Project validated! Transaction: ${tx.hash}`);
+        setUpdate(update + 1); // Trigger re-fetch of projects
       } else {
         alert(`Transaction failed!`);
       }
@@ -94,6 +96,7 @@ const ProjectApproval = () => {
       const receipt = await tx.wait();
       if (receipt.status === 1) {
         alert(`Project verified! Transaction: ${tx.hash}`);
+        setUpdate(update + 1); // Trigger re-fetch of projects
       } else {
         alert(`Transaction failed!`);
       }
