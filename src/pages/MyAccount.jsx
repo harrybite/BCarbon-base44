@@ -1,28 +1,16 @@
+/* eslint-disable no-unused-vars */
 import { useEffect, useState } from "react";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { User, Briefcase, ShoppingBag } from "lucide-react";
 import IssuerTab from "../components/account/IssuerTab";
 import BuyerTab from "../components/account/BuyerTab";
 import WalletConnection from "../components/wallet/WalletConnection";
+import { useConnectWallet } from "@/context/walletcontext";
 
 export default function MyAccount() {
-  const [walletAddress, setWalletAddress] = useState(null);
 
-  useEffect(() => {
-    const checkWallet = async () => {
-      if (typeof window !== "undefined" && window.ethereum) {
-        try {
-          const accounts = await window.ethereum.request({ method: "eth_accounts" });
-          if (accounts.length > 0) {
-            setWalletAddress(accounts[0]);
-          }
-        } catch (err) {
-          console.error("Wallet check failed:", err);
-        }
-      }
-    };
-    checkWallet();
-  }, []);
+  const { walletAddress } = useConnectWallet();
+
 
   if (!walletAddress) {
     return (

@@ -9,53 +9,46 @@ import { Settings, Shield, AlertTriangle, RefreshCw, CheckSquare } from "lucide-
 
 import GovernanceTab from "../components/admin/GovernanceTab";
 import ProjectApproval from "../components/admin/ProjectApproval";
-import {useContractInteraction } from "../components/contract/ContractInteraction";
+import { useContractInteraction } from "@/components/contract/ContractInteraction";
+import { useConnectWallet } from "@/context/walletcontext";
 
 export default function Administration() {
   const [isOwner, setIsOwner] = useState(false);
   const [isVVB, setIsVVB] = useState(false);
-  const [walletAddress, setWalletAddress] = useState("");
   const [contractOwner, setContractOwner] = useState("");
   const [isCheckingOwnership, setIsCheckingOwnership] = useState(true);
   const [isSyncing, setIsSyncing] = useState(false);
   const [syncMessage, setSyncMessage] = useState("");
-  
-  const { 
-    userAddress, 
-    checkIsOwner, 
+  const { walletAddress } = useConnectWallet();
+
+  const {
+    setUserAddress,
+    isContractsInitised,
+    checkIsOwner,
     getOwner,
-    checkAuthorizedVVB, 
-  } = useContractInteraction();
-
-
+    checkAuthorizedVVB } = useContractInteraction();
 
   useEffect(() => {
     const initialize = async () => {
       setIsCheckingOwnership(true);
       try {
-
-          if (userAddress) {
-            const owner = await getOwner();
-            setContractOwner(owner);
-            setWalletAddress(userAddress);
-            const isOwner = await checkIsOwner();
-            setIsOwner(isOwner);
-            const vvbStatus = await checkAuthorizedVVB();
-            setIsVVB(vvbStatus);
-        
-          }
-        
+        setUserAddress(walletAddress);
+        const owner = await getOwner();
+        setContractOwner(owner);
+        const isOwner = await checkIsOwner();
+        setIsOwner(isOwner);
+        const vvbStatus = await checkAuthorizedVVB();
+        setIsVVB(vvbStatus);
       } catch (error) {
         console.error("Failed to fetch contract owner:", error);
       } finally {
         setIsCheckingOwnership(false);
       }
     };
-    
-    if (userAddress) {
+    if (walletAddress) {
       initialize();
     }
-  }, [userAddress]);
+  }, [walletAddress, isContractsInitised]);
 
 
   const handleSyncProjects = async () => {
@@ -105,13 +98,13 @@ export default function Administration() {
                   You do not have permission to access this page. Only the contract owner and authorized VVBs can access administration functions.
                 </AlertDescription>
               </Alert>
-              
+
               <div className="space-y-4">
                 <div className="flex justify-between items-center">
                   <span className="text-sm font-medium text-gray-600">Your Address:</span>
                   <Badge variant="outline">{walletAddress ? `${walletAddress.substring(0, 6)}...${walletAddress.substring(walletAddress.length - 4)}` : 'Not Connected'}</Badge>
                 </div>
-                
+
                 <div className="flex justify-between items-center">
                   <span className="text-sm font-medium text-gray-600">Contract Owner:</span>
                   <Badge className="bg-blue-100 text-blue-800">{contractOwner ? `${contractOwner.substring(0, 6)}...${contractOwner.substring(contractOwner.length - 4)}` : 'Loading...'}</Badge>
@@ -153,12 +146,12 @@ export default function Administration() {
             </div>
           </div>
         </div>
-        
+
         {isOwner && (
           <Card className="mb-6">
             <CardHeader>
               <CardTitle className="flex items-center space-x-2">
-                <RefreshCw className="w-5 h-5 text-purple-600"/>
+                <RefreshCw className="w-5 h-5 text-purple-600" />
                 <span>Sync with Blockchain</span>
               </CardTitle>
               <p className="text-sm text-gray-600">
@@ -193,7 +186,7 @@ export default function Administration() {
           </TabsList>
 
           <TabsContent value="approval">
-            <ProjectApproval 
+            <ProjectApproval
 
             />
           </TabsContent>

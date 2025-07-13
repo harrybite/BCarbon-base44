@@ -3,12 +3,15 @@ import { useState, useEffect } from 'react';
 import { useContractInteraction } from '../contract/ContractInteraction';
 import ProjectCard from '../projects/ProjectCard';
 import { useToast } from '../ui/use-toast';
+import { useConnectWallet } from '@/context/walletcontext';
 
 const ProjectApproval = () => {
-  const { userAddress, approveAndIssueCredits,
+  const {approveAndIssueCredits,
     rejectAndRemoveProject, validateProject,
     verifyProject, checkIsOwner, checkAuthorizedVVB,
-    getListedProjects } = useContractInteraction();
+    getListedProjects, isContractsInitised } = useContractInteraction();
+
+  const { walletAddress } = useConnectWallet();
   const [projects, setProjects] = useState([]);
   const [loading, setLoading] = useState(true);
   const [isOwner, setIsOwner] = useState(false);
@@ -37,7 +40,7 @@ const ProjectApproval = () => {
       setLoading(false);
     };
     fetchProjects();
-  }, [userAddress, update]);
+  }, [walletAddress, update, isContractsInitised]);
 
   const handleApprove = async (projectAddress, creditAmount) => {
     // Find the project details to get emissionReductions

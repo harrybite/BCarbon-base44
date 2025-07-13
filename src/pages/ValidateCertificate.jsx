@@ -1,3 +1,4 @@
+/* eslint-disable no-unused-vars */
 import { useState } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -9,6 +10,7 @@ import { CheckCircle2, AlertCircle, FileCheck } from "lucide-react";
 import { useContractInteraction } from "../components/contract/ContractInteraction";
 // import { useIsMobile } from "../components/useIsMobile";
 import { useNavigate } from "react-router-dom";
+import { useIsMobile } from "@/hooks/use-mobile";
 
 export default function ValidateCertificate() {
   const isMobile = useIsMobile();
@@ -21,13 +23,15 @@ export default function ValidateCertificate() {
   const [error, setError] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
 
+  const { validateRetirementCertificate } = useContractInteraction();
+
   const handleInputChange = (field, value) => {
     setFormData(prev => ({ ...prev, [field]: value }));
     setError("");
     setResult(null);
   };
 
-  const handleSubmit = async (e, validateRetirementCertificate) => {
+  const handleSubmit = async (e) => {
     e.preventDefault();
     setError("");
     setResult(null);
@@ -72,8 +76,7 @@ export default function ValidateCertificate() {
   };
 
   return (
-    <ContractInteraction>
-      {({ validateRetirementCertificate }) => (
+
         <div className="min-h-screen py-8 px-4 sm:px-6 lg:px-8">
           <div className="max-w-7xl mx-auto">
             <div className="mb-8">
@@ -106,7 +109,7 @@ export default function ValidateCertificate() {
                   </Alert>
                 )}
                 <form
-                  onSubmit={(e) => handleSubmit(e, validateRetirementCertificate)}
+                  onSubmit={(e) => handleSubmit()}
                   className={isMobile ? "space-y-4" : "grid grid-cols-3 gap-4"}
                 >
                   <div className="space-y-2">
@@ -194,8 +197,6 @@ export default function ValidateCertificate() {
             </Card>
           </div>
         </div>
-      )}
-    </ContractInteraction>
   );
 }
 
@@ -227,6 +228,7 @@ export default function ValidateCertificate() {
 //   validateRetirementCertificate,
 //   // ... other functions ...
 // };
+
 // const validateRetirementCertificate = async (projectAddress, account, certificateIndex, certificateHash) => {
 //   if (!provider) throw new Error("Provider not initialized");
 //   try {

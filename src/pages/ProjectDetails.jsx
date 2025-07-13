@@ -31,23 +31,25 @@ import { useContractInteraction } from "../components/contract/ContractInteracti
 import { methodology } from "@/components/contract/address";
 import { set } from "date-fns";
 import { useToast } from "@/components/ui/use-toast";
+import { useConnectWallet } from "@/context/walletcontext";
 
 export default function ProjectDetails() {
 
   const { projectContract } = useParams();
-  const { userAddress, mintWithRUSD, retireCredits, 
+  const { mintWithRUSD, retireCredits,
     getListedProjectDetails,
-     getWalletMinted, getRUSDBalance, 
-     getWalletRetrides,
-     checkRUSDAllowance, approveRUSD } = useContractInteraction();
-  const [project, setProject] = useState(null);
+    isContractsInitised,
+    getWalletMinted, getRUSDBalance,
+    getWalletRetrides,
+    checkRUSDAllowance, approveRUSD } = useContractInteraction();
+  const { walletAddress } = useConnectWallet();
+
+  const [project, setProject] = useState();
   const [isLoading, setIsLoading] = useState(true);
   const [mintAmount, setMintAmount] = useState("");
   const [retireAmount, setRetireAmount] = useState("");
   const [isMinting, setIsMinting] = useState(false);
   const [isRetiring, setIsRetiring] = useState(false);
-  const [error, setError] = useState();
-  const [success, setSuccess] = useState("");
   const [rusdBalance, setRUSDBalance] = useState(0);
   const [retiredCredits, setRetiredCredits] = useState(0);
   const [mintedCredits, setMintedCredits] = useState(0);
@@ -55,10 +57,10 @@ export default function ProjectDetails() {
   const { toast } = useToast();
 
   useEffect(() => {
-    if (projectContract) {
+    if (projectContract && walletAddress && isContractsInitised) {
       loadProject(projectContract);
     }
-  }, [projectContract, userAddress,]);
+  }, [projectContract, walletAddress, isContractsInitised]);
 
   const loadProject = async (projectAddress) => {
     setIsLoading(true);
@@ -103,11 +105,11 @@ export default function ProjectDetails() {
       const approveReceipt = await approveTx.wait();
       if (approveReceipt.status !== 1) {
 
-      toast({
-        variant: "destructive",
-        title: "Error",
-        description: "RUSD approval failed",
-      });
+        toast({
+          variant: "destructive",
+          title: "Error",
+          description: "RUSD approval failed",
+        });
         return;
       }
       console.log("RUSD approved successfully");
@@ -124,7 +126,7 @@ export default function ProjectDetails() {
       setIsMinting(false);
       return;
     }
-    
+
     try {
       const tx = await mintWithRUSD(project.projectContract, parseInt(mintAmount));
       const receipt = await tx.wait();
@@ -160,7 +162,7 @@ export default function ProjectDetails() {
       return;
     }
 
-    if(parseInt(retireAmount) > (Number(mintedCredits) - Number(retiredCredits))){
+    if (parseInt(retireAmount) > (Number(mintedCredits) - Number(retiredCredits))) {
       // alert(`You cannot retire more than ${(Number(mintedCredits) - Number(retiredCredits))}`);
       toast({
         variant: "destructive",
@@ -311,7 +313,7 @@ export default function ProjectDetails() {
                   <div className="text-sm text-gray-600">Total Supply</div>
                 </div>
 
-                 <div className="text-center">
+                <div className="text-center">
                   <div className="text-2xl font-bold text-green-700">
                     {project.totalSupply ? Number(project.totalSupply).toLocaleString() : '0'} tCO<sub>2</sub>
                   </div>
@@ -352,17 +354,17 @@ export default function ProjectDetails() {
             <CardContent>
               <dl className="grid grid-cols-1 md:grid-cols-2 gap-x-8 gap-y-4">
                 {/* Methodology */}
-                 <div className="flex items-center col-span-2">
+                <div className="flex items-center col-span-2">
                   <IdCard className="w-4 h-4 text-gray-400 mr-2" />
                   <dt className="text-sm text-gray-600 min-w-[90px]">Project ID:</dt>
                   <dd className="ml-2 font-medium">{project.projectId}</dd>
                 </div>
-                 <div className="flex items-center col-span-2">
+                <div className="flex items-center col-span-2">
                   <IdCard className="w-4 h-4 text-gray-400 mr-2" />
                   <dt className="text-sm text-gray-600 min-w-[90px]">Certificate ID:</dt>
-                  <dd className="ml-2 font-medium">{project.certificateId}</dd>
+                  <dd className="ml-2 font-medium">{project.certificateId === '' ? "..." : project.certificateId}</dd>
                 </div>
-                 <div className="flex items-center col-span-2">
+                <div className="flex items-center col-span-2">
                   <User className="w-4 h-4 text-gray-400 mr-2" />
                   <dt className="text-sm text-gray-600 min-w-[90px]">Owner address</dt>
                   <dd className="ml-2 font-medium">{project.proposer}</dd>
@@ -377,10 +379,10 @@ export default function ProjectDetails() {
                   <Calendar className="w-4 h-4 text-gray-400 mr-2" />
                   <dt className="text-sm text-gray-600 min-w-[90px]">Listing date</dt>
                   <dd className="ml-2 font-medium">
-                      {new Date( Number(project.listingTimestamp) * 1000).toLocaleDateString()}
+                    {new Date(Number(project.listingTimestamp) * 1000).toLocaleDateString()}
                   </dd>
                 </div>
-                 <div className="flex items-center col-span-2">
+                <div className="flex items-center col-span-2">
                   <CoinsIcon className="w-4 h-4 text-gray-400 mr-2" />
                   <dt className="text-sm text-gray-600 min-w-[90px]">Credits tCO<sub>2</sub></dt>
                   <dd className="ml-2 font-medium">{Number(project.credits)}</dd>
@@ -402,15 +404,15 @@ export default function ProjectDetails() {
                   <dd className="ml-2 font-medium break-all">{project.projectContract}</dd>
                 </div>
                 {/* Vintage */}
-                  {project.defaultVintage && (
-                    <div className="flex items-center col-span-2">
-                      <Calendar className="w-4 h-4 text-gray-400 mr-2" />
-                      <dt className="text-sm text-gray-600 min-w-[90px]">Vintage:</dt>
-                      <dd className="ml-2 font-medium">
-                        {new Date( Number(project.defaultVintage) * 1000).toLocaleDateString()}
-                      </dd>
-                    </div>
-                  )}
+                {project.defaultVintage && (
+                  <div className="flex items-center col-span-2">
+                    <Calendar className="w-4 h-4 text-gray-400 mr-2" />
+                    <dt className="text-sm text-gray-600 min-w-[90px]">Vintage:</dt>
+                    <dd className="ml-2 font-medium">
+                      {new Date(Number(project.defaultVintage) * 1000).toLocaleDateString()}
+                    </dd>
+                  </div>
+                )}
                 {/* Details */}
                 {project.projectDetails && (
                   <div className="flex items-center col-span-2">
@@ -432,7 +434,7 @@ export default function ProjectDetails() {
                   <div className="flex items-center col-span-2">
                     <CheckCircle2 className="w-4 h-4 text-gray-400 mr-2" />
                     <dt className="text-sm text-gray-600 min-w-[90px]">Validity:</dt>
-                    <dd className="ml-2 font-medium">{Number(project.defaultValidity) === 0 ? '100+ years' : Number(project.defaultValidity) }</dd>
+                    <dd className="ml-2 font-medium">{Number(project.defaultValidity) === 0 ? '100+ years' : Number(project.defaultValidity)}</dd>
                   </div>
                 )}
                 {/* Repository */}
@@ -457,120 +459,120 @@ export default function ProjectDetails() {
           </Card>
 
           {/* Actions */}
-       <div className="grid md:grid-cols-2 gap-6">
-  {/* Mint Credits */}
-  <Card>
-    <CardHeader>
-      <CardTitle className="flex items-center space-x-2">
-        <Coins className="w-5 h-5 text-green-600" />
-        <span>Mint Credits</span>
-      </CardTitle>
-    </CardHeader>
-    <CardContent className="space-y-4">
-      {(!project.tokenUri || project.tokenUri === "" || typeof project.tokenUri === "undefined") ? (
-        <div className="text-center text-sm text-gray-500">
-          Minting is currently disabled. Project Token URI is not set.
-        </div>
-      ) : (
-        <>
-          <div>
-            <Label htmlFor="mintAmount">Amount to Mint</Label>
-            <Input
-              id="mintAmount"
-              type="number"
-              step="1"
-              min="1"
-              placeholder="Enter amount"
-              value={mintAmount}
-              onChange={(e) => setMintAmount(e.target.value)}
-              disabled={!project.isApproved}
-            />
-          </div>
-           <Label htmlFor="mintAmount">Minted tCO<sub>2</sub>: {Number(mintedCredits)}</Label>
-           <br/>
-          <Label htmlFor="mintAmount">RUSD: {rusdBalance}</Label>
-          <Button
-            onClick={handleMintETH}
-            disabled={isMinting || !project.isApproved}
-            className="w-full bg-blue-600 hover:bg-blue-700"
-          >
-            {isMinting ? "Minting..." : "Mint with RUSD"}
-          </Button>
-          {!project.isApproved && (
-            <p className="text-sm text-gray-500">
-              Minting is currently disabled for this project
-            </p>
-          )}
-        </>
-      )}
-    </CardContent>
-  </Card>
+          <div className="grid md:grid-cols-2 gap-6">
+            {/* Mint Credits */}
+            <Card>
+              <CardHeader>
+                <CardTitle className="flex items-center space-x-2">
+                  <Coins className="w-5 h-5 text-green-600" />
+                  <span>Mint Credits</span>
+                </CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                {(!project.tokenUri || project.tokenUri === "" || typeof project.tokenUri === "undefined") ? (
+                  <div className="text-center text-sm text-gray-500">
+                    Minting is currently disabled. Project Token URI is not set.
+                  </div>
+                ) : (
+                  <>
+                    <div>
+                      <Label htmlFor="mintAmount">Amount to Mint</Label>
+                      <Input
+                        id="mintAmount"
+                        type="number"
+                        step="1"
+                        min="1"
+                        placeholder="Enter amount"
+                        value={mintAmount}
+                        onChange={(e) => setMintAmount(e.target.value)}
+                        disabled={!project.isApproved}
+                      />
+                    </div>
+                    <Label htmlFor="mintAmount">Minted tCO<sub>2</sub>: {Number(mintedCredits)}</Label>
+                    <br />
+                    <Label htmlFor="mintAmount">RUSD: {rusdBalance}</Label>
+                    <Button
+                      onClick={handleMintETH}
+                      disabled={isMinting || !project.isApproved}
+                      className="w-full bg-blue-600 hover:bg-blue-700"
+                    >
+                      {isMinting ? "Minting..." : "Mint with RUSD"}
+                    </Button>
+                    {!project.isApproved && (
+                      <p className="text-sm text-gray-500">
+                        Minting is currently disabled for this project
+                      </p>
+                    )}
+                  </>
+                )}
+              </CardContent>
+            </Card>
 
-  {/* Retire Credits */}
-  <Card className={`${allowedRetire <= 0 ? "opacity-50 pointer-events-none" : ""}`}>
-      <CardHeader>
-        <CardTitle className="flex items-center space-x-2">
-          <Recycle className="w-5 h-5 text-orange-600" />
-          <span>Retire Credits</span>
-        </CardTitle>
-      </CardHeader>
-      <CardContent className="space-y-4">
-        {(!project.tokenUri || project.tokenUri === "" || typeof project.tokenUri === "undefined") ? (
-          <div className="text-center text-sm text-gray-500">
-            Retiring is currently disabled. Project Token URI is not set.
-          </div>
-        ) : (
-          <>
-            <div>
-              <Label htmlFor="retireAmount">Amount to Retire</Label>
-              <div className="flex space-x-2">
-                <Input
-                  id="retireAmount"
-                  type="number"
-                  step="1"
-                  min="1"
-                  placeholder="Enter amount"
-                  value={retireAmount}
-                  onChange={(e) => setRetireAmount(e.target.value)}
-                  className="flex-1"
-                />
-                <Button
-                  type="button"
-                  variant="outline"
-                  className="px-3"
-                  onClick={handleMaxRetire}
-                >
-                  Max
-                </Button>
-              </div>
-            </div>
-            <Label htmlFor="mintAmount">
-              Retired tCO<sub>2</sub>: {Number(retiredCredits)}
-            </Label>
-            <br/>
-            <Label htmlFor="mintAmount">
-              Allowed retired tCO<sub>2</sub>: {allowedRetire}
-            </Label>
-            <Button
-              onClick={handleRetire}
-              disabled={isRetiring || allowedRetire <= 0}
-              className="w-full bg-orange-600 hover:bg-orange-700"
-            >
-              {isRetiring ? "Retiring..." : "Retire Credits"}
-            </Button>
-            {/* {allowedRetire <= 0 && (
+            {/* Retire Credits */}
+            <Card className={`${allowedRetire <= 0 ? "opacity-50 pointer-events-none" : ""}`}>
+              <CardHeader>
+                <CardTitle className="flex items-center space-x-2">
+                  <Recycle className="w-5 h-5 text-orange-600" />
+                  <span>Retire Credits</span>
+                </CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                {(!project.tokenUri || project.tokenUri === "" || typeof project.tokenUri === "undefined") ? (
+                  <div className="text-center text-sm text-gray-500">
+                    Retiring is currently disabled. Project Token URI is not set.
+                  </div>
+                ) : (
+                  <>
+                    <div>
+                      <Label htmlFor="retireAmount">Amount to Retire</Label>
+                      <div className="flex space-x-2">
+                        <Input
+                          id="retireAmount"
+                          type="number"
+                          step="1"
+                          min="1"
+                          placeholder="Enter amount"
+                          value={retireAmount}
+                          onChange={(e) => setRetireAmount(e.target.value)}
+                          className="flex-1"
+                        />
+                        <Button
+                          type="button"
+                          variant="outline"
+                          className="px-3"
+                          onClick={handleMaxRetire}
+                        >
+                          Max
+                        </Button>
+                      </div>
+                    </div>
+                    <Label htmlFor="mintAmount">
+                      Retired tCO<sub>2</sub>: {Number(retiredCredits)}
+                    </Label>
+                    <br />
+                    <Label htmlFor="mintAmount">
+                      Allowed retired tCO<sub>2</sub>: {allowedRetire}
+                    </Label>
+                    <Button
+                      onClick={handleRetire}
+                      disabled={isRetiring || allowedRetire <= 0}
+                      className="w-full bg-orange-600 hover:bg-orange-700"
+                    >
+                      {isRetiring ? "Retiring..." : "Retire Credits"}
+                    </Button>
+                    {/* {allowedRetire <= 0 && (
               <p className="text-sm text-gray-500">
                 No credits available to retire.
               </p>
             )} */}
-            <p className="text-sm text-gray-500">
-              Retiring credits permanently removes them from circulation.
-            </p>
-          </>
-        )}
-      </CardContent>
-    </Card>
-</div>
+                    <p className="text-sm text-gray-500">
+                      Retiring credits permanently removes them from circulation.
+                    </p>
+                  </>
+                )}
+              </CardContent>
+            </Card>
+          </div>
         </div>
       </div>
     </div>
