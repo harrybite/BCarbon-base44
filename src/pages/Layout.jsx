@@ -121,7 +121,7 @@ export default function Layout({ children, currentPageName }) {
                 <h1 className="text-xl font-bold text-gray-900">
                   BCO<sub className="text-sm">2</sub>
                 </h1>
-                <p className="text-xs text-gray-500">Carbon Credits</p>
+                <p className="text-xs text-gray-500">Decentralized Carbon Credits</p>
               </div>
             </Link>
 
@@ -222,7 +222,7 @@ export default function Layout({ children, currentPageName }) {
               </p>
             </div>
             <div className="flex items-center space-x-4 mt-4 md:mt-0">
-              <p className="text-sm text-gray-500">Powered by Ethereum & Web3</p>
+              <p className="text-sm text-gray-500">Powered by MaalChain & Web3</p>
               <div className="w-2 h-2 bg-green-500 rounded-full animate-pulse"></div>
             </div>
           </div>

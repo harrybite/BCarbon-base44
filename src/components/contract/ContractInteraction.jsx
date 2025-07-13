@@ -329,6 +329,29 @@ const getWalletMinted = async (projectAddress) => {
   }
 };
 
+const getRetirementCertificates = async (projectAddress) => {
+  if (!isConnected || !userAddress) throw new Error("Wallet not connected or user address not set");
+  try {
+    const bco2Contract = new Contract(
+      projectAddress,
+      bco2Abi,
+      provider || new JsonRpcProvider('https://data-seed-prebsc-1-s1.binance.org:8545/')
+    );
+
+    const count = await bco2Contract.getRetirementCertificateCount(userAddress);
+
+    const certificates = [];
+    for (let i = 0; i < count; i++) {
+      const cert = await bco2Contract.userRetirementCertificates(userAddress, i);
+      certificates.push(cert);
+    }
+
+    return certificates; // array of structs
+  } catch (error) {
+    throw new Error(`Failed to fetch retirement certificates: ${error.message}`);
+  }
+};
+
 
 
 const getTotalSupply = async (projectAddress) => {

@@ -4,6 +4,7 @@ import { useContractInteraction } from '../contract/ContractInteraction';
 import { useToast } from '../ui/use-toast';
 import { Card, CardHeader, CardTitle, CardContent } from '../ui/card';
 
+
 const GovernanceTab = () => {
   const { userAddress, pauseContract, unpauseContract, addVVB, removeVVB, updateRegistryAddress, checkIsOwner } = useContractInteraction();
   const [isOwner, setIsOwner] = useState(false);
