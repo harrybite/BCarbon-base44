@@ -1,0 +1,149 @@
+// SPDX-License-Identifier: MIT
+pragma solidity ^0.8.20;
+
+library MethodologyUtils {
+    enum Methodology {
+        ARR,
+        IFM,
+        REDD,
+        ALM,
+        WRC,
+        IFRC,
+        MethaneAvoidance,
+        EfficientCookstoves,
+        RenewableEnergy,
+        IndustrialEfficiency,
+        Afforestation,
+        Reforestation,
+        CCS,
+        CCUS,
+        BlueCarbon,
+        Biochar,
+        SoilCarbon,
+        PeatlandRestoration,
+        MangroveRestoration,
+        GrasslandConservation,
+        WetlandRestoration,
+        Composting,
+        ManureManagement,
+        LandfillGasCapture,
+        WastewaterTreatment,
+        DirectAirCapture,
+        BioenergyWithCCS,
+        SustainableAgriculture,
+        TransportEfficiency,
+        FuelSwitching,
+        EnergyEfficiency
+    }
+
+    function getName(Methodology m) internal pure returns (string memory) {
+        string[31] memory names = [
+            "Afforestation, Reforestation and Revegetation (ARR)",
+            "Improved Forest Management (IFM)",
+            "Reducing Emissions from Deforestation and Forest Degradation (REDD+)",
+            "Agroforestry and Land Management (ALM)",
+            "Water Restoration and Conservation (WRC)",
+            "Improved Fire and Rangeland Management (IFRC)",
+            "Methane Avoidance (e.g., rice, livestock)",
+            "Efficient Cookstoves",
+            "Renewable Energy (Solar, Wind, Hydro)",
+            "Industrial Process Efficiency",
+            "Afforestation Projects",
+            "Reforestation Projects",
+            "Carbon Capture and Storage (CCS)",
+            "Carbon Capture, Utilization and Storage (CCUS)",
+            "Blue Carbon (Coastal and Marine)",
+            "Biochar Application",
+            "Soil Carbon Sequestration",
+            "Peatland Restoration",
+            "Mangrove Restoration",
+            "Grassland Conservation",
+            "Wetland Restoration",
+            "Composting",
+            "Manure Management",
+            "Landfill Gas Capture",
+            "Wastewater Methane Capture",
+            "Direct Air Capture (DAC)",
+            "Bioenergy with Carbon Capture (BECCS)",
+            "Sustainable Agriculture",
+            "Transport Efficiency",
+            "Fuel Switching",
+            "Energy Efficiency"
+        ];
+        return names[uint8(m)];
+    }
+
+    function getCategory(Methodology m) internal pure returns (string memory) {
+        string[31] memory categories = [
+            "Forestry",
+            "Forestry",
+            "Forestry",
+            "Agriculture",
+            "Water",
+            "Forestry",
+            "Agriculture",
+            "Household",
+            "Energy",
+            "Industry",
+            "Forestry",
+            "Forestry",
+            "Carbon Capture",
+            "Carbon Capture",
+            "Blue Carbon",
+            "Soil",
+            "Soil",
+            "Wetlands",
+            "Blue Carbon",
+            "Forestry",
+            "Wetlands",
+            "Waste",
+            "Waste",
+            "Waste",
+            "Waste",
+            "Carbon Removal",
+            "Carbon Removal",
+            "Agriculture",
+            "Transport",
+            "Energy",
+            "Energy"
+        ];
+        return categories[uint8(m)];
+    }
+
+    function getVersion(Methodology m) internal pure returns (string memory) {
+        string[31] memory versions = [
+            "VCS-ARR-001",
+            "VCS-IFM-002",
+            "VCS-REDD-003",
+            "GS-ALM-004",
+            "GS-WRC-005",
+            "VCS-IFRC-006",
+            "VCS-Methane-007",
+            "GS-Cookstove-008",
+            "VCS-RE-009",
+            "VCS-IND-010",
+            "VCS-AFF-011",
+            "VCS-REF-012",
+            "VCS-CCS-013",
+            "VCS-CCUS-014",
+            "VCS-BlueCarbon-015",
+            "VCS-Biochar-016",
+            "VCS-Soil-017",
+            "VCS-Peatland-018",
+            "VCS-Mangrove-019",
+            "VCS-Grassland-020",
+            "VCS-Wetland-021",
+            "GS-Compost-022",
+            "GS-Manure-023",
+            "GS-LFG-024",
+            "VCS-Wastewater-025",
+            "DAC-Verif-026",
+            "BECCS-Std-027",
+            "GS-Agri-028",
+            "VCS-Transport-029",
+            "VCS-FuelSwitch-030",
+            "VCS-Energy-031"
+        ];
+        return versions[uint8(m)];
+    }
+}
