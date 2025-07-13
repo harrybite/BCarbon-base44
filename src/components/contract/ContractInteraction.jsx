@@ -230,7 +230,9 @@ const createAndListProject = async (projectData) => {
         bco2Abi,
         provider || new JsonRpcProvider('https://data-seed-prebsc-1-s1.binance.org:8545/')
       );
+      console.log("Fetching token URIs for project:", projectAddress, "Token ID:", tokenId);
       const uri = await bco2Contract.tokenURIs(tokenId);
+      console.log("Token URI projectAddress", uri);
       return uri;
     } catch (error) {
       throw new Error(`Failed to fetch tokenURIs: ${error.message}`);
