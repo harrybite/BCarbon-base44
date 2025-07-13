@@ -93,6 +93,45 @@
 			{
 				"indexed": true,
 				"internalType": "address",
+				"name": "factory",
+				"type": "address"
+			}
+		],
+		"name": "FactoryUpdated",
+		"type": "event"
+	},
+	{
+		"anonymous": false,
+		"inputs": [
+			{
+				"indexed": true,
+				"internalType": "address",
+				"name": "governance",
+				"type": "address"
+			}
+		],
+		"name": "GovernanceUpdated",
+		"type": "event"
+	},
+	{
+		"anonymous": false,
+		"inputs": [
+			{
+				"indexed": true,
+				"internalType": "address",
+				"name": "manager",
+				"type": "address"
+			}
+		],
+		"name": "ManagerUpdated",
+		"type": "event"
+	},
+	{
+		"anonymous": false,
+		"inputs": [
+			{
+				"indexed": true,
+				"internalType": "address",
 				"name": "previousOwner",
 				"type": "address"
 			},
@@ -225,6 +264,11 @@
 	{
 		"inputs": [
 			{
+				"internalType": "string",
+				"name": "_projectId",
+				"type": "string"
+			},
+			{
 				"internalType": "address",
 				"name": "_projectContract",
 				"type": "address"
@@ -257,11 +301,6 @@
 			{
 				"internalType": "uint256",
 				"name": "_commentPeriod",
-				"type": "uint256"
-			},
-			{
-				"internalType": "uint256",
-				"name": "counter",
 				"type": "uint256"
 			}
 		],
@@ -851,6 +890,19 @@
 			}
 		],
 		"name": "setFactory",
+		"outputs": [],
+		"stateMutability": "nonpayable",
+		"type": "function"
+	},
+	{
+		"inputs": [
+			{
+				"internalType": "address",
+				"name": "_governance",
+				"type": "address"
+			}
+		],
+		"name": "setGovernance",
 		"outputs": [],
 		"stateMutability": "nonpayable",
 		"type": "function"

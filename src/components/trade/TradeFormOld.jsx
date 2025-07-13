@@ -12,31 +12,29 @@ import { ArrowRight, AlertCircle, CheckCircle2 } from "lucide-react";
 import { useMarketplaceInteraction } from '@/components/contract/MarketplaceInteraction';
 import { useConnectWallet } from "@/context/walletcontext";
 import { useToast } from "../ui/use-toast";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 
 export default function TradeForm() {
   const { marketplaceContract, getListings, purchase, getRUSDBalance } = useMarketplaceInteraction();
-  const { walletAddress } = useConnectWallet();
+   const { walletAddress } = useConnectWallet();
   const [listings, setListings] = React.useState([]);
   const [cardStates, setCardStates] = React.useState({});
-  const [update, setUpdate] = React.useState(0);
+  const [update, setUpdate] = React.useState(0)
   const [isLoading, setIsLoading] = React.useState(true);
   const [rusdBalance, setRUSDBalance] = React.useState('0');
-  const [filter, setFilter] = React.useState('active'); // New state for filter
 
-  const { toast } = useToast();
+  const {toast} = useToast()
 
   React.useEffect(() => {
     const fetchListings = async () => {
-      setIsLoading(true);
+       setIsLoading(true)
       try {
         const rusdBalance = await getRUSDBalance(walletAddress);
         setRUSDBalance(rusdBalance);
         const fetchedListings = await getListings();
         console.log("Fetched Listings:", fetchedListings);
-
-        // Keep all listings, no filtering for active status
-        setListings(fetchedListings);
+       
+        const activeListings = fetchedListings.filter(listing => listing.active);
+        setListings(activeListings);
 
         const initialStates = {};
         fetchedListings.forEach(listing => {
@@ -58,14 +56,15 @@ export default function TradeForm() {
           });
           return newStates;
         });
-      } finally {
-        setIsLoading(false);
+      }
+      finally{
+         setIsLoading(false)
       }
     };
     if (walletAddress && marketplaceContract) {
       fetchListings();
     }
-  }, [walletAddress, marketplaceContract, update]);
+  }, [ walletAddress, marketplaceContract, update]);
 
   const handleInputChange = (listingId, value) => {
     setCardStates(prev => ({
@@ -78,6 +77,7 @@ export default function TradeForm() {
       }
     }));
   };
+
 
   const toggleInput = (listingId) => {
     const listing = listings.find(l => l.listingId === listingId);
@@ -129,14 +129,13 @@ export default function TradeForm() {
       }));
       return;
     }
-
-    if (Number(rusdBalance) < (Number(listing.pricePerUnit) * quantity)) {
+  
+    if( Number(rusdBalance) < (Number(listing.pricePerUnit) * quantity)) {
       toast({
         title: "Insufficient RUSD Balance",
         description: `You need at least ${Number(listing.pricePerUnit) * quantity} RUSD to purchase this listing.`,
         variant: "destructive",
-      });
-      return;
+      })
     }
 
     setCardStates(prev => ({
@@ -167,7 +166,8 @@ export default function TradeForm() {
         description: `Token purchased successfully`,
         variant: "success",
       });
-      setUpdate(update + 1);
+      setUpdate(update + 1)
+   
     } catch (error) {
       console.error("Purchase error:", error);
       setCardStates(prev => ({
@@ -181,12 +181,6 @@ export default function TradeForm() {
     }
   };
 
-  // Filter listings based on the selected filter
-  const filteredListings = listings.filter(listing => {
-    if (filter === 'active') return listing.active;
-    if (filter === 'soldout') return !listing.active;
-    return true; // 'all' shows both active and sold out
-  });
 
   return (
     <Card className="w-full">
@@ -196,21 +190,8 @@ export default function TradeForm() {
           <span>Carbon Credit NFT Marketplace</span>
         </CardTitle>
         <p className="text-sm text-gray-600">
-          Trade carbon credit NFTs (tCO2) from listed projects
+          Buy non-retired carbon credit NFTs (tCO2) from listed projects
         </p>
-        <div className="mt-4">
-          <Label htmlFor="listing-filter">Filter Listings</Label>
-          <Select value={filter} onValueChange={setFilter}>
-            <SelectTrigger id="listing-filter" className="w-[180px]">
-              <SelectValue placeholder="Select filter" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="all">All Listings</SelectItem>
-              <SelectItem value="active">Active</SelectItem>
-              <SelectItem value="soldout">Sold Out</SelectItem>
-            </SelectContent>
-          </Select>
-        </div>
       </CardHeader>
 
       <CardContent className="space-y-6">
@@ -232,10 +213,10 @@ export default function TradeForm() {
                 </CardContent>
               </Card>
             ))
-          ) : filteredListings.length === 0 ? (
+          ) : listings.length === 0 ? (
             <p className="text-center col-span-full text-gray-600">No listings available</p>
           ) : (
-            filteredListings.map((listing) => (
+            listings.map((listing) => (
               <Card key={listing.listingId} className="flex flex-col">
                 <CardHeader>
                   <div className="w-full bg-black flex items-center justify-center" style={{ height: "auto" }}>
@@ -257,7 +238,6 @@ export default function TradeForm() {
                     <p><strong>Quantity (tCO2):</strong> {listing.quantity}</p>
                     <p><strong>Price per Unit (RUSD):</strong> {listing.pricePerUnit}</p>
                     <p><strong>Total Price (RUSD):</strong> {listing.pricePerUnit}</p>
-                    <p><strong>Status:</strong> {listing.active ? "Active" : "Sold Out"}</p>
                   </div>
                   {cardStates[listing.listingId]?.error && (
                     <Alert variant="destructive" className="mt-4">
@@ -271,65 +251,56 @@ export default function TradeForm() {
                       <AlertDescription className="text-green-800">{cardStates[listing.listingId].success}</AlertDescription>
                     </Alert>
                   )}
-                  {listing.active ? (
-                    cardStates[listing.listingId]?.showInput ? (
-                      <div className="mt-4 space-y-2">
-                        <Label htmlFor={`quantity-${listing.listingId}`}>Quantity to Purchase</Label>
-                        <Input
-                          id={`quantity-${listing.listingId}`}
-                          type="number"
-                          step="1"
-                          min="1"
-                          placeholder="Enter quantity"
-                          value={cardStates[listing.listingId].quantity}
-                          onChange={(e) => handleInputChange(listing.listingId, e.target.value)}
-                        />
-                        <p className="text-xs text-gray-500">
-                          Your RUSD Balance: {rusdBalance}
-                        </p>
-                        <div className="flex space-x-2">
-                          <Button
-                            className="w-full bg-green-600 hover:bg-green-700"
-                            onClick={() => handlePurchase(listing.listingId)}
-                            disabled={cardStates[listing.listingId].isSubmitting}
-                          >
-                            {cardStates[listing.listingId].isSubmitting ? (
-                              <>
-                                <div className="animate-pulse rounded-full h-4 w-4 border-b-2 border-white mr-2"></div>
-                                Processing...
-                              </>
-                            ) : (
-                              <>
-                                <ArrowRight className="w-4 h-4 mr-2" />
-                                Confirm Purchase
-                              </>
-                            )}
-                          </Button>
-                          <Button
-                            variant="outline"
-                            className="w-full"
-                            onClick={() => toggleInput(listing.listingId)}
-                            disabled={cardStates[listing.listingId].isSubmitting}
-                          >
-                            Cancel
-                          </Button>
-                        </div>
+                  {cardStates[listing.listingId]?.showInput ? (
+                    <div className="mt-4 space-y-2">
+                      <Label htmlFor={`quantity-${listing.listingId}`}>Quantity to Purchase</Label>
+                      <Input
+                        id={`quantity-${listing.listingId}`}
+                        type="number"
+                        step="1"
+                        min="1"
+                        placeholder="Enter quantity"
+                        value={cardStates[listing.listingId].quantity}
+                        onChange={(e) => handleInputChange(listing.listingId, e.target.value)}
+                      />
+                      <p className="text-xs text-gray-500">
+                        Your RUSD Balance: {rusdBalance}
+                      </p>
+                      <div className="flex space-x-2">
+                        <Button
+                          className="w-full bg-green-600 hover:bg-green-700"
+                          onClick={() => handlePurchase(listing.listingId)}
+                          disabled={cardStates[listing.listingId].isSubmitting}
+                        >
+                          {cardStates[listing.listingId].isSubmitting ? (
+                            <>
+                              <div className="animate-pulse rounded-full h-4 w-4 border-b-2 border-white mr-2"></div>
+                              Processing...
+                            </>
+                          ) : (
+                            <>
+                              <ArrowRight className="w-4 h-4 mr-2" />
+                              Confirm Purchase
+                            </>
+                          )}
+                        </Button>
+                        <Button
+                          variant="outline"
+                          className="w-full"
+                          onClick={() => toggleInput(listing.listingId)}
+                          disabled={cardStates[listing.listingId].isSubmitting}
+                        >
+                          Cancel
+                        </Button>
                       </div>
-                    ) : (
-                      <Button
-                        className="mt-4 w-full bg-green-600 hover:bg-green-700"
-                        onClick={() => toggleInput(listing.listingId)}
-                        disabled={cardStates[listing.listingId]?.isSubmitting}
-                      >
-                        Buy Credits
-                      </Button>
-                    )
+                    </div>
                   ) : (
                     <Button
-                      className="mt-4 w-full bg-gray-400 cursor-not-allowed"
-                      disabled
+                      className="mt-4 w-full bg-green-600 hover:bg-green-700"
+                      onClick={() => toggleInput(listing.listingId)}
+                      disabled={cardStates[listing.listingId]?.isSubmitting}
                     >
-                      Sold Out
+                      Buy Credits
                     </Button>
                   )}
                 </CardContent>

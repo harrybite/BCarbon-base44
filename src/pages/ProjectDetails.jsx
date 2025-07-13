@@ -279,7 +279,7 @@ export default function ProjectDetails() {
               ) : (
                 <Badge variant="outline" className="text-gray-600">
                   <AlertCircle className="w-3 h-3 mr-1" />
-                  Pending
+                  Pending Approval
                 </Badge>
               )}
             </div>
@@ -479,7 +479,7 @@ export default function ProjectDetails() {
               <CardContent className="space-y-4">
                 {(!project.tokenUri || project.tokenUri === "" || typeof project.tokenUri === "undefined") ? (
                   <div className="text-center text-sm text-gray-500">
-                    Minting is currently disabled. Project Token URI is not set.
+                    Minting is currently disabled. Project is awaiting approval.
                   </div>
                 ) : (
                   <>
@@ -513,7 +513,7 @@ export default function ProjectDetails() {
                     </Button>
                     {!project.isApproved && (
                       <p className="text-sm text-gray-500">
-                        Minting is currently disabled for this project
+                        Minting is currently disabled for this project. Project is awaiting approval.
                       </p>
                     )}
                   </>
@@ -532,7 +532,7 @@ export default function ProjectDetails() {
               <CardContent className="space-y-4">
                 {(!project.tokenUri || project.tokenUri === "" || typeof project.tokenUri === "undefined") ? (
                   <div className="text-center text-sm text-gray-500">
-                    Retiring is currently disabled. Project Token URI is not set.
+                    Retiring is currently disabled. Project is awaiting approval.
                   </div>
                 ) : (
                   <>

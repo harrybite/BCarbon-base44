@@ -21,6 +21,16 @@
 		"type": "constructor"
 	},
 	{
+		"inputs": [],
+		"name": "EnforcedPause",
+		"type": "error"
+	},
+	{
+		"inputs": [],
+		"name": "ExpectedPause",
+		"type": "error"
+	},
+	{
 		"inputs": [
 			{
 				"internalType": "address",
@@ -40,6 +50,11 @@
 			}
 		],
 		"name": "OwnableUnauthorizedAccount",
+		"type": "error"
+	},
+	{
+		"inputs": [],
+		"name": "ReentrancyGuardReentrantCall",
 		"type": "error"
 	},
 	{
@@ -98,6 +113,19 @@
 			}
 		],
 		"name": "Paused",
+		"type": "event"
+	},
+	{
+		"anonymous": false,
+		"inputs": [
+			{
+				"indexed": true,
+				"internalType": "address",
+				"name": "newProjectData",
+				"type": "address"
+			}
+		],
+		"name": "ProjectDataUpdated",
 		"type": "event"
 	},
 	{
@@ -314,6 +342,19 @@
 			}
 		],
 		"name": "updateGovernance",
+		"outputs": [],
+		"stateMutability": "nonpayable",
+		"type": "function"
+	},
+	{
+		"inputs": [
+			{
+				"internalType": "address",
+				"name": "_newProjectData",
+				"type": "address"
+			}
+		],
+		"name": "updateProjectData",
 		"outputs": [],
 		"stateMutability": "nonpayable",
 		"type": "function"
