@@ -30,6 +30,7 @@ import { createPageUrl } from "@/utils";
 import { useContractInteraction } from "../components/contract/ContractInteraction";
 import { methodology } from "@/components/contract/address";
 import { set } from "date-fns";
+import { useToast } from "@/components/ui/use-toast";
 
 export default function ProjectDetails() {
 
@@ -50,6 +51,8 @@ export default function ProjectDetails() {
   const [rusdBalance, setRUSDBalance] = useState(0);
   const [retiredCredits, setRetiredCredits] = useState(0);
   const [mintedCredits, setMintedCredits] = useState(0);
+
+  const { toast } = useToast();
 
   useEffect(() => {
     if (projectContract) {
@@ -81,7 +84,12 @@ export default function ProjectDetails() {
 
   const handleMintETH = async () => {
     if (!mintAmount || parseFloat(mintAmount) <= 0) {
-      setError("Please enter a valid amount to mint");
+      // setError("Please enter a valid amount to mint");
+      toast({
+        variant: "destructive",
+        title: "Error",
+        description: "Please enter a valid amount to mint",
+      });
       return;
     }
     setIsMinting(true);
@@ -93,7 +101,12 @@ export default function ProjectDetails() {
       const approveTx = await approveRUSD(project.projectContract);
       const approveReceipt = await approveTx.wait();
       if (approveReceipt.status !== 1) {
-        alert("RUSD approval failed");
+
+      toast({
+        variant: "destructive",
+        title: "Error",
+        description: "RUSD approval failed",
+      });
         return;
       }
       console.log("RUSD approved successfully");
@@ -101,7 +114,12 @@ export default function ProjectDetails() {
 
     // RUSD balance validation
     if (Number(rusdBalance) < Number(mintAmount)) {
-      alert(`Insufficient RUSD balance. You have ${rusdBalance} RUSD, but trying to mint ${mintAmount} RUSD.`);
+      // alert(`Insufficient RUSD balance. You have ${rusdBalance} RUSD, but trying to mint ${mintAmount} RUSD.`);
+      toast({
+        variant: "destructive",
+        title: "Error",
+        description: `Insufficient RUSD balance. You have ${rusdBalance} RUSD, but trying to mint ${mintAmount} RUSD.`,
+      });
       setIsMinting(false);
       return;
     }
@@ -109,11 +127,22 @@ export default function ProjectDetails() {
     try {
       const tx = await mintWithRUSD(project.projectContract, parseInt(mintAmount));
       const receipt = await tx.wait();
-      setSuccess(`Minting initiated! Transaction: ${receipt.hash}`);
+      // setSuccess(`Minting initiated! Transaction: ${receipt.hash}`);
+      toast({
+        variant: "default",
+        title: "Success",
+        description: `Minting initiated`,
+      });
       setMintAmount("");
       setTimeout(() => loadProject(project.projectContract), 3000);
     } catch (error) {
-      setError(`Failed to mint with ETH: ${error.message}`);
+      // setError(`Failed to mint with ETH: ${error.message}`);
+      toast({
+        variant: "destructive",
+        title: "Error",
+        description: `Failed to mint with RUSD: ${error}`,
+      });
+      console.error("Minting error:", error);
     } finally {
       setIsMinting(false);
     }
@@ -121,12 +150,22 @@ export default function ProjectDetails() {
 
   const handleRetire = async () => {
     if (!retireAmount || parseFloat(retireAmount) <= 0) {
-      setError("Please enter a valid amount to retire");
+      // setError("Please enter a valid amount to retire");
+      toast({
+        variant: "destructive",
+        title: "Error",
+        description: "Please enter a valid amount to retire",
+      });
       return;
     }
 
     if(parseInt(retireAmount) > (Number(mintedCredits) - Number(retiredCredits))){
-      alert(`You cannot retire more than ${(Number(mintedCredits) - Number(retiredCredits))}`);
+      // alert(`You cannot retire more than ${(Number(mintedCredits) - Number(retiredCredits))}`);
+      toast({
+        variant: "destructive",
+        title: "Error",
+        description: `You cannot retire more than ${(Number(mintedCredits) - Number(retiredCredits))}`,
+      });
       return;
     }
 
@@ -135,10 +174,20 @@ export default function ProjectDetails() {
     try {
       const tx = await retireCredits(project.projectContract, parseInt(retireAmount));
       const receipt = await tx.wait();
-      setSuccess(`Credits retired! Transaction: ${receipt.hash}`);
+      // setSuccess(`Credits retired! Transaction: ${receipt.hash}`);
+      toast({
+        variant: "default",
+        title: "Success",
+        description: `Credits retired!`,
+      });
       setTimeout(() => loadProject(project.projectContract), 3000);
     } catch (error) {
-      setError(`Failed to retire credits: ${error.message}`);
+      // setError(`Failed to retire credits: ${error.message}`);
+      toast({
+        variant: "destructive",
+        title: "Error",
+        description: `Failed to retire credits: ${error}`,
+      });
     } finally {
       setIsRetiring(false);
     }
@@ -225,7 +274,7 @@ export default function ProjectDetails() {
           </div>
         </div>
 
-        {/* Alerts */}
+        {/* Alerts
         {error && (
           <Alert variant="destructive" className="mb-6">
             <AlertCircle className="h-4 w-4" />
@@ -238,7 +287,7 @@ export default function ProjectDetails() {
             <CheckCircle2 className="h-4 w-4 text-green-600" />
             <AlertDescription className="text-green-800">{success}</AlertDescription>
           </Alert>
-        )}
+        )} */}
 
         {/* Main Content */}
         <div className="grid gap-6">
