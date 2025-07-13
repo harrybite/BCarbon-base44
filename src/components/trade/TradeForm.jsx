@@ -263,6 +263,9 @@ export default function TradeForm() {
                         value={cardStates[listing.listingId].quantity}
                         onChange={(e) => handleInputChange(listing.listingId, e.target.value)}
                       />
+                      <p className="text-xs text-gray-500">
+                        Your RUSD Balance: {rusdBalance}
+                      </p>
                       <div className="flex space-x-2">
                         <Button
                           className="w-full bg-green-600 hover:bg-green-700"

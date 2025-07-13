@@ -424,6 +424,7 @@ const getRetirementCertificates = async (projectAddress) => {
     const grouped = [];
     for (const project of approvedProjects) {
       const certificates = await getRetirementCertificates(project);
+      if( certificates.length === 0) continue; // Skip if no certificates
       grouped.push({ projectAddress: project, certificates });
     }
     return grouped; // Array of { projectAddress, certificates: [...] }
