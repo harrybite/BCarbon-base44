@@ -1,3 +1,4 @@
+/* eslint-disable no-unused-vars */
 import { useEffect, useState } from "react";
 import { Link, useLocation } from "react-router-dom";
 import { createPageUrl } from "@/utils";
@@ -31,12 +32,12 @@ const navigationItems = [
     icon: TreePine,
     description: "Carbon credit projects"
   },
-  {
-    title: "Trade",
-    url: createPageUrl("Trade"),
-    icon: TrendingUp,
-    description: "Trade carbon credits"
-  },
+  // {
+  //   title: "Trade",
+  //   url: createPageUrl("Trade"),
+  //   icon: TrendingUp,
+  //   description: "Trade carbon credits"
+  // },
   {
     title: "My Account",
     url: createPageUrl("MyAccount"),

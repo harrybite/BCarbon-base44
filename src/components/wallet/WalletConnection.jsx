@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import useContractInteraction from '../contract/ContractInteraction';
+import { useContractInteraction } from '../contract/ContractInteraction';
 import { Button } from "@/components/ui/button";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { AlertCircle } from "lucide-react";

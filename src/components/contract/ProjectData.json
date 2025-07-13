@@ -10,90 +10,10 @@
 				"internalType": "address",
 				"name": "_governance",
 				"type": "address"
-			},
-			{
-				"internalType": "address",
-				"name": "_RUSD",
-				"type": "address"
 			}
 		],
 		"stateMutability": "nonpayable",
 		"type": "constructor"
-	},
-	{
-		"inputs": [],
-		"name": "CommentPeriodEnded",
-		"type": "error"
-	},
-	{
-		"inputs": [],
-		"name": "EmptyComment",
-		"type": "error"
-	},
-	{
-		"inputs": [],
-		"name": "EmptyMethodology",
-		"type": "error"
-	},
-	{
-		"inputs": [],
-		"name": "EmptyProjectDetails",
-		"type": "error"
-	},
-	{
-		"inputs": [],
-		"name": "InvalidAddress",
-		"type": "error"
-	},
-	{
-		"inputs": [],
-		"name": "InvalidAmount",
-		"type": "error"
-	},
-	{
-		"inputs": [],
-		"name": "InvalidCommentPeriod",
-		"type": "error"
-	},
-	{
-		"inputs": [],
-		"name": "InvalidEmissionReductions",
-		"type": "error"
-	},
-	{
-		"inputs": [],
-		"name": "InvalidGovernanceAddress",
-		"type": "error"
-	},
-	{
-		"inputs": [],
-		"name": "InvalidProjectContract",
-		"type": "error"
-	},
-	{
-		"inputs": [],
-		"name": "InvalidRUSDAddress",
-		"type": "error"
-	},
-	{
-		"inputs": [],
-		"name": "InvalidValidity",
-		"type": "error"
-	},
-	{
-		"inputs": [],
-		"name": "InvalidVintage",
-		"type": "error"
-	},
-	{
-		"inputs": [],
-		"name": "NotAuthorized",
-		"type": "error"
-	},
-	{
-		"inputs": [],
-		"name": "NotGovernance",
-		"type": "error"
 	},
 	{
 		"inputs": [
@@ -116,34 +36,6 @@
 		],
 		"name": "OwnableUnauthorizedAccount",
 		"type": "error"
-	},
-	{
-		"inputs": [],
-		"name": "ProjectAlreadyApproved",
-		"type": "error"
-	},
-	{
-		"inputs": [],
-		"name": "ProjectAlreadyListed",
-		"type": "error"
-	},
-	{
-		"inputs": [],
-		"name": "ProjectNotListed",
-		"type": "error"
-	},
-	{
-		"anonymous": false,
-		"inputs": [
-			{
-				"indexed": false,
-				"internalType": "uint256",
-				"name": "newPeriod",
-				"type": "uint256"
-			}
-		],
-		"name": "CommentPeriodUpdated",
-		"type": "event"
 	},
 	{
 		"anonymous": false,
@@ -201,19 +93,6 @@
 			{
 				"indexed": true,
 				"internalType": "address",
-				"name": "newGovernance",
-				"type": "address"
-			}
-		],
-		"name": "GovernanceUpdated",
-		"type": "event"
-	},
-	{
-		"anonymous": false,
-		"inputs": [
-			{
-				"indexed": true,
-				"internalType": "address",
 				"name": "previousOwner",
 				"type": "address"
 			},
@@ -231,38 +110,6 @@
 		"anonymous": false,
 		"inputs": [
 			{
-				"indexed": false,
-				"internalType": "address",
-				"name": "account",
-				"type": "address"
-			}
-		],
-		"name": "Paused",
-		"type": "event"
-	},
-	{
-		"anonymous": false,
-		"inputs": [
-			{
-				"indexed": true,
-				"internalType": "address",
-				"name": "projectContract",
-				"type": "address"
-			},
-			{
-				"indexed": false,
-				"internalType": "address",
-				"name": "proposer",
-				"type": "address"
-			}
-		],
-		"name": "ProjectCreated",
-		"type": "event"
-	},
-	{
-		"anonymous": false,
-		"inputs": [
-			{
 				"indexed": true,
 				"internalType": "address",
 				"name": "projectContract",
@@ -276,9 +123,9 @@
 			},
 			{
 				"indexed": false,
-				"internalType": "string",
+				"internalType": "enum MethodologyUtils.Methodology",
 				"name": "methodology",
-				"type": "string"
+				"type": "uint8"
 			},
 			{
 				"indexed": false,
@@ -330,81 +177,26 @@
 		"type": "event"
 	},
 	{
-		"anonymous": false,
 		"inputs": [
 			{
-				"indexed": true,
 				"internalType": "address",
-				"name": "newRUSD",
+				"name": "projectContract",
 				"type": "address"
-			}
-		],
-		"name": "RUSDUpdated",
-		"type": "event"
-	},
-	{
-		"anonymous": false,
-		"inputs": [
+			},
 			{
-				"indexed": false,
+				"internalType": "string",
+				"name": "comment",
+				"type": "string"
+			},
+			{
 				"internalType": "address",
-				"name": "account",
+				"name": "commenter",
 				"type": "address"
 			}
 		],
-		"name": "Unpaused",
-		"type": "event"
-	},
-	{
-		"inputs": [],
-		"name": "MAX_COMMENT_PERIOD",
-		"outputs": [
-			{
-				"internalType": "uint256",
-				"name": "",
-				"type": "uint256"
-			}
-		],
-		"stateMutability": "view",
-		"type": "function"
-	},
-	{
-		"inputs": [],
-		"name": "MAX_EMISSION_REDUCTIONS",
-		"outputs": [
-			{
-				"internalType": "uint256",
-				"name": "",
-				"type": "uint256"
-			}
-		],
-		"stateMutability": "view",
-		"type": "function"
-	},
-	{
-		"inputs": [],
-		"name": "MIN_COMMENT_PERIOD",
-		"outputs": [
-			{
-				"internalType": "uint256",
-				"name": "",
-				"type": "uint256"
-			}
-		],
-		"stateMutability": "view",
-		"type": "function"
-	},
-	{
-		"inputs": [],
-		"name": "RUSD",
-		"outputs": [
-			{
-				"internalType": "contract IERC20",
-				"name": "",
-				"type": "address"
-			}
-		],
-		"stateMutability": "view",
+		"name": "_addComment",
+		"outputs": [],
+		"stateMutability": "nonpayable",
 		"type": "function"
 	},
 	{
@@ -436,6 +228,49 @@
 				"internalType": "address",
 				"name": "projectContract",
 				"type": "address"
+			},
+			{
+				"internalType": "uint8",
+				"name": "methodologyIndex",
+				"type": "uint8"
+			},
+			{
+				"internalType": "uint256",
+				"name": "emissionReductions",
+				"type": "uint256"
+			},
+			{
+				"internalType": "string",
+				"name": "projectDetails",
+				"type": "string"
+			},
+			{
+				"internalType": "address",
+				"name": "proposer",
+				"type": "address"
+			},
+			{
+				"internalType": "uint256",
+				"name": "commentPeriod",
+				"type": "uint256"
+			},
+			{
+				"internalType": "uint256",
+				"name": "counter",
+				"type": "uint256"
+			}
+		],
+		"name": "_registerProject",
+		"outputs": [],
+		"stateMutability": "nonpayable",
+		"type": "function"
+	},
+	{
+		"inputs": [
+			{
+				"internalType": "address",
+				"name": "projectContract",
+				"type": "address"
 			}
 		],
 		"name": "_removeProject",
@@ -449,6 +284,11 @@
 				"internalType": "address",
 				"name": "projectContract",
 				"type": "address"
+			},
+			{
+				"internalType": "bool",
+				"name": "status",
+				"type": "bool"
 			}
 		],
 		"name": "_setValidationStatus",
@@ -462,6 +302,11 @@
 				"internalType": "address",
 				"name": "projectContract",
 				"type": "address"
+			},
+			{
+				"internalType": "bool",
+				"name": "status",
+				"type": "bool"
 			}
 		],
 		"name": "_setVerificationStatus",
@@ -514,7 +359,7 @@
 	},
 	{
 		"inputs": [],
-		"name": "commentPeriod",
+		"name": "certificateCounter",
 		"outputs": [
 			{
 				"internalType": "uint256",
@@ -523,70 +368,6 @@
 			}
 		],
 		"stateMutability": "view",
-		"type": "function"
-	},
-	{
-		"inputs": [
-			{
-				"internalType": "uint256",
-				"name": "mintPrice",
-				"type": "uint256"
-			},
-			{
-				"internalType": "address",
-				"name": "treasury",
-				"type": "address"
-			},
-			{
-				"internalType": "bool",
-				"name": "defaultIsPermanent",
-				"type": "bool"
-			},
-			{
-				"internalType": "uint256",
-				"name": "defaultValidity",
-				"type": "uint256"
-			},
-			{
-				"internalType": "uint256",
-				"name": "defaultVintage",
-				"type": "uint256"
-			},
-			{
-				"internalType": "string",
-				"name": "_nonRetiredURI",
-				"type": "string"
-			},
-			{
-				"internalType": "string",
-				"name": "_retiredURI",
-				"type": "string"
-			},
-			{
-				"internalType": "string",
-				"name": "methodology",
-				"type": "string"
-			},
-			{
-				"internalType": "uint256",
-				"name": "emissionReductions",
-				"type": "uint256"
-			},
-			{
-				"internalType": "string",
-				"name": "projectDetails",
-				"type": "string"
-			}
-		],
-		"name": "createAndListProject",
-		"outputs": [
-			{
-				"internalType": "address",
-				"name": "projectContract",
-				"type": "address"
-			}
-		],
-		"stateMutability": "nonpayable",
 		"type": "function"
 	},
 	{
@@ -603,6 +384,19 @@
 				"internalType": "uint256",
 				"name": "",
 				"type": "uint256"
+			}
+		],
+		"stateMutability": "view",
+		"type": "function"
+	},
+	{
+		"inputs": [],
+		"name": "factory",
+		"outputs": [
+			{
+				"internalType": "address",
+				"name": "",
+				"type": "address"
 			}
 		],
 		"stateMutability": "view",
@@ -654,6 +448,42 @@
 		"type": "function"
 	},
 	{
+		"inputs": [],
+		"name": "getNextBaseCertificateId",
+		"outputs": [
+			{
+				"internalType": "string",
+				"name": "",
+				"type": "string"
+			},
+			{
+				"internalType": "uint256",
+				"name": "",
+				"type": "uint256"
+			}
+		],
+		"stateMutability": "nonpayable",
+		"type": "function"
+	},
+	{
+		"inputs": [],
+		"name": "getNextBaseProjectId",
+		"outputs": [
+			{
+				"internalType": "string",
+				"name": "",
+				"type": "string"
+			},
+			{
+				"internalType": "uint256",
+				"name": "",
+				"type": "uint256"
+			}
+		],
+		"stateMutability": "nonpayable",
+		"type": "function"
+	},
+	{
 		"inputs": [
 			{
 				"internalType": "address",
@@ -676,7 +506,7 @@
 						"type": "address"
 					}
 				],
-				"internalType": "struct CarbonCreditRegistry.Comment[]",
+				"internalType": "struct ProjectData.Comment[]",
 				"name": "",
 				"type": "tuple[]"
 			}
@@ -712,9 +542,9 @@
 						"type": "string"
 					},
 					{
-						"internalType": "string",
+						"internalType": "enum MethodologyUtils.Methodology",
 						"name": "methodology",
-						"type": "string"
+						"type": "uint8"
 					},
 					{
 						"internalType": "uint256",
@@ -759,7 +589,7 @@
 								"type": "address"
 							}
 						],
-						"internalType": "struct CarbonCreditRegistry.Comment[]",
+						"internalType": "struct ProjectData.Comment[]",
 						"name": "comments",
 						"type": "tuple[]"
 					},
@@ -779,7 +609,7 @@
 						"type": "bool"
 					}
 				],
-				"internalType": "struct CarbonCreditRegistry.Project",
+				"internalType": "struct ProjectData.Project",
 				"name": "",
 				"type": "tuple"
 			}
@@ -792,7 +622,7 @@
 		"name": "governance",
 		"outputs": [
 			{
-				"internalType": "contract IBCO2Governance",
+				"internalType": "address",
 				"name": "",
 				"type": "address"
 			}
@@ -878,7 +708,7 @@
 	},
 	{
 		"inputs": [],
-		"name": "owner",
+		"name": "manager",
 		"outputs": [
 			{
 				"internalType": "address",
@@ -891,19 +721,12 @@
 	},
 	{
 		"inputs": [],
-		"name": "pause",
-		"outputs": [],
-		"stateMutability": "nonpayable",
-		"type": "function"
-	},
-	{
-		"inputs": [],
-		"name": "paused",
+		"name": "owner",
 		"outputs": [
 			{
-				"internalType": "bool",
+				"internalType": "address",
 				"name": "",
-				"type": "bool"
+				"type": "address"
 			}
 		],
 		"stateMutability": "view",
@@ -948,9 +771,9 @@
 				"type": "string"
 			},
 			{
-				"internalType": "string",
+				"internalType": "enum MethodologyUtils.Methodology",
 				"name": "methodology",
-				"type": "string"
+				"type": "uint8"
 			},
 			{
 				"internalType": "uint256",
@@ -1011,12 +834,12 @@
 	{
 		"inputs": [
 			{
-				"internalType": "uint256",
-				"name": "newPeriod",
-				"type": "uint256"
+				"internalType": "address",
+				"name": "_factory",
+				"type": "address"
 			}
 		],
-		"name": "setCommentPeriod",
+		"name": "setFactory",
 		"outputs": [],
 		"stateMutability": "nonpayable",
 		"type": "function"
@@ -1025,16 +848,11 @@
 		"inputs": [
 			{
 				"internalType": "address",
-				"name": "projectContract",
+				"name": "_manager",
 				"type": "address"
-			},
-			{
-				"internalType": "string",
-				"name": "comment",
-				"type": "string"
 			}
 		],
-		"name": "submitComment",
+		"name": "setManager",
 		"outputs": [],
 		"stateMutability": "nonpayable",
 		"type": "function"
@@ -1053,36 +871,27 @@
 		"type": "function"
 	},
 	{
-		"inputs": [],
-		"name": "unpause",
-		"outputs": [],
-		"stateMutability": "nonpayable",
-		"type": "function"
-	},
-	{
 		"inputs": [
 			{
 				"internalType": "address",
-				"name": "newGovernance",
+				"name": "",
 				"type": "address"
+			},
+			{
+				"internalType": "uint256",
+				"name": "",
+				"type": "uint256"
 			}
 		],
-		"name": "updateGovernance",
-		"outputs": [],
-		"stateMutability": "nonpayable",
-		"type": "function"
-	},
-	{
-		"inputs": [
+		"name": "userListedProjects",
+		"outputs": [
 			{
 				"internalType": "address",
-				"name": "_newRUSD",
+				"name": "",
 				"type": "address"
 			}
 		],
-		"name": "updateRUSD",
-		"outputs": [],
-		"stateMutability": "nonpayable",
+		"stateMutability": "view",
 		"type": "function"
 	}
 ]

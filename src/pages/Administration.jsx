@@ -8,7 +8,7 @@ import { Settings, Shield, AlertTriangle, RefreshCw, CheckSquare } from "lucide-
 
 import GovernanceTab from "../components/admin/GovernanceTab";
 import ProjectApproval from "../components/admin/ProjectApproval";
-import useContractInteraction from "../components/contract/ContractInteraction";
+import {useContractInteraction} from "../components/contract/ContractInteraction";
 
 export default function Administration() {
   const [isOwner, setIsOwner] = useState(false);
@@ -18,47 +18,32 @@ export default function Administration() {
   const [isCheckingOwnership, setIsCheckingOwnership] = useState(true);
   const [isSyncing, setIsSyncing] = useState(false);
   const [syncMessage, setSyncMessage] = useState("");
-  const [projects, setProjects] = useState([]);
   
   const { 
     userAddress, 
     checkIsOwner, 
+    getOwner,
     checkAuthorizedVVB, 
-    approveAndIssueCredits, 
-    rejectAndRemoveProject,
-    validateProject,
-    verifyProject
   } = useContractInteraction();
 
-  const loadProjects = async () => {
-    try {
-      const response = await fetch('http://localhost:3001/api/sync-projects');
-      const data = await response.json();
-      setProjects(data.projects || []);
-    } catch (e) {
-      console.error("Failed to load projects", e);
-    }
-  };
+
 
   useEffect(() => {
     const initialize = async () => {
       setIsCheckingOwnership(true);
       try {
-        const response = await fetch('http://localhost:3001/api/contract-owner');
-        const { owner } = await response.json();
-        if (owner) {
-          setContractOwner(owner);
+
           if (userAddress) {
+            const owner = await getOwner();
+            setContractOwner(owner);
             setWalletAddress(userAddress);
             const isOwner = await checkIsOwner();
             setIsOwner(isOwner);
             const vvbStatus = await checkAuthorizedVVB();
             setIsVVB(vvbStatus);
-            if (isOwner || vvbStatus) {
-              await loadProjects();
-            }
+        
           }
-        }
+        
       } catch (error) {
         console.error("Failed to fetch contract owner:", error);
       } finally {
@@ -71,6 +56,7 @@ export default function Administration() {
     }
   }, [userAddress, checkIsOwner, checkAuthorizedVVB]);
 
+
   const handleSyncProjects = async () => {
     setIsSyncing(true);
     setSyncMessage("");
@@ -78,68 +64,11 @@ export default function Administration() {
       const response = await fetch('http://localhost:3001/api/sync-projects');
       const data = await response.json();
       setSyncMessage(`Sync successful! Found ${data.projects?.length || 0} projects.`);
-      await loadProjects();
     } catch (e) {
       setSyncMessage("Error: Failed to sync projects.");
       console.error(e);
     } finally {
       setIsSyncing(false);
-    }
-  };
-
-  const handleApproveProject = async (projectAddress, creditAmount, certificateId) => {
-    try {
-      const { hash } = await approveAndIssueCredits(projectAddress, creditAmount, certificateId);
-      await fetch('http://localhost:3001/api/transaction', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ transactionHash: hash, projectAddress, userAddress })
-      });
-      await loadProjects();
-    } catch (error) {
-      console.error("Failed to approve project:", error);
-    }
-  };
-
-  const handleRejectProject = async (projectAddress) => {
-    try {
-      const { hash } = await rejectAndRemoveProject(projectAddress);
-      await fetch('http://localhost:3001/api/transaction', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ transactionHash: hash, projectAddress, userAddress })
-      });
-      await loadProjects();
-    } catch (error) {
-      console.error("Failed to reject project:", error);
-    }
-  };
-
-  const handleValidateProject = async (projectAddress) => {
-    try {
-      const { hash } = await validateProject(projectAddress);
-      await fetch('http://localhost:3001/api/transaction', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ transactionHash: hash, projectAddress, userAddress })
-      });
-      await loadProjects();
-    } catch (error) {
-      console.error("Failed to validate project:", error);
-    }
-  };
-
-  const handleVerifyProject = async (projectAddress) => {
-    try {
-      const { hash } = await verifyProject(projectAddress);
-      await fetch('http://localhost:3001/api/transaction', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ transactionHash: hash, projectAddress, userAddress })
-      });
-      await loadProjects();
-    } catch (error) {
-      console.error("Failed to verify project:", error);
     }
   };
 
@@ -155,6 +84,7 @@ export default function Administration() {
       </div>
     );
   }
+
 
   if (!isOwner && !isVVB) {
     return (
@@ -263,13 +193,7 @@ export default function Administration() {
 
           <TabsContent value="approval">
             <ProjectApproval 
-              projects={projects} 
-              onApprove={handleApproveProject} 
-              onReject={handleRejectProject}
-              onValidate={handleValidateProject}
-              onVerify={handleVerifyProject}
-              isVVB={isVVB}
-              isOwner={isOwner}
+
             />
           </TabsContent>
           {isOwner && (
