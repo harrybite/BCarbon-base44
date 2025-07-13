@@ -65,6 +65,7 @@ export default function ProjectDetails() {
     try {
       const data = await getListedProjectDetails(projectAddress);
       setProject(data);
+      console.log('Project details:', data);
       const balance = await getRUSDBalance();
       setRUSDBalance(balance);
 
@@ -196,6 +197,7 @@ export default function ProjectDetails() {
   const handleMaxRetire = () => {
     setRetireAmount(Number(mintedCredits) - Number(retiredCredits));
   };
+  const allowedRetire = Number(mintedCredits) - Number(retiredCredits);
 
   if (isLoading) {
     return (
@@ -505,60 +507,69 @@ export default function ProjectDetails() {
   </Card>
 
   {/* Retire Credits */}
-  <Card>
-    <CardHeader>
-      <CardTitle className="flex items-center space-x-2">
-        <Recycle className="w-5 h-5 text-orange-600" />
-        <span>Retire Credits</span>
-      </CardTitle>
-    </CardHeader>
-    <CardContent className="space-y-4">
-      {(!project.tokenUri || project.tokenUri === "" || typeof project.tokenUri === "undefined") ? (
-        <div className="text-center text-sm text-gray-500">
-          Retiring is currently disabled. Project Token URI is not set.
-        </div>
-      ) : (
-        <>
-          <div>
-  <Label htmlFor="retireAmount">Amount to Retire</Label>
-  <div className="flex space-x-2">
-    <Input
-      id="retireAmount"
-      type="number"
-      step="1"
-      min="1"
-      placeholder="Enter amount"
-      value={retireAmount}
-      onChange={(e) => setRetireAmount(e.target.value)}
-      className="flex-1"
-    />
-    <Button
-      type="button"
-      variant="outline"
-      className="px-3"
-      onClick={() => handleMaxRetire()}
-    >
-      Max
-    </Button>
-  </div>
-</div>
-          <Label htmlFor="mintAmount">Redired tCO<sub>2</sub>: {Number(retiredCredits)}</Label>
-          <br/>
-          <Label htmlFor="mintAmount">Allowed retired tCO<sub>2</sub>: {(Number(mintedCredits) - Number(retiredCredits))}</Label>
-          <Button
-            onClick={handleRetire}
-            disabled={isRetiring}
-            className="w-full bg-orange-600 hover:bg-orange-700"
-          >
-            {isRetiring ? "Retiring..." : "Retire Credits"}
-          </Button>
-          <p className="text-sm text-gray-500">
-            Retiring credits permanently removes them from circulation
-          </p>
-        </>
-      )}
-    </CardContent>
-  </Card>
+  <Card className={`${allowedRetire <= 0 ? "opacity-50 pointer-events-none" : ""}`}>
+      <CardHeader>
+        <CardTitle className="flex items-center space-x-2">
+          <Recycle className="w-5 h-5 text-orange-600" />
+          <span>Retire Credits</span>
+        </CardTitle>
+      </CardHeader>
+      <CardContent className="space-y-4">
+        {(!project.tokenUri || project.tokenUri === "" || typeof project.tokenUri === "undefined") ? (
+          <div className="text-center text-sm text-gray-500">
+            Retiring is currently disabled. Project Token URI is not set.
+          </div>
+        ) : (
+          <>
+            <div>
+              <Label htmlFor="retireAmount">Amount to Retire</Label>
+              <div className="flex space-x-2">
+                <Input
+                  id="retireAmount"
+                  type="number"
+                  step="1"
+                  min="1"
+                  placeholder="Enter amount"
+                  value={retireAmount}
+                  onChange={(e) => setRetireAmount(e.target.value)}
+                  className="flex-1"
+                />
+                <Button
+                  type="button"
+                  variant="outline"
+                  className="px-3"
+                  onClick={handleMaxRetire}
+                >
+                  Max
+                </Button>
+              </div>
+            </div>
+            <Label htmlFor="mintAmount">
+              Retired tCO<sub>2</sub>: {Number(retiredCredits)}
+            </Label>
+            <br/>
+            <Label htmlFor="mintAmount">
+              Allowed retired tCO<sub>2</sub>: {allowedRetire}
+            </Label>
+            <Button
+              onClick={handleRetire}
+              disabled={isRetiring || allowedRetire <= 0}
+              className="w-full bg-orange-600 hover:bg-orange-700"
+            >
+              {isRetiring ? "Retiring..." : "Retire Credits"}
+            </Button>
+            {/* {allowedRetire <= 0 && (
+              <p className="text-sm text-gray-500">
+                No credits available to retire.
+              </p>
+            )} */}
+            <p className="text-sm text-gray-500">
+              Retiring credits permanently removes them from circulation.
+            </p>
+          </>
+        )}
+      </CardContent>
+    </Card>
 </div>
         </div>
       </div>

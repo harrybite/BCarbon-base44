@@ -170,7 +170,7 @@ export default function Administration() {
                   <RefreshCw className={`w-4 h-4 mr-2 ${isSyncing ? 'animate-spin' : ''}`} />
                   {isSyncing ? 'Syncing...' : 'Sync Projects'}
                 </Button>
-                {syncMessage && <p className="text-sm text-gray-600">{syncMessage}</p>}
+                {/* {syncMessage && <p className="text-sm text-gray-600">{syncMessage}</p>} */}
               </div>
             </CardContent>
           </Card>
