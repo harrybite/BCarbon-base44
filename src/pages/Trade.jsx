@@ -12,39 +12,6 @@ import { useContractInteraction } from "@/components/contract/ContractInteractio
 const API_BASE = "http://localhost:3001/api"; // Backend base URL
 
 export default function Trade() {
-  const [projects, setProjects] = useState([]);
-  const [isLoading, setIsLoading] = useState(true);
-  const { walletAddress } = useConnectWallet();
-  const { isContractsInitised } = useContractInteraction();
-
-  useEffect(() => {
-   if(walletAddress && isContractsInitised) {
-      loadData()
-   };
-  }, [walletAddress, isContractsInitised]);
-
-  const loadData = async () => {
-    setIsLoading(true);
-    try {
-      const resProjects = await axios.get(`${API_BASE}/sync-projects`);
-      const approvedProjects = resProjects.data.projects.filter(p => p.isApproved);
-      setProjects(approvedProjects);
-    } catch (error) {
-      console.error("Error loading projects:", error);
-    } finally {
-      setIsLoading(false);
-    }
-  };
-
-  const handleTrade = async (tradeData) => {
-    try {
-      // The TradeForm component handles the actual contract interaction
-      return { success: true };
-    } catch (error) {
-      console.error("Trade execution failed:", error);
-      throw new Error("Trade execution failed");
-    }
-  };
 
   return (
       <div className="min-h-screen py-8 px-4 sm:px-6 lg:px-8">
@@ -61,7 +28,7 @@ export default function Trade() {
             </div>
           </div>
 
-          <TradeForm projects={projects} onTrade={handleTrade} isLoading={isLoading} />
+          <TradeForm  />
         </div>
       </div>
   );

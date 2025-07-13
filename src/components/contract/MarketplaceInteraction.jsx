@@ -6,6 +6,8 @@ import ERC20Abi from './ERC20.json';
 import { MARKETPLACE_ADDRESS, RUSD } from './address';
 import { AlertCircle } from 'lucide-react';
 import { AlertDescription } from '../ui/alert';
+import { useContractInteraction } from './ContractInteraction';
+import { useConnectWallet } from '@/context/walletcontext';
 
 export const useMarketplaceInteraction = () => {
   const [userAddress, setUserAddress] = useState("");
@@ -15,6 +17,8 @@ export const useMarketplaceInteraction = () => {
   const [signer, setSigner] = useState(null);
   const [marketplaceContract, setMarketplaceContract] = useState(null);
   const [rusdContract, setRUSDContract] = useState(null);
+  const { getTokenURIs } = useContractInteraction();
+  const { walletAddress } = useConnectWallet();
 
   useEffect(() => {
     initializeProvider();
@@ -29,7 +33,7 @@ export const useMarketplaceInteraction = () => {
         window.ethereum.removeListener('accountsChanged', handleAccountsChanged);
       }
     };
-  }, []);
+  }, [walletAddress]);
 
   const initializeProvider = async () => {
     if (typeof window !== 'undefined' && window.ethereum) {
@@ -135,14 +139,15 @@ export const useMarketplaceInteraction = () => {
   };
 
   const purchase = async (listingId, quantity) => {
-    if (!isConnected || !marketplaceContract || !rusdContract || !signer) {
+    console.log("marketplaceContract || !rusdContract", marketplaceContract,  rusdContract)
+    if (!marketplaceContract || !rusdContract ) {
       throw new Error("Wallet not connected or contracts not initialized");
     }
     try {
-      const listing = await marketplaceContract.getListing(listingId);
-      const totalPrice = listing.pricePerUnit.mul(quantity);
+      console.log("listing details", listingId, quantity)
+      const totalPrice = "0xffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff";
       const allowance = await rusdContract.allowance(userAddress, MARKETPLACE_ADDRESS);
-      if (allowance.lt(totalPrice)) {
+      if (Number(allowance) === 0) {
         const approveTx = await rusdContract.approve(MARKETPLACE_ADDRESS, totalPrice);
         await approveTx.wait();
       }
@@ -198,9 +203,13 @@ export const useMarketplaceInteraction = () => {
       const listings = [];
       for (let i = 0; i < listingCount; i++) {
         const listing = await contract.getListing(i);
+        const tokenURI = await getTokenURIs(listing.tokenContract, 1);
+        const response = await fetch(tokenURI);
+        const metadata = await response.json();
         listings.push({
           listingId: i.toString(),
           seller: listing.seller,
+          image: metadata?.image || '',
           tokenContract: listing.tokenContract,
           tokenId: listing.tokenId.toString(),
           quantity: listing.quantity.toString(),
@@ -289,6 +298,7 @@ export const useMarketplaceInteraction = () => {
     userAddress,
     isConnected,
     error,
+    marketplaceContract,
     connectWallet,
     createListing,
     updateListing,

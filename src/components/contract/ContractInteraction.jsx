@@ -864,6 +864,7 @@ const getRetirementCertificates = async (projectAddress) => {
     getRetirementCertificatesForAllProject,
     removeVVB,
     updateRegistryAddress,
+    
     approveRUSD,
     checkRUSDAllowance,
     getProjectStats,
