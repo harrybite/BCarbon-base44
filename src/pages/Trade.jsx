@@ -1,24 +1,31 @@
+/* eslint-disable no-unreachable */
+/* eslint-disable no-unused-vars */
 import { useState, useEffect } from "react";
 import axios from "axios";
 import { Card, CardHeader, CardTitle } from "@/components/ui/card";
 import { TrendingUp } from "lucide-react";
 import TradeForm from "../components/trade/TradeForm";
 import MarketplaceInteraction from "../components/contract/MarketplaceInteraction";
+import { useConnectWallet } from "@/context/walletcontext";
+import { useContractInteraction } from "@/components/contract/ContractInteraction";
 
 const API_BASE = "http://localhost:3001/api"; // Backend base URL
 
 export default function Trade() {
   const [projects, setProjects] = useState([]);
   const [isLoading, setIsLoading] = useState(true);
+  const { walletAddress } = useConnectWallet();
+  const { isContractsInitised } = useContractInteraction();
 
   useEffect(() => {
-    loadData();
-  }, []);
+   if(walletAddress && isContractsInitised) {
+      loadData()
+   };
+  }, [walletAddress, isContractsInitised]);
 
   const loadData = async () => {
     setIsLoading(true);
     try {
-      // Fetch projects
       const resProjects = await axios.get(`${API_BASE}/sync-projects`);
       const approvedProjects = resProjects.data.projects.filter(p => p.isApproved);
       setProjects(approvedProjects);

@@ -1,8 +1,11 @@
+/* eslint-disable no-unused-vars */
+/* eslint-disable react/prop-types */
 import React from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import {Link} from "react-router-dom"
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { ArrowRight, AlertCircle, CheckCircle2 } from "lucide-react";
 import { useMarketplaceInteraction } from '@/components/contract/MarketplaceInteraction';
@@ -152,7 +155,7 @@ export default function TradeForm({ projects, onTrade, isLoading }) {
 
   const getProjectName = (tokenContract) => {
     const project = projects.find(p => p.projectAddress.toLowerCase() === tokenContract.toLowerCase());
-    return project ? project.metadata?.name : "Unknown Project";
+    return project ? project.metadata?.name : tokenContract;
   };
 
   return (
@@ -192,7 +195,7 @@ export default function TradeForm({ projects, onTrade, isLoading }) {
             listings.map((listing) => (
               <Card key={listing.listingId} className="flex flex-col">
                 <CardHeader>
-                  <CardTitle className="text-lg">{getProjectName(listing.tokenContract)}</CardTitle>
+                 <Link  to={`/ProjectDetails/${listing.tokenContract}`}><CardTitle className="text-lg">{listing.tokenContract}</CardTitle></Link>
                 </CardHeader>
                 <CardContent className="flex-grow">
                   <div className="space-y-2">

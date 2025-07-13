@@ -365,27 +365,70 @@ export const useContractInteraction = () => {
     }
   };
 
-  const getRetirementCertificates = async (projectAddress) => {
-    if (!isConnected || !userAddress) throw new Error("Wallet not connected or user address not set");
-    try {
-      const bco2Contract = new Contract(
-        projectAddress,
-        bco2Abi,
-        provider || new JsonRpcProvider(chainInfo.rpc)
-      );
-      const count = await bco2Contract.getRetirementCertificateCount(userAddress);
-      const certificates = [];
-      for (let i = 0; i < count; i++) {
-        const cert = await bco2Contract.userRetirementCertificates(userAddress, i);
-        certificates.push(cert);
-      }
-
-      return certificates;
-    } catch (error) {
-      throw new Error(`Failed to fetch retirement certificates: ${error.message}`);
+const getRetirementCertificates = async (projectAddress) => {
+  if (!isConnected || !userAddress) throw new Error("Wallet not connected or user address not set");
+  try {
+    const bco2Contract = new Contract(
+      projectAddress,
+      bco2Abi,
+      provider || new JsonRpcProvider(chainInfo.rpc)
+    );
+    const count = await bco2Contract.getRetirementCertificateCount(userAddress);
+    const certificates = [];
+    for (let i = 0; i < count; i++) {
+      const cert = await bco2Contract.userRetirementCertificates(userAddress, i);
+      certificates.push({
+        certificateId: cert.certificateId,
+        owner: cert.owner,
+        tonnesRetired: cert.tonnesRetired?.toString?.() ?? "",
+        retireTimestamp: cert.retireTimestamp?.toString?.() ?? ""
+      });
     }
-  };
+    return certificates; // Array of { projectAddress, certificateId, owner, tonnesRetired, retireTimestamp }
+  } catch (error) {
+    throw new Error(`Failed to fetch retirement certificates: ${error.message}`);
+  }
+};
 
+ const getRetirementCertificatesForAllProject = async () => {
+  if (!isConnected || !userAddress) throw new Error("Wallet not connected or user address not set");
+  try {
+    const approvedProjects = await getApprovedProjects();
+    const grouped = [];
+    for (const project of approvedProjects) {
+      const certificates = await getRetirementCertificates(project);
+      grouped.push({ projectAddress: project, certificates });
+    }
+    return grouped; // Array of { projectAddress, certificates: [...] }
+  } catch (error) {
+    throw new Error(`Failed to fetch retirement certificates: ${error.message}`);
+  }
+};
+
+
+ const validateRetirementCertificate = async (projectAddress, account, certificateIndex, certificateHash) => {
+  if (!provider) throw new Error("Provider not initialized");
+  try {
+    const bco2Contract = new Contract(
+      projectAddress,
+      bco2Abi,
+      provider || new JsonRpcProvider('https://data-seed-prebsc-1-s1.binance.org:8545/')
+    );
+    console.log("Validating retirement certificate for project:", projectAddress);
+    console.log("Account:", account);
+    console.log("Certificate Index:", certificateIndex);
+    console.log("Certificate Hash:", certificateHash);
+    const [isValidCert, tonnesRetired] = await bco2Contract.validateRetirementCertificate(
+      account,
+      certificateIndex,
+      certificateHash
+    );
+    console.log("Validation result:", isValidCert, tonnesRetired);
+    return { isValidCert, tonnesRetired };
+  } catch (error) {
+    throw new Error(`Failed to validate retirement certificate: ${error.message}`);
+  }
+};
 
 
   const getTotalSupply = async (projectAddress) => {
@@ -618,24 +661,7 @@ export const useContractInteraction = () => {
     }
   };
 
-  const validateRetirementCertificate = async (projectAddress, account, certificateIndex, certificateHash) => {
-  if (!provider) throw new Error("Provider not initialized");
-  try {
-    const bco2Contract = new Contract(
-      projectAddress,
-      bco2Abi,
-      provider || new JsonRpcProvider('https://data-seed-prebsc-1-s1.binance.org:8545/')
-    );
-    const [isValidCert, tonnesRetired] = await bco2Contract.validateRetirementCertificate(
-      account,
-      certificateIndex,
-      certificateHash
-    );
-    return { isValidCert, tonnesRetired };
-  } catch (error) {
-    throw new Error(`Failed to validate retirement certificate: ${error.message}`);
-  }
-};
+ 
 
   const checkAuthorizedVVB = async () => {
     if (!userAddress) return false;
@@ -835,6 +861,7 @@ export const useContractInteraction = () => {
     addVVB,
     getRetirementCertificates,
     validateRetirementCertificate,
+    getRetirementCertificatesForAllProject,
     removeVVB,
     updateRegistryAddress,
     approveRUSD,

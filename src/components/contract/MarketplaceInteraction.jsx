@@ -4,6 +4,8 @@ import { BrowserProvider, Contract, formatEther, parseEther, JsonRpcProvider } f
 import CarbonCreditMarketplaceABI from './Marketplace.json';
 import ERC20Abi from './ERC20.json';
 import { MARKETPLACE_ADDRESS, RUSD } from './address';
+import { AlertCircle } from 'lucide-react';
+import { AlertDescription } from '../ui/alert';
 
 export const useMarketplaceInteraction = () => {
   const [userAddress, setUserAddress] = useState("");
@@ -310,10 +312,10 @@ export default function MarketplaceInteraction(props) {
     <>
       {error && (
         <div className="fixed top-4 right-4 z-50">
-          <Alert variant="destructive">
+          <AlertCircle variant="destructive">
             <AlertCircle className="h-4 w-4" />
             <AlertDescription>{error}</AlertDescription>
-          </Alert>
+          </AlertCircle>
         </div>
       )}
       {children}

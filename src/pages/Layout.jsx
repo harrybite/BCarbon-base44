@@ -41,12 +41,12 @@ const navigationItems = [
     icon: TrendingUp,
     description: "Trade carbon credits"
   },
-  {
-    title: "Validate",
-    url: createPageUrl("ValidateCertificate"),
-    icon: BadgeCheck,
-    description: "Validate BCO₂ Retirement Certificates on chain"
-  },
+  // {
+  //   title: "Validate",
+  //   url: createPageUrl("ValidateCertificate"),
+  //   icon: BadgeCheck,
+  //   description: "Validate BCO₂ Retirement Certificates on chain"
+  // },
   {
     title: "My Account",
     url: createPageUrl("MyAccount"),
