@@ -1,3 +1,4 @@
+/* eslint-disable no-unused-vars */
 import { useState, useEffect } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -8,7 +9,7 @@ import { Settings, Shield, AlertTriangle, RefreshCw, CheckSquare } from "lucide-
 
 import GovernanceTab from "../components/admin/GovernanceTab";
 import ProjectApproval from "../components/admin/ProjectApproval";
-import {useContractInteraction} from "../components/contract/ContractInteraction";
+import {useContractInteraction } from "../components/contract/ContractInteraction";
 
 export default function Administration() {
   const [isOwner, setIsOwner] = useState(false);
@@ -54,7 +55,7 @@ export default function Administration() {
     if (userAddress) {
       initialize();
     }
-  }, [userAddress, checkIsOwner, checkAuthorizedVVB]);
+  }, [userAddress]);
 
 
   const handleSyncProjects = async () => {

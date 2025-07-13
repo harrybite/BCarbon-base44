@@ -9,8 +9,7 @@ import projectDataabi from './ProjectData.json';
 import bco2Abi from './BCO2.json';
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { AlertCircle } from "lucide-react";
-import { GOVERNANCE_ADDRESS, projectData, projectFactory, projectManager, RUSD } from './address';
-import { User } from 'lucide-react';
+import { chainInfo, GOVERNANCE_ADDRESS, projectData, projectFactory, projectManager, RUSD } from './address';
 
 
 export const useContractInteraction = () => {
@@ -27,7 +26,10 @@ export const useContractInteraction = () => {
 
   useEffect(() => {
     initializeProvider();
-
+    if(!userAddress){
+      connectWallet();
+    }
+   
     if (window.ethereum) {
       window.ethereum.on('accountsChanged', handleAccountsChanged);
       window.ethereum.on('chainChanged', () => window.location.reload());
@@ -95,8 +97,23 @@ export const useContractInteraction = () => {
       setError("MetaMask is not installed");
       return;
     }
-
+  
     try {
+
+    // First, check if the user is on the correct chain.
+    const currentChain = await window.ethereum.request({ method: 'eth_chainId' });
+    // Convert chainInfo.id to hex. For example, for 7862, the hex value is "0x1eb6".
+    const requiredChainId = "0x" + chainInfo.id.toString(16);
+    console.log("Current chain ID:", currentChain);
+    console.log("Required chain ID:", requiredChainId);
+    if (currentChain !== requiredChainId) {
+      // Force the user to switch chain.
+      await window.ethereum.request({
+        method: 'wallet_switchEthereumChain',
+        params: [{ chainId: '0x1eb6' }],
+      });
+    }
+
       const accounts = await window.ethereum.request({ method: 'eth_requestAccounts' });
       if (accounts.length > 0) {
         setUserAddress(accounts[0]);
@@ -161,11 +178,8 @@ const createAndListProject = async (projectData) => {
     } = projectData;
 
     const mintPriceWei = parseEther(mintPrice.toString());
-    const validity = BigInt(defaultValidity);
-    const vintage = BigInt(defaultVintage);
-    const methodology = Number(methodologyIndex); // uint8
-    const emissionReductionsWei = BigInt(emissionReductions);
 
+    console.log("Creating project with data:", mintPriceWei, projectData)
     const tx = await projectFactoryContract.createAndListProject(
       mintPriceWei,
       treasury,
@@ -199,7 +213,7 @@ const createAndListProject = async (projectData) => {
     const bco2Contract = new Contract(
       projectAddress,
       bco2Abi,
-      provider || new JsonRpcProvider('https://data-seed-prebsc-1-s1.binance.org:8545/')
+      provider || new JsonRpcProvider(chainInfo.rpc)
     );
     const price = await bco2Contract.mintPrice();
     const priceInEther = formatEther(price);
@@ -228,7 +242,7 @@ const createAndListProject = async (projectData) => {
       const bco2Contract = new Contract(
         projectAddress,
         bco2Abi,
-        provider || new JsonRpcProvider('https://data-seed-prebsc-1-s1.binance.org:8545/')
+        provider || new JsonRpcProvider(chainInfo.rpc)
       );
       console.log("Fetching token URIs for project:", projectAddress, "Token ID:", tokenId);
       const uri = await bco2Contract.tokenURIs(tokenId);
@@ -245,7 +259,7 @@ const getDefaultIsPermanent = async (projectAddress) => {
     const bco2Contract = new Contract(
       projectAddress,
       bco2Abi,
-      provider || new JsonRpcProvider('https://data-seed-prebsc-1-s1.binance.org:8545/')
+      provider || new JsonRpcProvider(chainInfo.rpc)
     );
     const value = await bco2Contract.defaultIsPermanent();
     const decodedvalue = decodeBytes32String(value)
@@ -260,7 +274,7 @@ const getDefaultValidity = async (projectAddress) => {
     const bco2Contract = new Contract(
       projectAddress,
       bco2Abi,
-      provider || new JsonRpcProvider('https://data-seed-prebsc-1-s1.binance.org:8545/')
+      provider || new JsonRpcProvider(chainInfo.rpc)
     );
     const value = await bco2Contract.defaultValidity();
     const decodedvalue = Number(toBigInt(value))
@@ -275,7 +289,7 @@ const getDefaultVintage = async (projectAddress) => {
     const bco2Contract = new Contract(
       projectAddress,
       bco2Abi,
-      provider || new JsonRpcProvider('https://data-seed-prebsc-1-s1.binance.org:8545/')
+      provider || new JsonRpcProvider(chainInfo.rpc)
     );
     const value = await bco2Contract.defaultVintage();
     const decodedvalue =  Number(toBigInt(value))
@@ -290,7 +304,7 @@ const getLocation = async (projectAddress) => {
     const bco2Contract = new Contract(
       projectAddress,
       bco2Abi,
-      provider || new JsonRpcProvider('https://data-seed-prebsc-1-s1.binance.org:8545/')
+      provider || new JsonRpcProvider(chainInfo.rpc)
     );
     const value = await bco2Contract.location();
     return value; // string
@@ -305,7 +319,7 @@ const getWalletRetrides = async (projectAddress) => {
     const bco2Contract = new Contract(
       projectAddress,
       bco2Abi,
-      provider || new JsonRpcProvider('https://data-seed-prebsc-1-s1.binance.org:8545/')
+      provider || new JsonRpcProvider(chainInfo.rpc)
     );
     const value = await bco2Contract.walletRetired(userAddress);
     return value; // string
@@ -320,7 +334,7 @@ const getWalletMinted = async (projectAddress) => {
     const bco2Contract = new Contract(
       projectAddress,
       bco2Abi,
-      provider || new JsonRpcProvider('https://data-seed-prebsc-1-s1.binance.org:8545/')
+      provider || new JsonRpcProvider(chainInfo.rpc)
     );
     const value = await bco2Contract.walletMinted(userAddress);
     return value; // string
@@ -335,7 +349,7 @@ const getRetirementCertificates = async (projectAddress) => {
     const bco2Contract = new Contract(
       projectAddress,
       bco2Abi,
-      provider || new JsonRpcProvider('https://data-seed-prebsc-1-s1.binance.org:8545/')
+      provider || new JsonRpcProvider(chainInfo.rpc)
     );
 
     const count = await bco2Contract.getRetirementCertificateCount(userAddress);
@@ -346,7 +360,7 @@ const getRetirementCertificates = async (projectAddress) => {
       certificates.push(cert);
     }
 
-    return certificates; // array of structs
+    return certificates; 
   } catch (error) {
     throw new Error(`Failed to fetch retirement certificates: ${error.message}`);
   }
@@ -359,7 +373,7 @@ const getTotalSupply = async (projectAddress) => {
     const bco2Contract = new Contract(
       projectAddress,
       bco2Abi,
-      provider || new JsonRpcProvider('https://data-seed-prebsc-1-s1.binance.org:8545/')
+      provider || new JsonRpcProvider(chainInfo.rpc)
     );
     const supply = await bco2Contract.totalSupply();
     const supplyEther = formatEther(supply);
@@ -374,7 +388,7 @@ const getTotalRetired = async (projectAddress) => {
     const bco2Contract = new Contract(
       projectAddress,
       bco2Abi,
-      provider || new JsonRpcProvider('https://data-seed-prebsc-1-s1.binance.org:8545/')
+      provider || new JsonRpcProvider(chainInfo.rpc)
     );
     const retired = await bco2Contract.totalRetired();
     return retired.toString();
@@ -410,7 +424,7 @@ const getTotalRetired = async (projectAddress) => {
     const rusdContract = new Contract(
       RUSD,
       ERC20Abi,
-      provider || new JsonRpcProvider('https://data-seed-prebsc-1-s1.binance.org:8545/')
+      provider || new JsonRpcProvider(chainInfo.rpc)
     );
     
     // Call balanceOf function to get token balance
@@ -429,7 +443,7 @@ const getTotalRetired = async (projectAddress) => {
         const rusdContract = new Contract(
           RUSD, 
           ERC20Abi,
-          provider || new JsonRpcProvider('https://data-seed-prebsc-1-s1.binance.org:8545/')
+          provider || new JsonRpcProvider(chainInfo.rpc)
         );
         // Call allowance function to check how many tokens the spender is allowed to use
         const allowance = await rusdContract.allowance(userAddress, spenderAddress);
@@ -741,7 +755,7 @@ const getListedProjectDetails = async (address) => {
 
   const getUserBalance = async (projectAddress, tokenId = 1) => {
     try {
-      const bco2Contract = new Contract(projectAddress, bco2Abi, provider || new JsonRpcProvider('https://data-seed-prebsc-1-s1.binance.org:8545/'));
+      const bco2Contract = new Contract(projectAddress, bco2Abi, provider || new JsonRpcProvider(chainInfo.rpc));
       const balance = await bco2Contract.balanceOf(userAddress, tokenId);
       return balance.toString();
     } catch (error) {
@@ -751,7 +765,7 @@ const getListedProjectDetails = async (address) => {
 
   const getTokenURI = async (projectAddress, tokenId = 1) => {
     try {
-      const bco2Contract = new Contract(projectAddress, bco2Abi, provider || new JsonRpcProvider('https://data-seed-prebsc-1-s1.binance.org:8545/'));
+      const bco2Contract = new Contract(projectAddress, bco2Abi, provider || new JsonRpcProvider(chainInfo.rpc));
       const uri = await bco2Contract.uri(tokenId);
       return uri;
     } catch (error) {
@@ -775,6 +789,7 @@ const getListedProjectDetails = async (address) => {
     pauseContract,
     unpauseContract,
     addVVB,
+    getRetirementCertificates,
     removeVVB,
     updateRegistryAddress,
     approveRUSD,

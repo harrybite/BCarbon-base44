@@ -1,8 +1,13 @@
 export const RUSD = "0x604756016db44ad0a38d2787B8e2E3563b03Ab4e"; // Replace with actual RUSD contract address
-export const GOVERNANCE_ADDRESS = '0x6659de62a37fa5b6D94Cf25d1e47145A688ed3B6';
-export const projectData = "0xAB5621cd71F6eE1ef4B95cc337Cd78C064589556"
-export const projectManager = "0xdf4160490651308A5f9149aA1F21776b853D9291";
-export const projectFactory = "0x2f5508e3EafEe83afC7dd3AE46BE4d34565dD78c";
+export const GOVERNANCE_ADDRESS = '0x44A94635802288aec7264e65BE14D598A9f5B317';
+export const projectData = "0x3FE0598081edE8a83B2d883F815DCbbB2d4dAaCC"
+export const projectManager = "0x8747951F30185A5F285dcB504F7f61063A498CBF";
+export const projectFactory = "0x8B4C1188A6384201418512AdbD3C0F860Ce04321";
+
+export const chainInfo = {
+  id: 7862,
+rpc: "https://node1-mainnet-new.maalscan.io",
+}
 
 
 export const methodology = [
