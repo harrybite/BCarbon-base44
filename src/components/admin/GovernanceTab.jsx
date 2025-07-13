@@ -1,10 +1,13 @@
 /* eslint-disable no-unused-vars */
 import { useState, useEffect } from 'react';
-import {useContractInteraction} from '../contract/ContractInteraction';
+import { useContractInteraction } from '../contract/ContractInteraction';
+import { useToast } from '../ui/use-toast';
+import { t } from 'framer-motion/dist/types.d-D0HXPxHm';
 
 const GovernanceTab = () => {
   const { userAddress, pauseContract, unpauseContract, addVVB, removeVVB, updateRegistryAddress, checkIsOwner } = useContractInteraction();
   const [isOwner, setIsOwner] = useState(false);
+  const { toast } = useToast();
 
   useEffect(() => {
     const checkOwner = async () => {
@@ -15,13 +18,22 @@ const GovernanceTab = () => {
 
   const handlePause = async () => {
     try {
-      const { hash } = await pauseContract();
-      await fetch('http://localhost:3001/api/transaction', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ transactionHash: hash, userAddress })
-      });
-      alert(`Contract paused! Transaction: ${hash}`);
+      const tx = await pauseContract();
+      const receipt = await tx.wait();
+      if (receipt.status === 1) {
+        toast({
+          title: "Contract Paused",
+          description: `Transaction successful!`,
+          variant: "success",
+        });
+
+      } else {
+        toast({
+          title: "Transaction Failed",
+          description: "The transaction was not successful.",
+          variant: "destructive",
+        });
+      }
     } catch (error) {
       alert(`Pause failed: ${error.message}`);
     }
@@ -32,9 +44,17 @@ const GovernanceTab = () => {
       const tx = await unpauseContract();
       const receipt = await tx.wait();
       if (receipt.status === 1) {
-        alert(`Contract unpaused! Transaction: ${tx.hash}`);
+        toast({
+          title: "Contract Unpaused",
+          description: `Transaction successful!`,
+          variant: "success",
+        });
       } else {
-        alert(`Transaction failed!`);
+        toast({
+          title: "Transaction Failed",
+          description: "The transaction was not successful.",
+          variant: "destructive",
+        });
       }
     } catch (error) {
       alert(`Unpause failed: ${error.message}`);
@@ -48,9 +68,18 @@ const GovernanceTab = () => {
         const tx = await addVVB(vvbAddress);
         const receipt = await tx.wait();
         if (receipt.status === 1) {
-          alert(`VVB added! Transaction: ${tx.hash}`);
+          toast({
+            title: "VVB Added",
+            description: `VVB added successfully`,
+            variant: "success",
+          });
         } else {
-          alert(`Transaction failed!`); 
+          // alert(`Transaction failed!`);
+          toast({
+            title: "Transaction Failed",
+            description: "The transaction was not successful.",
+            variant: "destructive",
+          });
         }
       } catch (error) {
         alert(`Add VVB failed: ${error.message}`);
@@ -65,9 +94,19 @@ const GovernanceTab = () => {
         const tx = await removeVVB(vvbAddress);
         const receipt = await tx.wait();
         if (receipt.status === 1) {
-          alert(`VVB removed! Transaction: ${tx.hash}`);
+          // alert(`VVB removed! Transaction: ${tx.hash}`);
+          toast({
+            title: "VVB Removed",
+            description: `VVB removed successfully`,
+            variant: "success",
+          });
         } else {
-          alert(`Transaction failed!`);
+          // alert(`Transaction failed!`);
+          toast({
+            title: "Transaction Failed",
+            description: "The transaction was not successful.",
+            variant: "destructive",
+          });
         }
       } catch (error) {
         alert(`Remove VVB failed: ${error.message}`);
@@ -81,7 +120,7 @@ const GovernanceTab = () => {
       try {
         const tx = await updateRegistryAddress(newRegistryAddress);
         const receipt = await tx.wait();
-        if (receipt.status === 1) { 
+        if (receipt.status === 1) {
           alert(`Registry address updated! Transaction: ${tx.hash}`);
         } else {
           alert(`Transaction failed!`);

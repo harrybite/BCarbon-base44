@@ -5,9 +5,11 @@ import ReactDatePicker from "react-datepicker";
 import "react-datepicker/dist/react-datepicker.css";
 import { useContractInteraction } from '../contract/ContractInteraction';
 import { methodology } from '../contract/address';
+import { useToast } from '../ui/use-toast';
 
 const CreateProjectTab = () => {
   const { userAddress, createAndListProject } = useContractInteraction();
+  const { toast } = useToast();
   const [formData, setFormData] = useState({
     mintPrice: '',
     treasury: '',
@@ -99,9 +101,19 @@ const CreateProjectTab = () => {
       const tx = await createAndListProject(preparedData);
       const receipt = await tx.wait();
       if (receipt.status === 1) {
-        alert(`Project created successfully! Transaction: ${tx.hash}`);
+        // alert(`Project created successfully! Transaction: ${tx.hash}`);
+        toast({
+          title: "Project Created",
+          description: `Project created successfully`,
+          variant: "success",
+        });
       } else {
-        alert(`Transaction failed!`);
+        // alert(`Transaction failed!`);
+        toast({
+          title: "Transaction Failed",
+          description: "The transaction was not successful.",
+          variant: "destructive",
+        });
       }
     } catch (error) {
       console.error('Project creation failed:', error);

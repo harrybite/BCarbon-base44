@@ -2,6 +2,7 @@
 import { useState, useEffect } from 'react';
 import { useContractInteraction } from '../contract/ContractInteraction';
 import ProjectCard from '../projects/ProjectCard';
+import { useToast } from '../ui/use-toast';
 
 const ProjectApproval = () => {
   const { userAddress, approveAndIssueCredits,
@@ -15,8 +16,10 @@ const ProjectApproval = () => {
   const [update, setUpdate] = useState(0);
 
   const [showApproveModal, setShowApproveModal] = useState(false);
-const [approveProjectAddress, setApproveProjectAddress] = useState(null);
-const [creditAmount, setCreditAmount] = useState('');
+  const [approveProjectAddress, setApproveProjectAddress] = useState(null);
+  const [creditAmount, setCreditAmount] = useState('');
+
+  const { toast } = useToast();
 
   useEffect(() => {
     const fetchProjects = async () => {
@@ -42,7 +45,12 @@ const [creditAmount, setCreditAmount] = useState('');
     const emissionReductions = Number(project?.emissionReductions ?? 0);
 
     if (Number(creditAmount) > Number(emissionReductions)) {
-      alert("Credit amount must be less than emission reductions.");
+      // alert("Credit amount must be less than emission reductions.");
+      toast({
+        title: "Credit amount error",
+        description: "Credit amount must be less than emission reductions.",
+        variant: "destructive",
+      });
       return;
     }
 
@@ -50,7 +58,12 @@ const [creditAmount, setCreditAmount] = useState('');
       const tx = await approveAndIssueCredits(projectAddress, creditAmount);
       const receipt = await tx.wait();
       if (receipt.status === 1) {
-        alert(`Project Approved! Transaction: ${tx.hash}`);
+        // alert(`Project Approved! Transaction: ${tx.hash}`);
+        toast({
+          title: "Project Approved",
+          description: `Transaction: ${tx.hash}`,
+          variant: "success",
+        });
         setUpdate(update + 1); // Trigger re-fetch of projects
       } else {
         alert(`Transaction failed!`);
@@ -66,7 +79,12 @@ const [creditAmount, setCreditAmount] = useState('');
       const tx = await rejectAndRemoveProject(projectAddress);
       const receipt = await tx.wait();
       if (receipt.status === 1) {
-        alert(`Project rejected! Transaction: ${tx.hash}`);
+        // alert(`Project rejected! Transaction: ${tx.hash}`);
+        toast({
+          title: "Project Rejected",
+          description: `Transaction: ${tx.hash}`,
+          variant: "destructive",
+        });
         setUpdate(update + 1); // Trigger re-fetch of projects
       } else {
         alert(`Transaction failed!`);
@@ -74,7 +92,12 @@ const [creditAmount, setCreditAmount] = useState('');
 
     } catch (error) {
       console.error('Rejection failed:', error);
-      alert(`Rejection failed: ${error.message}`);
+      // alert(`Rejection failed: ${error.message}`);
+      toast({
+        title: "Rejection Failed",
+        description: error.message,
+        variant: "destructive",
+      });
     }
   };
 
@@ -83,14 +106,24 @@ const [creditAmount, setCreditAmount] = useState('');
       const tx = await validateProject(projectAddress);
       const receipt = await tx.wait();
       if (receipt.status === 1) {
-        alert(`Project validated! Transaction: ${tx.hash}`);
+        // alert(`Project validated! Transaction: ${tx.hash}`);
+        toast({
+          title: "Project Validated",
+          description: `Transaction: ${tx.hash}`,
+          variant: "success",
+        });
         setUpdate(update + 1); // Trigger re-fetch of projects
       } else {
         alert(`Transaction failed!`);
       }
     } catch (error) {
       console.error('Validation failed:', error);
-      alert(`Validation failed: ${error.message}`);
+      // alert(`Validation failed: ${error.message}`);
+      toast({
+        title: "Validation Failed",
+        description: error.message,
+        variant: "destructive",
+      });
     }
   };
 
@@ -99,14 +132,29 @@ const [creditAmount, setCreditAmount] = useState('');
       const tx = await verifyProject(projectAddress);
       const receipt = await tx.wait();
       if (receipt.status === 1) {
-        alert(`Project verified! Transaction: ${tx.hash}`);
+        // alert(`Project verified! Transaction: ${tx.hash}`);
+        toast({
+          title: "Project Verified",
+          description: `Transaction: ${tx.hash}`,
+          variant: "success",
+        });
         setUpdate(update + 1); // Trigger re-fetch of projects
       } else {
-        alert(`Transaction failed!`);
+        // alert(`Transaction failed!`);
+        toast({
+          title: "Transaction Failed",
+          description: `Transaction: ${tx.hash}`,
+          variant: "destructive",
+        });
       }
     } catch (error) {
       console.error('Verification failed:', error);
-      alert(`Verification failed: ${error.message}`);
+      // alert(`Verification failed: ${error.message}`);
+      toast({
+        title: "Verification Failed",
+        description: error.message,
+        variant: "destructive",
+      });
     }
   };
 
@@ -124,20 +172,20 @@ const [creditAmount, setCreditAmount] = useState('');
                 <div className="mt-2">
                   {isOwner && (
                     <>
-                     <button
-  onClick={() => {
-    setApproveProjectAddress(projectAddress.projectContract);
-    setShowApproveModal(true);
-    setCreditAmount('');
-  }}
-  className={`${projectAddress.isValidated && projectAddress.isVerified
-    ? "bg-green-500 hover:bg-green-600"
-    : "bg-gray-400 cursor-not-allowed"
-    } text-white px-4 py-2 rounded mr-2`}
-  disabled={!projectAddress.isValidated || !projectAddress.isVerified}
->
-  Approve & Issue Credits
-</button>
+                      <button
+                        onClick={() => {
+                          setApproveProjectAddress(projectAddress.projectContract);
+                          setShowApproveModal(true);
+                          setCreditAmount('');
+                        }}
+                        className={`${projectAddress.isValidated && projectAddress.isVerified
+                          ? "bg-green-500 hover:bg-green-600"
+                          : "bg-gray-400 cursor-not-allowed"
+                          } text-white px-4 py-2 rounded mr-2`}
+                        disabled={!projectAddress.isValidated || !projectAddress.isVerified}
+                      >
+                        Approve & Issue Credits
+                      </button>
                       <button
                         onClick={() => handleReject(projectAddress.projectContract)}
                         className="bg-red-500 hover:bg-red-600 text-white px-4 py-2 rounded mr-2"
@@ -191,40 +239,40 @@ const [creditAmount, setCreditAmount] = useState('');
       )}
 
       {showApproveModal && (
-  <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-40">
-    <div className="bg-white rounded-lg p-6 w-full max-w-sm shadow-lg">
-      <h2 className="text-xl font-bold mb-4">Enter Credit Amount</h2>
-      <input
-        type="number"
-        min="0"
-        className="w-full border rounded px-2 py-1 mb-4"
-        placeholder="Credit Amount"
-        value={creditAmount}
-        onChange={e => setCreditAmount(e.target.value)}
-      />
-      <div className="flex justify-end space-x-2">
-        <button
-          className="bg-gray-300 text-gray-800 px-4 py-2 rounded"
-          onClick={() => setShowApproveModal(false)}
-        >
-          Cancel
-        </button>
-        <button
-          className="bg-green-600 text-white px-4 py-2 rounded"
-          onClick={() => {
-            handleApprove(approveProjectAddress, creditAmount);
-            setShowApproveModal(false);
-          }}
-          disabled={!creditAmount}
-        >
-          Submit
-        </button>
-      </div>
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-40">
+          <div className="bg-white rounded-lg p-6 w-full max-w-sm shadow-lg">
+            <h2 className="text-xl font-bold mb-4">Enter Credit Amount</h2>
+            <input
+              type="number"
+              min="0"
+              className="w-full border rounded px-2 py-1 mb-4"
+              placeholder="Credit Amount"
+              value={creditAmount}
+              onChange={e => setCreditAmount(e.target.value)}
+            />
+            <div className="flex justify-end space-x-2">
+              <button
+                className="bg-gray-300 text-gray-800 px-4 py-2 rounded"
+                onClick={() => setShowApproveModal(false)}
+              >
+                Cancel
+              </button>
+              <button
+                className="bg-green-600 text-white px-4 py-2 rounded"
+                onClick={() => {
+                  handleApprove(approveProjectAddress, creditAmount);
+                  setShowApproveModal(false);
+                }}
+                disabled={!creditAmount}
+              >
+                Submit
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
-  </div>
-)}
-    </div>
-    
+
   );
 };
 
