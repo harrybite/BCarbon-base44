@@ -2,7 +2,7 @@
 import { useState, useEffect } from 'react';
 import { useContractInteraction } from '../contract/ContractInteraction';
 import { useToast } from '../ui/use-toast';
-import { t } from 'framer-motion/dist/types.d-D0HXPxHm';
+// import { t } from 'framer-motion/dist/types.d-D0HXPxHm';
 
 const GovernanceTab = () => {
   const { userAddress, pauseContract, unpauseContract, addVVB, removeVVB, updateRegistryAddress, checkIsOwner } = useContractInteraction();

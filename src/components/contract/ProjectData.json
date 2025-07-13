@@ -226,32 +226,37 @@
 		"inputs": [
 			{
 				"internalType": "address",
-				"name": "projectContract",
+				"name": "_projectContract",
 				"type": "address"
 			},
 			{
 				"internalType": "uint8",
-				"name": "methodologyIndex",
+				"name": "_methodologyIndex",
 				"type": "uint8"
 			},
 			{
 				"internalType": "uint256",
-				"name": "emissionReductions",
+				"name": "_emissionReductions",
 				"type": "uint256"
 			},
 			{
 				"internalType": "string",
-				"name": "projectDetails",
+				"name": "_projectDetails",
 				"type": "string"
 			},
 			{
 				"internalType": "address",
-				"name": "proposer",
+				"name": "_proposer",
 				"type": "address"
 			},
 			{
 				"internalType": "uint256",
-				"name": "commentPeriod",
+				"name": "_vintageTimestamp",
+				"type": "uint256"
+			},
+			{
+				"internalType": "uint256",
+				"name": "_commentPeriod",
 				"type": "uint256"
 			},
 			{
@@ -448,7 +453,13 @@
 		"type": "function"
 	},
 	{
-		"inputs": [],
+		"inputs": [
+			{
+				"internalType": "address",
+				"name": "projectContract",
+				"type": "address"
+			}
+		],
 		"name": "getNextBaseCertificateId",
 		"outputs": [
 			{
@@ -568,6 +579,11 @@
 					},
 					{
 						"internalType": "uint256",
+						"name": "vintageTimestamp",
+						"type": "uint256"
+					},
+					{
+						"internalType": "uint256",
 						"name": "commentPeriodEnd",
 						"type": "uint256"
 					},
@@ -601,11 +617,6 @@
 					{
 						"internalType": "bool",
 						"name": "isVerified",
-						"type": "bool"
-					},
-					{
-						"internalType": "bool",
-						"name": "creditsIssued",
 						"type": "bool"
 					}
 				],
@@ -797,6 +808,11 @@
 			},
 			{
 				"internalType": "uint256",
+				"name": "vintageTimestamp",
+				"type": "uint256"
+			},
+			{
+				"internalType": "uint256",
 				"name": "commentPeriodEnd",
 				"type": "uint256"
 			},
@@ -813,11 +829,6 @@
 			{
 				"internalType": "bool",
 				"name": "isVerified",
-				"type": "bool"
-			},
-			{
-				"internalType": "bool",
-				"name": "creditsIssued",
 				"type": "bool"
 			}
 		],
