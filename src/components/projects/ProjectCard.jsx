@@ -5,10 +5,10 @@ import { useContractInteraction } from '../contract/ContractInteraction';
 import { useParams } from 'react-router-dom';
 import { Link } from 'react-router-dom';
 import { methodology } from '../contract/address';
+import { useToast } from '../ui/use-toast';
 
 // eslint-disable-next-line react/prop-types
 const ProjectCard = ({ project }) => {
-  console.log('ProjectCard project address:', project);
   const { userAddress, checkAuthorizedVVB,
     checkIsProjectOwner,
     checkIsOwner,
@@ -33,6 +33,7 @@ const ProjectCard = ({ project }) => {
   const [comment, setComment] = useState('');
   const [isOwner, setIsOwner] = useState(false);
   const [reloadData, setReloadData] = useState(0);
+  const { toster } = useToast();
 
   useEffect(() => {
     const fetchDetails = async () => {
@@ -57,7 +58,12 @@ const ProjectCard = ({ project }) => {
       const tx = await submitComment(details.projectContract, comment);
       const receipt = await tx.wait();
       if (receipt.status === 1) {
-        alert('Comment submitted successfully!');
+        // alert('Comment submitted successfully!');
+        toster({
+          title: "Comment Submitted",
+          description: `Transaction successful!`,
+          variant: "success",
+        });
         setComment(''); // Clear the textarea
         setReloadData(reloadData + 1); // Trigger a reload to fetch new comments
         // Optionally, refresh comments here
@@ -179,22 +185,7 @@ return (
 
     {/* Buttons */}
     <div className="flex mt-4 space-x-2">
-      {/* {details.isApproved && (
-        <button
-          onClick={handleMint}
-          className="bg-green-500 hover:bg-green-600 text-white px-4 py-2 rounded"
-        >
-          Mint Credits
-        </button>
-      )} */}
-      {/* {!details.isApproved && isOwner && (
-        <button
-          onClick={handleReject}
-          className="bg-red-500 hover:bg-red-600 text-white px-4 py-2 rounded"
-        >
-          Reject Project
-        </button>
-      )} */}
+
     </div>
 
     {/* Improved comment section */}
