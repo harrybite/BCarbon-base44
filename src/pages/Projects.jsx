@@ -7,6 +7,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import ProjectCard from "../components/projects/ProjectCard";
 import ProjectStats from "../components/projects/ProjectStats";
 import { useContractInteraction } from "@/components/contract/ContractInteraction";
+import { useConnectWallet } from "@/context/walletcontext";
 
 export default function Projects() {
   const [projects, setProjects] = useState([]);
@@ -15,15 +16,16 @@ export default function Projects() {
   const [searchTerm, setSearchTerm] = useState();
   const [statusFilter, setStatusFilter] = useState("all");
 
-    const {userAddress, getListedProjects } = useContractInteraction();
+    const { getListedProjects, isContractsInitised } = useContractInteraction();
+    const { walletAddress } = useConnectWallet();
 
   useEffect(() => {
     loadProjects();
-  }, [userAddress]);
+  }, [walletAddress, isContractsInitised]);
 
   useEffect(() => {
     filterProjects();
-  }, [projects, searchTerm, statusFilter, userAddress]);
+  }, [projects, searchTerm, statusFilter, walletAddress, isContractsInitised]);
 
   const loadProjects = async () => {
     setIsLoading(true);

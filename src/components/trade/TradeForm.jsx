@@ -1,24 +1,41 @@
+/* eslint-disable no-unused-vars */
+/* eslint-disable react/prop-types */
 import React from "react";
+import { ethers, formatUnits } from 'ethers';
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { Link } from "react-router-dom";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { ArrowRight, AlertCircle, CheckCircle2 } from "lucide-react";
 import { useMarketplaceInteraction } from '@/components/contract/MarketplaceInteraction';
+import { useConnectWallet } from "@/context/walletcontext";
+import { useToast } from "../ui/use-toast";
 
-export default function TradeForm({ projects, onTrade, isLoading }) {
-  const { userAddress, getListings, purchase } = useMarketplaceInteraction();
+export default function TradeForm() {
+  const { marketplaceContract, getListings, purchase, getRUSDBalance } = useMarketplaceInteraction();
+   const { walletAddress } = useConnectWallet();
   const [listings, setListings] = React.useState([]);
-  const [cardStates, setCardStates] = React.useState({}); // Tracks quantity, isSubmitting, error, success per listing
+  const [cardStates, setCardStates] = React.useState({});
+  const [update, setUpdate] = React.useState(0)
+  const [isLoading, setIsLoading] = React.useState(true);
+  const [rusdBalance, setRUSDBalance] = React.useState('0');
 
-  // Fetch listings on mount
+  const {toast} = useToast()
+
   React.useEffect(() => {
     const fetchListings = async () => {
+       setIsLoading(true)
       try {
+        const rusdBalance = await getRUSDBalance(walletAddress);
+        setRUSDBalance(rusdBalance);
         const fetchedListings = await getListings();
-        setListings(fetchedListings.filter(listing => listing.active));
-        // Initialize card states
+        console.log("Fetched Listings:", fetchedListings);
+       
+        const activeListings = fetchedListings.filter(listing => listing.active);
+        setListings(activeListings);
+
         const initialStates = {};
         fetchedListings.forEach(listing => {
           initialStates[listing.listingId] = {
@@ -31,19 +48,23 @@ export default function TradeForm({ projects, onTrade, isLoading }) {
         });
         setCardStates(initialStates);
       } catch (err) {
+        console.error("Failed to fetch listings:", err);
         setCardStates(prev => {
           const newStates = { ...prev };
           Object.keys(newStates).forEach(id => {
-            newStates[id].error = "Failed to fetch listings";
+            newStates[id].error = "Failed to fetch listings: " + (err.message || "Unknown error");
           });
           return newStates;
         });
       }
+      finally{
+         setIsLoading(false)
+      }
     };
-    if (!isLoading) {
+    if (walletAddress && marketplaceContract) {
       fetchListings();
     }
-  }, [getListings, isLoading]);
+  }, [ walletAddress, marketplaceContract, update]);
 
   const handleInputChange = (listingId, value) => {
     setCardStates(prev => ({
@@ -57,13 +78,15 @@ export default function TradeForm({ projects, onTrade, isLoading }) {
     }));
   };
 
+
   const toggleInput = (listingId) => {
+    const listing = listings.find(l => l.listingId === listingId);
     setCardStates(prev => ({
       ...prev,
       [listingId]: {
         ...prev[listingId],
         showInput: !prev[listingId].showInput,
-        quantity: "",
+        quantity: listing?.quantity || "",
         error: "",
         success: ""
       }
@@ -106,6 +129,14 @@ export default function TradeForm({ projects, onTrade, isLoading }) {
       }));
       return;
     }
+  
+    if( Number(rusdBalance) < (Number(listing.pricePerUnit) * quantity)) {
+      toast({
+        title: "Insufficient RUSD Balance",
+        description: `You need at least ${Number(listing.pricePerUnit) * quantity} RUSD to purchase this listing.`,
+        variant: "destructive",
+      })
+    }
 
     setCardStates(prev => ({
       ...prev,
@@ -119,11 +150,7 @@ export default function TradeForm({ projects, onTrade, isLoading }) {
 
     try {
       const { hash } = await purchase(listingId, quantity);
-      await fetch('http://localhost:3001/api/transaction', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ transactionHash: hash, listingId, userAddress })
-      });
+
       setCardStates(prev => ({
         ...prev,
         [listingId]: {
@@ -134,26 +161,26 @@ export default function TradeForm({ projects, onTrade, isLoading }) {
           showInput: false
         }
       }));
-      // Refresh listings
-      const updatedListings = await getListings();
-      setListings(updatedListings.filter(listing => listing.active));
-      await onTrade({ listingId, userAddress, transactionHash: hash });
+      toast({
+        title: "Purchase Successful",
+        description: `Token purchased successfully`,
+        variant: "success",
+      });
+      setUpdate(update + 1)
+   
     } catch (error) {
+      console.error("Purchase error:", error);
       setCardStates(prev => ({
         ...prev,
         [listingId]: {
           ...prev[listingId],
           isSubmitting: false,
-          error: error.message || "Failed to execute purchase"
+          error: "Failed to execute purchase"
         }
       }));
     }
   };
 
-  const getProjectName = (tokenContract) => {
-    const project = projects.find(p => p.projectAddress.toLowerCase() === tokenContract.toLowerCase());
-    return project ? project.metadata?.name : "Unknown Project";
-  };
 
   return (
     <Card className="w-full">
@@ -166,7 +193,7 @@ export default function TradeForm({ projects, onTrade, isLoading }) {
           Buy non-retired carbon credit NFTs (tCO2) from listed projects
         </p>
       </CardHeader>
-      
+
       <CardContent className="space-y-6">
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
           {isLoading ? (
@@ -192,14 +219,25 @@ export default function TradeForm({ projects, onTrade, isLoading }) {
             listings.map((listing) => (
               <Card key={listing.listingId} className="flex flex-col">
                 <CardHeader>
-                  <CardTitle className="text-lg">{getProjectName(listing.tokenContract)}</CardTitle>
+                  <div className="w-full bg-black flex items-center justify-center" style={{ height: "auto" }}>
+                    <img
+                      src={listing.image}
+                      alt={listing.metadata || "NFT"}
+                      className="object-contain h-full w-full"
+                    />
+                  </div>
+                  <Link to={`/ProjectDetails/${listing.tokenContract}`}>
+                    <CardTitle className="text-lg">
+                      {`${listing.tokenContract.slice(0, 6)}...${listing.tokenContract.slice(-4)}`}
+                    </CardTitle>
+                  </Link>
                 </CardHeader>
                 <CardContent className="flex-grow">
                   <div className="space-y-2">
                     <p><strong>Token ID:</strong> {listing.tokenId}</p>
                     <p><strong>Quantity (tCO2):</strong> {listing.quantity}</p>
-                    <p><strong>Price per Unit (RUSD):</strong> {parseFloat(listing.pricePerUnit).toFixed(6)}</p>
-                    <p><strong>Total Price (RUSD):</strong> {(listing.pricePerUnit * listing.quantity).toFixed(6)}</p>
+                    <p><strong>Price per Unit (RUSD):</strong> {listing.pricePerUnit}</p>
+                    <p><strong>Total Price (RUSD):</strong> {listing.pricePerUnit}</p>
                   </div>
                   {cardStates[listing.listingId]?.error && (
                     <Alert variant="destructive" className="mt-4">
@@ -225,6 +263,9 @@ export default function TradeForm({ projects, onTrade, isLoading }) {
                         value={cardStates[listing.listingId].quantity}
                         onChange={(e) => handleInputChange(listing.listingId, e.target.value)}
                       />
+                      <p className="text-xs text-gray-500">
+                        Your RUSD Balance: {rusdBalance}
+                      </p>
                       <div className="flex space-x-2">
                         <Button
                           className="w-full bg-green-600 hover:bg-green-700"

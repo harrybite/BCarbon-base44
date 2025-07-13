@@ -6,7 +6,7 @@ import { Card, CardHeader, CardTitle, CardContent } from '../ui/card';
 
 
 const GovernanceTab = () => {
-  const { userAddress, pauseContract, unpauseContract, addVVB, removeVVB, updateRegistryAddress, checkIsOwner } = useContractInteraction();
+  const { pauseContract, unpauseContract, addVVB, removeVVB, isContractsInitised, checkIsOwner } = useContractInteraction();
   const [isOwner, setIsOwner] = useState(false);
   const [addVVBAddress, setAddVVBAddress] = useState("");
   const [removeVVBAddress, setRemoveVVBAddress] = useState("");
@@ -18,7 +18,7 @@ const GovernanceTab = () => {
       setIsOwner(ownerStatus);
     };
     checkOwner();
-  }, [checkIsOwner]);
+  }, [isContractsInitised]);
 
   const handlePause = async () => {
     try {

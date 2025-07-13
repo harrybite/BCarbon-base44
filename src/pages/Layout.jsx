@@ -19,6 +19,8 @@ import {
 import { Button } from "@/components/ui/button";
 import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
 import { Badge } from "@/components/ui/badge";
+import { useContractInteraction } from "@/components/contract/ContractInteraction";
+import { useConnectWallet } from "@/context/walletcontext";
 
 const navigationItems = [
   {
@@ -39,12 +41,12 @@ const navigationItems = [
     icon: TrendingUp,
     description: "Trade carbon credits"
   },
-  {
-    title: "Validate",
-    url: createPageUrl("ValidateCertificate"),
-    icon: BadgeCheck,
-    description: "Validate BCO₂ Retirement Certificates on chain"
-  },
+  // {
+  //   title: "Validate",
+  //   url: createPageUrl("ValidateCertificate"),
+  //   icon: BadgeCheck,
+  //   description: "Validate BCO₂ Retirement Certificates on chain"
+  // },
   {
     title: "My Account",
     url: createPageUrl("MyAccount"),
@@ -64,16 +66,23 @@ export default function Layout({ children, currentPageName }) {
   const location = useLocation();
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [walletConnected, setWalletConnected] = useState(false);
-  const [walletAddress, setWalletAddress] = useState("");
+  const { ConnectWallet, walletAddress, setWalletAddress } = useConnectWallet();
+  const { initializeProvider } = useContractInteraction();
 
   useEffect(() => {
     const checkWallet = async () => {
       if (window.ethereum) {
         try {
-          const accounts = await window.ethereum.request({ method: "eth_accounts" });
-          if (accounts.length > 0) {
-            setWalletConnected(true);
-            setWalletAddress(accounts[0]);
+          initializeProvider();
+          if (typeof window !== "undefined" && window?.ethereum) {
+            try {
+              const accounts = await window.ethereum.request({ method: "eth_accounts" });
+              if (accounts.length > 0) {
+                setWalletAddress(accounts[0]);
+              }
+            } catch (err) {
+              console.error("Wallet check failed:", err);
+            }
           }
         } catch (err) {
           console.error("Error checking wallet:", err);
@@ -83,17 +92,19 @@ export default function Layout({ children, currentPageName }) {
     checkWallet();
   }, []);
 
-  const connectWallet = async () => {
-    if (window.ethereum) {
-      try {
-        const accounts = await window.ethereum.request({ method: "eth_requestAccounts" });
-        setWalletConnected(true);
-        setWalletAddress(accounts[0]);
-      } catch (err) {
-        console.error("Error connecting wallet:", err);
-      }
-    }
-  };
+
+
+  // const connectWallet = async () => {
+  //   if (window.ethereum) {
+  //     try {
+  //       const accounts = await window.ethereum.request({ method: "eth_requestAccounts" });
+  //       setWalletConnected(true);
+  //       setWalletAddress(accounts[0]);
+  //     } catch (err) {
+  //       console.error("Error connecting wallet:", err);
+  //     }
+  //   }
+  // };
 
   const disconnectWallet = () => {
     setWalletConnected(false);
@@ -138,11 +149,10 @@ export default function Layout({ children, currentPageName }) {
                 <Link
                   key={title}
                   to={url}
-                  className={`flex items-center space-x-2 px-4 py-2 rounded-lg transition-all duration-200 ${
-                    location.pathname === url
+                  className={`flex items-center space-x-2 px-4 py-2 rounded-lg transition-all duration-200 ${location.pathname === url
                       ? "bg-green-100 text-green-700 shadow-sm"
                       : "text-gray-600 hover:bg-gray-50 hover:text-gray-900"
-                  }`}
+                    }`}
                 >
                   <Icon className="w-4 h-4" />
                   <span className="font-medium">{title}</span>
@@ -152,12 +162,12 @@ export default function Layout({ children, currentPageName }) {
 
             {/* Wallet */}
             <div className="flex items-center space-x-4">
-              {walletConnected ? (
+              {walletAddress ? (
                 <>
-                  <Badge className="bg-green-100 text-green-700 border-green-200">
+                  {/* <Badge className="bg-green-100 text-green-700 border-green-200">
                     <div className="w-2 h-2 bg-green-500 rounded-full mr-2"></div>
                     Connected
-                  </Badge>
+                  </Badge> */}
                   <Button
                     variant="outline"
                     onClick={disconnectWallet}
@@ -169,7 +179,7 @@ export default function Layout({ children, currentPageName }) {
                 </>
               ) : (
                 <Button
-                  onClick={connectWallet}
+                  onClick={()=>ConnectWallet()}
                   className="bg-green-600 hover:bg-green-700 text-white shadow-lg"
                 >
                   <Wallet className="w-4 h-4 mr-2" />
@@ -191,11 +201,10 @@ export default function Layout({ children, currentPageName }) {
                         key={title}
                         to={url}
                         onClick={() => setMobileMenuOpen(false)}
-                        className={`flex items-center justify-between p-4 rounded-lg transition-all duration-200 ${
-                          location.pathname === url
+                        className={`flex items-center justify-between p-4 rounded-lg transition-all duration-200 ${location.pathname === url
                             ? "bg-green-100 text-green-700"
                             : "text-gray-600 hover:bg-gray-50"
-                        }`}
+                          }`}
                       >
                         <div className="flex items-center space-x-3">
                           <Icon className="w-5 h-5" />

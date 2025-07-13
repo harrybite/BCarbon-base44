@@ -1,28 +1,17 @@
+/* eslint-disable no-unused-vars */
 import { useEffect, useState } from "react";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { User, Briefcase, ShoppingBag } from "lucide-react";
+import { User, Briefcase, ShoppingBag, BadgeCheck } from "lucide-react";
 import IssuerTab from "../components/account/IssuerTab";
 import BuyerTab from "../components/account/BuyerTab";
 import WalletConnection from "../components/wallet/WalletConnection";
+import { useConnectWallet } from "@/context/walletcontext";
+import CertificatesTab from "@/components/account/CertificateTab";
 
 export default function MyAccount() {
-  const [walletAddress, setWalletAddress] = useState(null);
 
-  useEffect(() => {
-    const checkWallet = async () => {
-      if (typeof window !== "undefined" && window.ethereum) {
-        try {
-          const accounts = await window.ethereum.request({ method: "eth_accounts" });
-          if (accounts.length > 0) {
-            setWalletAddress(accounts[0]);
-          }
-        } catch (err) {
-          console.error("Wallet check failed:", err);
-        }
-      }
-    };
-    checkWallet();
-  }, []);
+  const { walletAddress } = useConnectWallet();
+
 
   if (!walletAddress) {
     return (
@@ -50,16 +39,20 @@ export default function MyAccount() {
 
         {/* Tab View */}
         <Tabs defaultValue="issuer" className="space-y-6">
-          <TabsList className="grid w-full grid-cols-2">
-            <TabsTrigger value="issuer" className="flex items-center space-x-2">
-              <Briefcase className="w-4 h-4" />
-              <span>Project Owned</span>
-            </TabsTrigger>
-            <TabsTrigger value="buyer" className="flex items-center space-x-2">
-              <ShoppingBag className="w-4 h-4" />
-              <span>My tCO<sub>2</sub> Holdings</span>
-            </TabsTrigger>
-          </TabsList>
+         <TabsList className="grid w-full grid-cols-3">
+        <TabsTrigger value="issuer" className="flex items-center space-x-2">
+          <Briefcase className="w-4 h-4" />
+          <span>Project Owned</span>
+        </TabsTrigger>
+        <TabsTrigger value="buyer" className="flex items-center space-x-2">
+          <ShoppingBag className="w-4 h-4" />
+          <span>My tCO<sub>2</sub> Holdings</span>
+        </TabsTrigger>
+        <TabsTrigger value="certificate" className="flex items-center space-x-2">
+          <BadgeCheck className="w-4 h-4" />
+          <span> Certificates</span>
+        </TabsTrigger>
+      </TabsList>
 
           <TabsContent value="issuer">
             <IssuerTab walletAddress={walletAddress} />
@@ -67,6 +60,10 @@ export default function MyAccount() {
           <TabsContent value="buyer">
             <BuyerTab walletAddress={walletAddress} />
           </TabsContent>
+          <TabsContent value="certificate">
+            <CertificatesTab  />
+          </TabsContent>
+          
         </Tabs>
       </div>
     </div>

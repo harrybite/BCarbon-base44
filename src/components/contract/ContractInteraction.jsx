@@ -1,3 +1,4 @@
+/* eslint-disable react-refresh/only-export-components */
 /* eslint-disable no-unused-vars */
 import { useState, useEffect } from 'react';
 import { BrowserProvider, Contract, decodeBytes32String, formatEther, JsonRpcProvider, parseEther, toBigInt } from 'ethers';
@@ -9,12 +10,12 @@ import projectDataabi from './ProjectData.json';
 import bco2Abi from './BCO2.json';
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { AlertCircle } from "lucide-react";
-import { GOVERNANCE_ADDRESS, projectData, projectFactory, projectManager, RUSD } from './address';
-import { User } from 'lucide-react';
+import { chainInfo, GOVERNANCE_ADDRESS, MARKETPLACE_ADDRESS, projectData, projectFactory, projectManager, RUSD } from './address';
+import { useConnectWallet } from '@/context/walletcontext';
 
 
 export const useContractInteraction = () => {
-  const [userAddress, setUserAddress] = useState("");
+  // const [userAddress, setUserAddress] = useState("");
   const [isConnected, setIsConnected] = useState(false);
   const [error, setError] = useState("");
   const [provider, setProvider] = useState(null);
@@ -24,10 +25,14 @@ export const useContractInteraction = () => {
   const [projectManagerContract, setProjectManagerContract] = useState(null);
   const [projectDataContract, setProjectDataContract] = useState(null);
   const [projectFactoryContract, setProjectFactoryContract] = useState(null);
+  const [isContractsInitised, setIsContractsInitised] = useState(false);
+  const { walletAddress:userAddress, setWalletAddress:setUserAddress  } = useConnectWallet();
 
+  
+
+  
   useEffect(() => {
     initializeProvider();
-
     if (window.ethereum) {
       window.ethereum.on('accountsChanged', handleAccountsChanged);
       window.ethereum.on('chainChanged', () => window.location.reload());
@@ -38,28 +43,25 @@ export const useContractInteraction = () => {
         window.ethereum.removeListener('accountsChanged', handleAccountsChanged);
       }
     };
-  }, []);
+  }, [userAddress]);
 
   const initializeProvider = async () => {
     if (typeof window !== 'undefined' && window.ethereum) {
       try {
         const web3Provider = new BrowserProvider(window.ethereum);
         const signer = await web3Provider.getSigner();
+        setProvider(web3Provider);
+        setSigner(signer);
         const governanceContract = new Contract(GOVERNANCE_ADDRESS, governanceAbi, signer);
         const ProjectManagerContract = new Contract(projectManager, projectManagerabi, signer);
         const ProjectDataContract = new Contract(projectData, projectDataabi, signer);
         const ProjectFactoryContract = new Contract(projectFactory, projectFactoryabi, signer);
+        setGovernance(governanceContract);
         setProjectManagerContract(ProjectManagerContract);
         setProjectDataContract(ProjectDataContract);
         setProjectFactoryContract(ProjectFactoryContract);
-        setProvider(web3Provider);
-        setSigner(signer);
-        setGovernance(governanceContract);
-        const accounts = await window.ethereum.request({ method: 'eth_accounts' });
-        if (accounts.length > 0) {
-          setUserAddress(accounts[0]);
-          setIsConnected(true);
-        }
+        setIsContractsInitised(governanceContract && ProjectManagerContract && ProjectDataContract && ProjectFactoryContract);
+        setIsConnected(true);
       } catch (error) {
         setError("Failed to initialize wallet connection", error);
       }
@@ -90,98 +92,67 @@ export const useContractInteraction = () => {
     }
   };
 
-  const connectWallet = async () => {
-    if (typeof window === 'undefined' || !window.ethereum) {
-      setError("MetaMask is not installed");
-      return;
+
+
+  const createAndListProject = async (projectData) => {
+    if (!isConnected || !projectFactoryContract) throw new Error("Wallet not connected or contracts not initialized");
+
+    // List of required fields
+    const requiredFields = [
+      "mintPrice",
+      "treasury",
+      "defaultIsPermanent",
+      "defaultValidity",
+      "defaultVintage",
+      "methodologyIndex",
+      "location",
+      "emissionReductions",
+      "projectDetails"
+    ];
+
+    // Check for missing fields
+    for (const field of requiredFields) {
+      if (
+        projectData[field] === undefined ||
+        projectData[field] === null ||
+        (typeof projectData[field] === "string" && projectData[field].trim() === "")
+      ) {
+        throw new Error(`Missing required parameter: ${field}`);
+      }
     }
 
     try {
-      const accounts = await window.ethereum.request({ method: 'eth_requestAccounts' });
-      if (accounts.length > 0) {
-        setUserAddress(accounts[0]);
-        setIsConnected(true);
-        setError("");
-        const web3Provider = new BrowserProvider(window.ethereum);
-        const signer = await web3Provider.getSigner();
-        setProvider(web3Provider);
-        setSigner(signer);
-        setGovernance(new Contract(GOVERNANCE_ADDRESS, governanceAbi, signer));
-        const ProjectManagerContract = new Contract(projectManager, projectManagerabi, signer);
-        const ProjectDataContract = new Contract(projectData, projectDataabi, signer);
-        const ProjectFactoryContract = new Contract(projectFactory, projectFactoryabi, signer);
-        setProjectManagerContract(ProjectManagerContract);
-        setProjectDataContract(ProjectDataContract);
-        setProjectFactoryContract(ProjectFactoryContract);
-      }
+      const {
+        mintPrice,
+        treasury,
+        defaultIsPermanent,
+        defaultValidity,
+        defaultVintage,
+        methodologyIndex,
+        location,
+        emissionReductions,
+        projectDetails,
+      } = projectData;
+
+      const mintPriceWei = parseEther(mintPrice.toString());
+
+      console.log("Creating project with data:", mintPriceWei, projectData)
+      const tx = await projectFactoryContract.createAndListProject(
+        mintPriceWei,
+        treasury,
+        defaultIsPermanent,
+        defaultValidity,
+        defaultVintage,
+        methodologyIndex,
+        location,
+        emissionReductions,
+        projectDetails
+      );
+      return tx;
     } catch (error) {
-      setError("Failed to connect wallet", error);
+      throw new Error(`Failed to create project: ${error.message}`);
     }
   };
- 
-
-const createAndListProject = async (projectData) => {
-  if (!isConnected || !projectFactoryContract) throw new Error("Wallet not connected or contracts not initialized");
-
-  // List of required fields
-  const requiredFields = [
-    "mintPrice",
-    "treasury",
-    "defaultIsPermanent",
-    "defaultValidity",
-    "defaultVintage",
-    "methodologyIndex",
-    "location",
-    "emissionReductions",
-    "projectDetails"
-  ];
-
-  // Check for missing fields
-  for (const field of requiredFields) {
-    if (
-      projectData[field] === undefined ||
-      projectData[field] === null ||
-      (typeof projectData[field] === "string" && projectData[field].trim() === "")
-    ) {
-      throw new Error(`Missing required parameter: ${field}`);
-    }
-  }
-
-  try {
-    const {
-      mintPrice,
-      treasury,
-      defaultIsPermanent,
-      defaultValidity,
-      defaultVintage,
-      methodologyIndex,
-      location,
-      emissionReductions,
-      projectDetails,
-    } = projectData;
-
-    const mintPriceWei = parseEther(mintPrice.toString());
-    const validity = BigInt(defaultValidity);
-    const vintage = BigInt(defaultVintage);
-    const methodology = Number(methodologyIndex); // uint8
-    const emissionReductionsWei = BigInt(emissionReductions);
-
-    const tx = await projectFactoryContract.createAndListProject(
-      mintPriceWei,
-      treasury,
-      defaultIsPermanent,
-      defaultValidity,
-      defaultVintage,
-      methodologyIndex,
-      location,
-      emissionReductions,
-      projectDetails
-    );
-    return tx;
-  } catch (error) {
-    throw new Error(`Failed to create project: ${error.message}`);
-  }
-};
 
   const mintWithRUSD = async (projectAddress, amount) => {
     if (!isConnected || !signer) throw new Error("Wallet not connected");
@@ -195,25 +166,89 @@ const createAndListProject = async (projectData) => {
   };
 
   const getMintPrice = async (projectAddress) => {
-  try {
-    const bco2Contract = new Contract(
-      projectAddress,
-      bco2Abi,
-      provider || new JsonRpcProvider('https://data-seed-prebsc-1-s1.binance.org:8545/')
-    );
-    const price = await bco2Contract.mintPrice();
-    const priceInEther = formatEther(price);
-    return priceInEther;
-  } catch (error) {
-    throw new Error(`Failed to fetch mint price: ${error.message}`);
+    try {
+      const bco2Contract = new Contract(
+        projectAddress,
+        bco2Abi,
+        provider || new JsonRpcProvider(chainInfo.rpc)
+      );
+      const price = await bco2Contract.mintPrice();
+      const priceInEther = formatEther(price);
+      return priceInEther;
+    } catch (error) {
+      throw new Error(`Failed to fetch mint price: ${error.message}`);
+    }
+  };
+
+  const getCurrentBalance = async (projectAddress, tokenId) => {
+    try {
+      const bco2Contract = new Contract(
+        projectAddress,
+        bco2Abi,
+        provider || new JsonRpcProvider(chainInfo.rpc)
+      );
+      const balance = await bco2Contract.balanceOf(userAddress, tokenId);
+  
+      return balance;
+    } catch (error) {
+      throw new Error(`Failed to fetch mint price: ${error.message}`);
+    }
+  };
+
+  const getUserApproveProjectBalance = async () => {
+    if (!isConnected || !signer) throw new Error("Wallet not connected");
+    try {
+      const approvedProjects = await getApprovedProjects();
+      const nfts = []
+      for (const project of approvedProjects) {
+        const bco2Contract = new Contract(project, bco2Abi, signer);
+        const balanceminted = await bco2Contract.balanceOf(userAddress, 1);
+        const balanceRetired = await bco2Contract.balanceOf(userAddress, 2);
+        if (Number(balanceminted) > 0) {
+          const tokenURI = await getTokenURIs(project, 1);
+          if (tokenURI && tokenURI !== "") {
+            const response = await fetch(tokenURI);
+            const metadata = await response.json();
+            nfts.push({
+              projectContract: project,
+              balanceMinted: balanceminted.toString(),
+      
+              metadata: metadata,
+              tokenURI: tokenURI
+            });
+          }
+        }
+        if( Number(balanceRetired) > 0){
+          const tokenURI = await getTokenURIs(project, 2);
+          if (tokenURI && tokenURI !== "") {
+            const response = await fetch(tokenURI);
+            const metadata = await response.json();
+            nfts.push({
+              projectContract: project,
+           
+              balanceRetired: balanceRetired.toString(),
+              metadata: metadata,
+              tokenURI: tokenURI
+            });
+          }
+        }
+      }
+      return nfts;
+    }
+    catch (err) {
+      console.error("Error fetching user approved project balance:", error);
+      throw new Error(`Failed to fetch user approved project balance: ${error.message}`);
+    }
   }
-};
+
+
+
 
   const setTokenURI = async (projectAddress, nonRetiredURI, retiredURI) => {
     if (!isConnected || !signer) throw new Error("Wallet not connected");
     try {
       console.log("Setting token URI for project:", projectAddress);
-      console.log("Non-retired URI:", nonRetiredURI); 
+      console.log("Non-retired URI:", nonRetiredURI);
       console.log("Retired URI:", retiredURI);
       const bco2Contract = new Contract(projectAddress, bco2Abi, signer);
       const tx = await bco2Contract.setTokenURI(nonRetiredURI, retiredURI);
@@ -228,11 +263,10 @@ const createAndListProject = async (projectData) => {
       const bco2Contract = new Contract(
         projectAddress,
         bco2Abi,
-        provider || new JsonRpcProvider('https://data-seed-prebsc-1-s1.binance.org:8545/')
+        provider || new JsonRpcProvider(chainInfo.rpc)
       );
-      console.log("Fetching token URIs for project:", projectAddress, "Token ID:", tokenId);
       const uri = await bco2Contract.tokenURIs(tokenId);
-      console.log("Token URI projectAddress", uri);
+
       return uri;
     } catch (error) {
       throw new Error(`Failed to fetch tokenURIs: ${error.message}`);
@@ -240,94 +274,123 @@ const createAndListProject = async (projectData) => {
   };
 
 
-const getDefaultIsPermanent = async (projectAddress) => {
-  try {
-    const bco2Contract = new Contract(
-      projectAddress,
-      bco2Abi,
-      provider || new JsonRpcProvider('https://data-seed-prebsc-1-s1.binance.org:8545/')
-    );
-    const value = await bco2Contract.defaultIsPermanent();
-    const decodedvalue = decodeBytes32String(value)
-    return decodedvalue; // bytes32
-  } catch (error) {
-    throw new Error(`Failed to fetch defaultIsPermanent: ${error.message}`);
-  }
-};
 
-const getDefaultValidity = async (projectAddress) => {
-  try {
-    const bco2Contract = new Contract(
-      projectAddress,
-      bco2Abi,
-      provider || new JsonRpcProvider('https://data-seed-prebsc-1-s1.binance.org:8545/')
-    );
-    const value = await bco2Contract.defaultValidity();
-    const decodedvalue = Number(toBigInt(value))
-    return decodedvalue; // bytes32
-  } catch (error) {
-    throw new Error(`Failed to fetch defaultValidity: ${error.message}`);
-  }
-};
 
-const getDefaultVintage = async (projectAddress) => {
-  try {
-    const bco2Contract = new Contract(
-      projectAddress,
-      bco2Abi,
-      provider || new JsonRpcProvider('https://data-seed-prebsc-1-s1.binance.org:8545/')
-    );
-    const value = await bco2Contract.defaultVintage();
-    const decodedvalue =  Number(toBigInt(value))
-    return decodedvalue; 
-  } catch (error) {
-    throw new Error(`Failed to fetch defaultVintage: ${error.message}`);
-  }
-};
+  const getDefaultIsPermanent = async (projectAddress) => {
+    try {
+      const bco2Contract = new Contract(
+        projectAddress,
+        bco2Abi,
+        provider || new JsonRpcProvider(chainInfo.rpc)
+      );
+      const value = await bco2Contract.defaultIsPermanent();
+      const decodedvalue = decodeBytes32String(value)
+      return decodedvalue; // bytes32
+    } catch (error) {
+      throw new Error(`Failed to fetch defaultIsPermanent: ${error.message}`);
+    }
+  };
 
-const getLocation = async (projectAddress) => {
-  try {
-    const bco2Contract = new Contract(
-      projectAddress,
-      bco2Abi,
-      provider || new JsonRpcProvider('https://data-seed-prebsc-1-s1.binance.org:8545/')
-    );
-    const value = await bco2Contract.location();
-    return value; // string
-  } catch (error) {
-    throw new Error(`Failed to fetch location: ${error.message}`);
-  }
-};
+  const isApproveForAll = async (projectAddress, account) => {
+    try {
+      const bco2Contract = new Contract(
+        projectAddress,
+        bco2Abi,
+        provider || new JsonRpcProvider(chainInfo.rpc)
+      );
+      const value = await bco2Contract.isApprovedForAll(account, MARKETPLACE_ADDRESS);
+      return value; 
+    } catch (error) {
+      throw new Error(`Failed to fetch defaultIsPermanent: ${error.message}`);
+    }
+  };
 
-const getWalletRetrides = async (projectAddress) => {
-  if (!isConnected || !userAddress) throw new Error("Wallet not connected or user address not set");
-  try {
-    const bco2Contract = new Contract(
-      projectAddress,
-      bco2Abi,
-      provider || new JsonRpcProvider('https://data-seed-prebsc-1-s1.binance.org:8545/')
-    );
-    const value = await bco2Contract.walletRetired(userAddress);
-    return value; // string
-  } catch (error) {
-    throw new Error(`Failed to fetch location: ${error.message}`);
-  }
-};
+  // create approve for all  function 
+    const setApprovalForAll = async (projectAddress) => {
+      if (!isConnected || !signer) throw new Error("Wallet not connected");
 
-const getWalletMinted = async (projectAddress) => {
-  if (!isConnected || !userAddress) throw new Error("Wallet not connected or user address not set");
-  try {
-    const bco2Contract = new Contract(
-      projectAddress,
-      bco2Abi,
-      provider || new JsonRpcProvider('https://data-seed-prebsc-1-s1.binance.org:8545/')
-    );
-    const value = await bco2Contract.walletMinted(userAddress);
-    return value; // string
-  } catch (error) {
-    throw new Error(`Failed to fetch location: ${error.message}`);
-  }
-};
+      try {
+        const bco2Contract = new Contract(projectAddress, bco2Abi, signer);
+        const tx = await bco2Contract.setApprovalForAll(MARKETPLACE_ADDRESS, true);
+        return tx;
+      } catch (error) {
+        throw new Error(`Failed to set approval for all: ${error.message}`);
+      }
+    };
+
+  const getDefaultValidity = async (projectAddress) => {
+    try {
+      const bco2Contract = new Contract(
+        projectAddress,
+        bco2Abi,
+        provider || new JsonRpcProvider(chainInfo.rpc)
+      );
+      const value = await bco2Contract.defaultValidity();
+      const decodedvalue = Number(toBigInt(value))
+      return decodedvalue; // bytes32
+    } catch (error) {
+      throw new Error(`Failed to fetch defaultValidity: ${error.message}`);
+    }
+  };
+
+  const getDefaultVintage = async (projectAddress) => {
+    try {
+      const bco2Contract = new Contract(
+        projectAddress,
+        bco2Abi,
+        provider || new JsonRpcProvider(chainInfo.rpc)
+      );
+      const value = await bco2Contract.defaultVintage();
+      const decodedvalue = Number(toBigInt(value))
+      return decodedvalue;
+    } catch (error) {
+      throw new Error(`Failed to fetch defaultVintage: ${error.message}`);
+    }
+  };
+
+  const getLocation = async (projectAddress) => {
+    try {
+      const bco2Contract = new Contract(
+        projectAddress,
+        bco2Abi,
+        provider || new JsonRpcProvider(chainInfo.rpc)
+      );
+      const value = await bco2Contract.location();
+      return value; // string
+    } catch (error) {
+      throw new Error(`Failed to fetch location: ${error.message}`);
+    }
+  };
+
+  const getWalletRetrides = async (projectAddress) => {
+    if (!isConnected || !userAddress) throw new Error("Wallet not connected or user address not set");
+    try {
+      const bco2Contract = new Contract(
+        projectAddress,
+        bco2Abi,
+        provider || new JsonRpcProvider(chainInfo.rpc)
+      );
+      const value = await bco2Contract.walletRetired(userAddress);
+      return value; // string
+    } catch (error) {
+      throw new Error(`Failed to fetch location: ${error.message}`);
+    }
+  };
+
+  const getWalletMinted = async (projectAddress) => {
+    if (!isConnected || !userAddress) throw new Error("Wallet not connected or user address not set");
+    try {
+      const bco2Contract = new Contract(
+        projectAddress,
+        bco2Abi,
+        provider || new JsonRpcProvider(chainInfo.rpc)
+      );
+      const value = await bco2Contract.walletMinted(userAddress);
+      return value; // string
+    } catch (error) {
+      throw new Error(`Failed to fetch location: ${error.message}`);
+    }
+  };
 
 const getRetirementCertificates = async (projectAddress) => {
   if (!isConnected || !userAddress) throw new Error("Wallet not connected or user address not set");
@@ -335,108 +398,150 @@ const getRetirementCertificates = async (projectAddress) => {
     const bco2Contract = new Contract(
       projectAddress,
       bco2Abi,
-      provider || new JsonRpcProvider('https://data-seed-prebsc-1-s1.binance.org:8545/')
+      provider || new JsonRpcProvider(chainInfo.rpc)
     );
-
     const count = await bco2Contract.getRetirementCertificateCount(userAddress);
-
     const certificates = [];
     for (let i = 0; i < count; i++) {
       const cert = await bco2Contract.userRetirementCertificates(userAddress, i);
-      certificates.push(cert);
+      certificates.push({
+        certificateId: cert.certificateId,
+        owner: cert.owner,
+        tonnesRetired: cert.tonnesRetired?.toString?.() ?? "",
+        retireTimestamp: cert.retireTimestamp?.toString?.() ?? ""
+      });
     }
+    return certificates; // Array of { projectAddress, certificateId, owner, tonnesRetired, retireTimestamp }
+  } catch (error) {
+    throw new Error(`Failed to fetch retirement certificates: ${error.message}`);
+  }
+};
 
-    return certificates; // array of structs
+ const getRetirementCertificatesForAllProject = async () => {
+  if (!isConnected || !userAddress) throw new Error("Wallet not connected or user address not set");
+  try {
+    const approvedProjects = await getApprovedProjects();
+    const grouped = [];
+    for (const project of approvedProjects) {
+      const certificates = await getRetirementCertificates(project);
+      if( certificates.length === 0) continue; // Skip if no certificates
+      grouped.push({ projectAddress: project, certificates });
+    }
+    return grouped; // Array of { projectAddress, certificates: [...] }
   } catch (error) {
     throw new Error(`Failed to fetch retirement certificates: ${error.message}`);
   }
 };
 
 
-
-const getTotalSupply = async (projectAddress) => {
+ const validateRetirementCertificate = async (projectAddress, account, certificateIndex, certificateHash) => {
+  if (!provider) throw new Error("Provider not initialized");
   try {
     const bco2Contract = new Contract(
       projectAddress,
       bco2Abi,
       provider || new JsonRpcProvider('https://data-seed-prebsc-1-s1.binance.org:8545/')
     );
-    const supply = await bco2Contract.totalSupply();
-    const supplyEther = formatEther(supply);
-    return supply;
+    console.log("Validating retirement certificate for project:", projectAddress);
+    console.log("Account:", account);
+    console.log("Certificate Index:", certificateIndex);
+    console.log("Certificate Hash:", certificateHash);
+    const [isValidCert, tonnesRetired] = await bco2Contract.validateRetirementCertificate(
+      account,
+      certificateIndex,
+      certificateHash
+    );
+    console.log("Validation result:", isValidCert, tonnesRetired);
+    return { isValidCert, tonnesRetired };
   } catch (error) {
-    throw new Error(`Failed to fetch total supply: ${error.message}`);
+    throw new Error(`Failed to validate retirement certificate: ${error.message}`);
   }
 };
 
-const getTotalRetired = async (projectAddress) => {
-  try {
-    const bco2Contract = new Contract(
-      projectAddress,
-      bco2Abi,
-      provider || new JsonRpcProvider('https://data-seed-prebsc-1-s1.binance.org:8545/')
-    );
-    const retired = await bco2Contract.totalRetired();
-    return retired.toString();
-  } catch (error) {
-    throw new Error(`Failed to fetch total retired: ${error.message}`);
-  }
-};
+
+  const getTotalSupply = async (projectAddress) => {
+    try {
+      const bco2Contract = new Contract(
+        projectAddress,
+        bco2Abi,
+        provider || new JsonRpcProvider(chainInfo.rpc)
+      );
+      const supply = await bco2Contract.totalSupply();
+      const supplyEther = formatEther(supply);
+      return supply;
+    } catch (error) {
+      throw new Error(`Failed to fetch total supply: ${error.message}`);
+    }
+  };
+
+  const getTotalRetired = async (projectAddress) => {
+    try {
+      const bco2Contract = new Contract(
+        projectAddress,
+        bco2Abi,
+        provider || new JsonRpcProvider(chainInfo.rpc)
+      );
+      const retired = await bco2Contract.totalRetired();
+      return retired.toString();
+    } catch (error) {
+      throw new Error(`Failed to fetch total retired: ${error.message}`);
+    }
+  };
 
 
   const approveRUSD = async (projectAddress) => {
-        if (!isConnected || !signer) throw new Error("Wallet not connected");
-        try {
+    if (!isConnected || !signer) throw new Error("Wallet not connected");
+    try {
 
-          const MAX_UINT256 = "0xffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff";
-        
-          const rusdContract = new Contract(RUSD, ERC20Abi, signer);
-        
-          const tx = await rusdContract.approve(projectAddress, MAX_UINT256);
-          return tx;
-        } catch (error) {
-          throw new Error(`Failed to approve RUSD: ${error.message}`);
-        }
+      const MAX_UINT256 = "0xffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff";
+
+      const rusdContract = new Contract(RUSD, ERC20Abi, signer);
+
+      const tx = await rusdContract.approve(projectAddress, MAX_UINT256);
+      return tx;
+    } catch (error) {
+      throw new Error(`Failed to approve RUSD: ${error.message}`);
+    }
   };
 
   const getRUSDBalance = async (address = null) => {
-  try {
-    // Use provided address or default to current user's address
-    const targetAddress = address || userAddress;
-    
-    if (!targetAddress) throw new Error("No address provided");
-    
-    // Create contract instance for RUSD token with read-only methods
-    const rusdContract = new Contract(
-      RUSD,
-      ERC20Abi,
-      provider || new JsonRpcProvider('https://data-seed-prebsc-1-s1.binance.org:8545/')
-    );
-    
-    // Call balanceOf function to get token balance
-    const balance = await rusdContract.balanceOf(targetAddress);
-    const balanceInEther = formatEther(balance);
-    return balanceInEther;
-  } catch (error) {
-    throw new Error(`Failed to fetch RUSD balance: ${error.message}`);
-  }
-};
+    try {
+      // Use provided address or default to current user's address
+      const targetAddress = address || userAddress;
+
+      if (!targetAddress) throw new Error("No address provided");
+
+      // Create contract instance for RUSD token with read-only methods
+      const rusdContract = new Contract(
+        RUSD,
+        ERC20Abi,
+        provider || new JsonRpcProvider(chainInfo.rpc)
+      );
+
+      // Call balanceOf function to get token balance
+      const balance = await rusdContract.balanceOf(targetAddress);
+      const balanceInEther = formatEther(balance);
+      return balanceInEther;
+    } catch (error) {
+      throw new Error(`Failed to fetch RUSD balance: ${error.message}`);
+    }
+  };
 
   const checkRUSDAllowance = async (spenderAddress) => {
-      if (!userAddress) throw new Error("User wallet not connected");
-      try {
-        // Create contract instance for RUSD token with read-only methods
-        const rusdContract = new Contract(
-          RUSD, 
-          ERC20Abi,
-          provider || new JsonRpcProvider('https://data-seed-prebsc-1-s1.binance.org:8545/')
-        );
-        // Call allowance function to check how many tokens the spender is allowed to use
-        const allowance = await rusdContract.allowance(userAddress, spenderAddress);
-        return allowance.toString();
-      } catch (error) {
-        throw new Error(`Failed to check RUSD allowance: ${error.message}`);
-      }
+    if (!userAddress) throw new Error("User wallet not connected");
+    try {
+      // Create contract instance for RUSD token with read-only methods
+      const rusdContract = new Contract(
+        RUSD,
+        ERC20Abi,
+        provider || new JsonRpcProvider(chainInfo.rpc)
+      );
+      // Call allowance function to check how many tokens the spender is allowed to use
+      const allowance = await rusdContract.allowance(userAddress, spenderAddress);
+      return allowance.toString();
+    } catch (error) {
+      throw new Error(`Failed to check RUSD allowance: ${error.message}`);
+    }
   };
 
   const retireCredits = async (projectAddress, amount) => {
@@ -456,7 +561,7 @@ const getTotalRetired = async (projectAddress) => {
     try {
       const bco2Contract = new Contract(projectAddress, bco2Abi, signer);
       const tx = await bco2Contract.safeTransferFrom(userAddress, to, 1, amount, '0x');
-       return tx;
+      return tx;
     } catch (error) {
       throw new Error(`Failed to transfer credits: ${error.message}`);
     }
@@ -538,7 +643,7 @@ const getTotalRetired = async (projectAddress) => {
     if (!isConnected || !governance) throw new Error("Wallet not connected");
     try {
       const tx = await governance.removeVVB(vvbAddress);
-        return tx;
+      return tx;
     } catch (error) {
       throw new Error(`Failed to remove VVB: ${error.message}`);
     }
@@ -556,16 +661,16 @@ const getTotalRetired = async (projectAddress) => {
     }
   };
 
-     //projectCounter
-      const getProjectCounter = async () => {
-      if (!projectDataContract) throw new Error("projectDataContract contract not initialized");
-      try {
-        const counter = await projectDataContract.projectCounter();
-        return Number(counter);
-      } catch (error) {
-        throw new Error(`Failed to fetch project counter: ${error.message}`);
-      }
-    };
+  //projectCounter
+  const getProjectCounter = async () => {
+    if (!projectDataContract) throw new Error("projectDataContract contract not initialized");
+    try {
+      const counter = await projectDataContract.projectCounter();
+      return Number(counter);
+    } catch (error) {
+      throw new Error(`Failed to fetch project counter: ${error.message}`);
+    }
+  };
 
   const getProjectStats = async (projectAddress) => {
     try {
@@ -584,11 +689,13 @@ const getTotalRetired = async (projectAddress) => {
     }
   };
 
+ 
+
   const checkAuthorizedVVB = async () => {
     if (!userAddress) return false;
     try {
       const isVVB = await governance.authorizedVVBs(userAddress);
-      return isVVB 
+      return isVVB
     } catch (error) {
       console.error('Error checking VVB status:', error);
       return false;
@@ -607,13 +714,12 @@ const getTotalRetired = async (projectAddress) => {
   };
 
   const getOwner = async () => {
-    if (!governance || !userAddress) return false;
+    if (!governance) throw new Error("Governance contract not initialized or user address not set");
     try {
       const owner = await governance.owner();
       return owner
     } catch (error) {
       console.error('Error checking owner status:', error);
-      return false;
     }
   };
 
@@ -628,79 +734,78 @@ const getTotalRetired = async (projectAddress) => {
     }
   };
 
- const getListedProjects = async () => {
+  const getListedProjects = async () => {
     if (!projectDataContract) throw new Error("projectDataContract contract not initialized");
-  try {
-    const projects = await projectDataContract.getListedProjects();
-    const details = []
-    for (const project of projects) {
-      const detail = await getListedProjectDetails(project);
-      details.push(detail);
+    try {
+      const projects = await projectDataContract.getListedProjects();
+      const details = []
+      for (const project of projects) {
+        const detail = await getListedProjectDetails(project);
+        details.push(detail);
+      }
+      return details
+    } catch (error) {
+      throw new Error(`Failed to fetch listed projects: ${error.message}`);
     }
-    return details
-  } catch (error) {
-    throw new Error(`Failed to fetch listed projects: ${error.message}`);
-  }
-};
+  };
 
-const getUserProjects = async () => {
-  try {
-  if (!userAddress) throw new Error("User address not set");
-  const projects = await getListedProjects();
-  const userProjects = projects.filter(p => p.proposer?.toLowerCase() === userAddress.toLowerCase());
-// const userProjects = projects.filter(p => p.proposer?.toLowerCase() === "0xBA43b24B591ac215337a55247cc7ACAcd744aD94".toLowerCase());
-  for (const project of userProjects) {
-    project.balance = await getUserBalance(project.projectContract);
-  }
-  return userProjects
-  } catch (error) {
-    throw new Error(`Failed to fetch user projects: ${error}`);
-  }
-};
-
-const submitComment = async (projectContractAddress, comment) => {
-  if (!isConnected || !projectManagerContract) throw new Error("Wallet not connected or contract not initialized");
-  if (!projectContractAddress || typeof projectContractAddress !== "string" || !comment || typeof comment !== "string") {
-    throw new Error("Invalid parameters: projectContractAddress and comment are required");
-  }
-  try {
-    const tx = await projectManagerContract.submitComment(projectContractAddress, comment);
-    return tx;
-  } catch (error) {
-    throw new Error(`Failed to submit comment: ${error.message}`);
-  }
-};
-
-const getApprovedProjects = async () => {
-  if (!projectDataContract) throw new Error("projectDataContract contract not initialized");
-  try {
-    const projects = await projectDataContract.getApprovedProjects();
-    return projects;
-  } catch (error) {
-    throw new Error(`Failed to fetch approved projects: ${error.message}`);
-  }
-};
-
-const getTotalIssuedCredits = async () => {
-  if (!projectDataContract) throw new Error("projectDataContract contract not initialized");
-  try {
-    const approvedProjects = await projectDataContract.getApprovedProjects();
-    let totalCredits = 0;
-    for (const projectAddress of approvedProjects) {
-      const details = await getListedProjectDetails(projectAddress);
-      totalCredits += Number(details.credits);
+  const getUserProjects = async () => {
+    try {
+      if (!userAddress) throw new Error("User address not set");
+      const projects = await getListedProjects();
+      const userProjects = projects.filter(p => p.proposer?.toLowerCase() === userAddress.toLowerCase());
+      for (const project of userProjects) {
+        project.balance = await getUserBalance(project.projectContract);
+      }
+      return userProjects
+    } catch (error) {
+      throw new Error(`Failed to fetch user projects: ${error}`);
     }
-    return totalCredits;
-  } catch (error) {
-    throw new Error(`Failed to fetch total issued credits: ${error.message}`);
-  }
-};
+  };
+
+  const submitComment = async (projectContractAddress, comment) => {
+    if (!isConnected || !projectManagerContract) throw new Error("Wallet not connected or contract not initialized");
+    if (!projectContractAddress || typeof projectContractAddress !== "string" || !comment || typeof comment !== "string") {
+      throw new Error("Invalid parameters: projectContractAddress and comment are required");
+    }
+    try {
+      const tx = await projectManagerContract.submitComment(projectContractAddress, comment);
+      return tx;
+    } catch (error) {
+      throw new Error(`Failed to submit comment: ${error.message}`);
+    }
+  };
+
+  const getApprovedProjects = async () => {
+    if (!projectDataContract) throw new Error("projectDataContract contract not initialized");
+    try {
+      const projects = await projectDataContract.getApprovedProjects();
+      return projects;
+    } catch (error) {
+      throw new Error(`Failed to fetch approved projects: ${error.message}`);
+    }
+  };
+
+  const getTotalIssuedCredits = async () => {
+    if (!projectDataContract) throw new Error("projectDataContract contract not initialized");
+    try {
+      const approvedProjects = await projectDataContract.getApprovedProjects();
+      let totalCredits = 0;
+      for (const projectAddress of approvedProjects) {
+        const details = await getListedProjectDetails(projectAddress);
+        totalCredits += Number(details.credits);
+      }
+      return totalCredits;
+    } catch (error) {
+      throw new Error(`Failed to fetch total issued credits: ${error.message}`);
+    }
+  };
 
 
 
-const getListedProjectDetails = async (address) => {
-  if (!projectDataContract) throw new Error("projectDataContract contract not initialized");
-  try {
+  const getListedProjectDetails = async (address) => {
+    if (!projectDataContract) throw new Error("projectDataContract contract not initialized");
+    try {
       const detail = await projectDataContract.getProjectDetails(address);
       const projectMintPrice = await getMintPrice(address);
       const projectTotalSupply = await getTotalSupply(address);
@@ -710,38 +815,38 @@ const getListedProjectDetails = async (address) => {
       const defaultVintage = await getDefaultVintage(address);
       const location = await getLocation(address);
       const tokenUri = await getTokenURIs(address);
-    return {
-      projectContract: detail.projectContract,
-      projectId: detail.projectId,
-      certificateId: detail.certificateId,
-      methodology: detail.methodology,
-      emissionReductions: detail.emissionReductions,
-      projectDetails: detail.projectDetails,
-      proposer: detail.proposer,
-      listingTimestamp: detail.listingTimestamp,
-      commentPeriodEnd: detail.commentPeriodEnd,
-      credits: detail.credits,
-      comments: detail.comments,
-      isValidated: detail.isValidated,
-      isVerified: detail.isVerified,
-      isApproved: detail.creditsIssued,
-      prokectMintPrice: projectMintPrice,
-      totalSupply: projectTotalSupply,
-      totalRetired: projectTotalRetired,
-      defaultIsPermanent: defaultIsPermanent,
-      defaultValidity: defaultValidity,
-      defaultVintage: defaultVintage,
-      location: location,
-      tokenUri: tokenUri,
-    };
-  } catch (error) {
-    throw new Error(`Failed to fetch project details: ${error.message}`);
-  }
-};
+      return {
+        projectContract: detail.projectContract,
+        projectId: detail.projectId,
+        certificateId: detail.certificateId,
+        methodology: detail.methodology,
+        emissionReductions: Number(detail.emissionReductions),
+        projectDetails: detail.projectDetails,
+        proposer: detail.proposer,
+        listingTimestamp: detail.listingTimestamp,
+        commentPeriodEnd: detail.commentPeriodEnd,
+        credits: Number(detail.credits),
+        comments: detail.comments,
+        isValidated: detail.isValidated,
+        isVerified: detail.isVerified,
+        isApproved: Number(detail.credits) ?  true : false,
+        prokectMintPrice: projectMintPrice,
+        totalSupply: projectTotalSupply,
+        totalRetired: projectTotalRetired,
+        defaultIsPermanent: defaultIsPermanent,
+        defaultValidity: defaultValidity,
+        defaultVintage: defaultVintage,
+        location: location,
+        tokenUri: tokenUri,
+      };
+    } catch (error) {
+      throw new Error(`Failed to fetch project details: ${error.message}`);
+    }
+  };
 
   const getUserBalance = async (projectAddress, tokenId = 1) => {
     try {
-      const bco2Contract = new Contract(projectAddress, bco2Abi, provider || new JsonRpcProvider('https://data-seed-prebsc-1-s1.binance.org:8545/'));
+      const bco2Contract = new Contract(projectAddress, bco2Abi, provider || new JsonRpcProvider(chainInfo.rpc));
       const balance = await bco2Contract.balanceOf(userAddress, tokenId);
       return balance.toString();
     } catch (error) {
@@ -751,7 +856,7 @@ const getListedProjectDetails = async (address) => {
 
   const getTokenURI = async (projectAddress, tokenId = 1) => {
     try {
-      const bco2Contract = new Contract(projectAddress, bco2Abi, provider || new JsonRpcProvider('https://data-seed-prebsc-1-s1.binance.org:8545/'));
+      const bco2Contract = new Contract(projectAddress, bco2Abi, provider || new JsonRpcProvider(chainInfo.rpc));
       const uri = await bco2Contract.uri(tokenId);
       return uri;
     } catch (error) {
@@ -763,9 +868,18 @@ const getListedProjectDetails = async (address) => {
     userAddress,
     isConnected,
     error,
-    connectWallet,
+    setUserAddress,
+    governance,
+    projectManagerContract,
+    projectDataContract,
+    projectFactoryContract,
+    isContractsInitised,
     createAndListProject,
+    isApproveForAll,
+    setApprovalForAll,
+    initializeProvider,
     mintWithRUSD,
+    getCurrentBalance,
     retireCredits,
     transferCredits,
     validateProject,
@@ -775,8 +889,12 @@ const getListedProjectDetails = async (address) => {
     pauseContract,
     unpauseContract,
     addVVB,
+    getRetirementCertificates,
+    validateRetirementCertificate,
+    getRetirementCertificatesForAllProject,
     removeVVB,
     updateRegistryAddress,
+    
     approveRUSD,
     checkRUSDAllowance,
     getProjectStats,
@@ -786,6 +904,7 @@ const getListedProjectDetails = async (address) => {
     checkAuthorizedVVB,
     getProjectCounter,
     getTotalIssuedCredits,
+    getUserApproveProjectBalance,
     submitComment,
     checkIsOwner,
     getWalletRetrides,

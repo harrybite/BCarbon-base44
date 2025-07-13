@@ -6,20 +6,22 @@ import { useParams } from 'react-router-dom';
 import { Link } from 'react-router-dom';
 import { methodology } from '../contract/address';
 import { useToast } from '../ui/use-toast';
+import { useConnectWallet } from '@/context/walletcontext';
 
 // eslint-disable-next-line react/prop-types
 const ProjectCard = ({ project }) => {
-  const { userAddress, checkAuthorizedVVB,
+  const { checkAuthorizedVVB,
     checkIsProjectOwner,
     checkIsOwner,
     rejectAndRemoveProject,
+    isContractsInitised,
     getListedProjectDetails,
     mintWithETH,
     submitComment,
     checkRUSDAllowance,
     approveRUSD
   } = useContractInteraction();
-  const { projectAddress } = useParams();
+
   const [details, setDetails] = useState({
     projectAddress: '',
     metadata: {},
@@ -29,6 +31,7 @@ const ProjectCard = ({ project }) => {
     offChainComments: [],
     methodology: ''
   });
+  const { walletAddress } = useConnectWallet();
   const [canComment, setCanComment] = useState(false);
   const [comment, setComment] = useState('');
   const [isOwner, setIsOwner] = useState(false);
@@ -42,15 +45,17 @@ const ProjectCard = ({ project }) => {
           const data = await getListedProjectDetails(project);
           console.log('Project details:', data);
           setDetails(data);
-          setCanComment((await checkAuthorizedVVB()) || (await checkIsProjectOwner(projectAddress)));
+          setCanComment((await checkAuthorizedVVB()) || (await checkIsProjectOwner(project)));
           setIsOwner(await checkIsOwner());
         } catch (error) {
           console.error('Error fetching project details:', error);
         }
       }
     };
-    fetchDetails();
-  }, [userAddress, projectAddress, reloadData]);
+   if( walletAddress && isContractsInitised) {
+      fetchDetails();
+    } 
+  }, [walletAddress, reloadData, isContractsInitised]);
 
   const handleComment = async () => {
     if (!comment) return;
@@ -58,7 +63,6 @@ const ProjectCard = ({ project }) => {
       const tx = await submitComment(details.projectContract, comment);
       const receipt = await tx.wait();
       if (receipt.status === 1) {
-        // alert('Comment submitted successfully!');
         toster({
           title: "Comment Submitted",
           description: `Transaction successful!`,
@@ -66,7 +70,6 @@ const ProjectCard = ({ project }) => {
         });
         setComment(''); // Clear the textarea
         setReloadData(reloadData + 1); // Trigger a reload to fetch new comments
-        // Optionally, refresh comments here
       } else {
         alert('Comment transaction failed!');
       }
@@ -75,51 +78,7 @@ const ProjectCard = ({ project }) => {
     }
   };
 
-  const handleReject = async () => {
-    try {
-      const tx = await rejectAndRemoveProject(project);
-      const receipt = await tx.wait();
-      if (receipt.status === 1) {
-        alert(`Project rejected! Transaction: ${tx.hash}`);
-        setReloadData(reloadData + 1); // Trigger a reload to update project list
-      } else {
-        alert(`Transaction failed!`);
-      }
-    } catch (error) {
-      alert(`Rejection failed: ${error.message}`);
-    }
-  };
 
-  const handleMint = async () => {
-    try {
-      const allowance = await checkRUSDAllowance(details.projectContract);
-      if (BigInt(allowance) <= BigInt(0)) {
-      console.log("Insufficient allowance, approving RUSD first...");
-      const approveTx = await approveRUSD(details.projectContract);
-      const approveReceipt = await approveTx.wait();
-      if (approveReceipt.status !== 1) {
-        alert("RUSD approval failed");
-        return;
-      }
-      console.log("RUSD approved successfully");
-    }
-    
-
-      const amount = prompt('Enter amount to mint:');
-      if (amount) {
-        const tx = await mintWithETH(details.projectContract, amount);
-        const receipt = await tx.wait();
-        if (receipt.status === 1) {
-          alert(`Credits minted! Transaction: ${tx.hash}`);
-          setReloadData(reloadData + 1); // Trigger a reload to update project details
-        }
-      } else {
-        alert('Minting cancelled or invalid amount.');
-      }
-    } catch (error) {
-      alert(`Minting failed: ${error.message}`);
-    }
-  };
 
 const getStatusText = (details) => {
   if (details.isApproved) {
@@ -177,9 +136,9 @@ return (
     </div>
      <div className="mt-6">
       <Link to={`/ProjectDetails/${details.projectContract}`}>
-     <button className="w-full bg-transparent border border-blue-600 text-blue-600 py-2 px-4 rounded-2xl font-semibold transition hover:bg-blue-50">
-          View Project Details
-        </button>
+        <button className="w-full bg-transparent border border-blue-600 text-blue-600 py-2 px-4 rounded-2xl font-semibold transition hover:bg-blue-50">
+              View Project Details
+            </button>
       </Link>
     </div>
 
