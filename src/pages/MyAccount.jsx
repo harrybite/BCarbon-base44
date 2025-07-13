@@ -55,6 +55,7 @@ export default function MyAccount() {
           <TabsContent value="buyer">
             <BuyerTab walletAddress={walletAddress} />
           </TabsContent>
+          
         </Tabs>
       </div>
     </div>

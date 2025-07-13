@@ -64,8 +64,8 @@ const IssuerTab = () => {
     try {
       const tx = await setTokenURI(
         selectedProject.projectContract,
-        uriForm.setKnownUri,
-        uriForm.setUri
+        uriForm.setUri,
+        uriForm.setKnownUri
       );
       const receipt = await tx.wait();
       if (receipt.status === 1) {

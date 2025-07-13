@@ -180,6 +180,21 @@ export const useContractInteraction = () => {
     }
   };
 
+  const getCurrentBalance = async (projectAddress, tokenId) => {
+    try {
+      const bco2Contract = new Contract(
+        projectAddress,
+        bco2Abi,
+        provider || new JsonRpcProvider(chainInfo.rpc)
+      );
+      const balance = await bco2Contract.balanceOf(userAddress, tokenId);
+  
+      return balance;
+    } catch (error) {
+      throw new Error(`Failed to fetch mint price: ${error.message}`);
+    }
+  };
+
   const getUserApproveProjectBalance = async () => {
     if (!isConnected || !signer) throw new Error("Wallet not connected");
     try {
@@ -187,16 +202,30 @@ export const useContractInteraction = () => {
       const nfts = []
       for (const project of approvedProjects) {
         const bco2Contract = new Contract(project, bco2Abi, signer);
-        const balanceminted = await bco2Contract.walletMinted(userAddress);
-        const balanceRetired = await bco2Contract.walletRetired(userAddress);
-        if (Number(balanceminted) > 0 || Number(balanceRetired) > 0) {
-          const tokenURI = await getTokenURIs(project);
+        const balanceminted = await bco2Contract.balanceOf(userAddress, 1);
+        const balanceRetired = await bco2Contract.balanceOf(userAddress, 2);
+        if (Number(balanceminted) > 0) {
+          const tokenURI = await getTokenURIs(project, 1);
           if (tokenURI && tokenURI !== "") {
             const response = await fetch(tokenURI);
             const metadata = await response.json();
             nfts.push({
               projectContract: project,
               balanceMinted: balanceminted.toString(),
+      
+              metadata: metadata,
+              tokenURI: tokenURI
+            });
+          }
+        }
+        if( Number(balanceRetired) > 0){
+          const tokenURI = await getTokenURIs(project, 2);
+          if (tokenURI && tokenURI !== "") {
+            const response = await fetch(tokenURI);
+            const metadata = await response.json();
+            nfts.push({
+              projectContract: project,
+           
               balanceRetired: balanceRetired.toString(),
               metadata: metadata,
               tokenURI: tokenURI
@@ -794,6 +823,7 @@ export const useContractInteraction = () => {
     createAndListProject,
     initializeProvider,
     mintWithRUSD,
+    getCurrentBalance,
     retireCredits,
     transferCredits,
     validateProject,

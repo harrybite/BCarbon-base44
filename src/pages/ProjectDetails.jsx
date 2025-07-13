@@ -41,6 +41,7 @@ export default function ProjectDetails() {
     isContractsInitised,
     getWalletMinted, getRUSDBalance,
     getWalletRetrides,
+    getCurrentBalance,
     checkRUSDAllowance, approveRUSD } = useContractInteraction();
   const { walletAddress } = useConnectWallet();
 
@@ -53,6 +54,9 @@ export default function ProjectDetails() {
   const [rusdBalance, setRUSDBalance] = useState(0);
   const [retiredCredits, setRetiredCredits] = useState(0);
   const [mintedCredits, setMintedCredits] = useState(0);
+  const [mintBalance, setMintBalance] = useState(0);
+  const [retiredBalance, setRetiredBalance] = useState(0);
+
 
   const { toast } = useToast();
 
@@ -71,6 +75,10 @@ export default function ProjectDetails() {
       const balance = await getRUSDBalance();
       setRUSDBalance(balance);
 
+      const mintBalance = await getCurrentBalance(projectAddress, 1);
+      const retiredBalance = await getCurrentBalance(projectAddress, 2);
+      setMintBalance(mintBalance);  
+      setRetiredBalance(retiredBalance);
       // if user has minted tco2 token then only then he can retire token tco2
       // that is why we are checking the minted tco2 token
       const retired = await getWalletRetrides(projectAddress);
@@ -490,6 +498,11 @@ export default function ProjectDetails() {
                     </div>
                     <Label htmlFor="mintAmount">Minted tCO<sub>2</sub>: {Number(mintedCredits)}</Label>
                     <br />
+              
+                     <Label htmlFor="mintAmount">
+                      Current Bal tCO<sub>2</sub>: {Number(mintBalance)}
+                    </Label>
+                    <br />
                     <Label htmlFor="mintAmount">RUSD: {rusdBalance}</Label>
                     <Button
                       onClick={handleMintETH}
@@ -547,9 +560,10 @@ export default function ProjectDetails() {
                       </div>
                     </div>
                     <Label htmlFor="mintAmount">
-                      Retired tCO<sub>2</sub>: {Number(retiredCredits)}
+                      Retired tCO<sub>2</sub>: {Number(retiredBalance)}
                     </Label>
                     <br />
+    
                     <Label htmlFor="mintAmount">
                       Allowed retired tCO<sub>2</sub>: {allowedRetire}
                     </Label>
@@ -560,11 +574,7 @@ export default function ProjectDetails() {
                     >
                       {isRetiring ? "Retiring..." : "Retire Credits"}
                     </Button>
-                    {/* {allowedRetire <= 0 && (
-              <p className="text-sm text-gray-500">
-                No credits available to retire.
-              </p>
-            )} */}
+                    
                     <p className="text-sm text-gray-500">
                       Retiring credits permanently removes them from circulation.
                     </p>
