@@ -134,6 +134,12 @@ function toast({ ...props }) {
     },
   });
 
+    // Auto-dismiss the toast after a default duration of 10 seconds (10000ms)
+  const duration = 3000;
+      setTimeout(() => {
+        dismiss();
+      }, duration);
+
   return {
     id,
     dismiss,
