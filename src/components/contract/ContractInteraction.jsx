@@ -10,7 +10,7 @@ import projectDataabi from './ProjectData.json';
 import bco2Abi from './BCO2.json';
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { AlertCircle } from "lucide-react";
-import { chainInfo, GOVERNANCE_ADDRESS, projectData, projectFactory, projectManager, RUSD } from './address';
+import { chainInfo, GOVERNANCE_ADDRESS, MARKETPLACE_ADDRESS, projectData, projectFactory, projectManager, RUSD } from './address';
 import { useConnectWallet } from '@/context/walletcontext';
 
 
@@ -290,6 +290,33 @@ export const useContractInteraction = () => {
       throw new Error(`Failed to fetch defaultIsPermanent: ${error.message}`);
     }
   };
+
+  const isApproveForAll = async (projectAddress, account) => {
+    try {
+      const bco2Contract = new Contract(
+        projectAddress,
+        bco2Abi,
+        provider || new JsonRpcProvider(chainInfo.rpc)
+      );
+      const value = await bco2Contract.isApprovedForAll(account, MARKETPLACE_ADDRESS);
+      return value; 
+    } catch (error) {
+      throw new Error(`Failed to fetch defaultIsPermanent: ${error.message}`);
+    }
+  };
+
+  // create approve for all  function 
+    const setApprovalForAll = async (projectAddress) => {
+      if (!isConnected || !signer) throw new Error("Wallet not connected");
+
+      try {
+        const bco2Contract = new Contract(projectAddress, bco2Abi, signer);
+        const tx = await bco2Contract.setApprovalForAll(MARKETPLACE_ADDRESS, true);
+        return tx;
+      } catch (error) {
+        throw new Error(`Failed to set approval for all: ${error.message}`);
+      }
+    };
 
   const getDefaultValidity = async (projectAddress) => {
     try {
@@ -847,6 +874,8 @@ const getRetirementCertificates = async (projectAddress) => {
     projectFactoryContract,
     isContractsInitised,
     createAndListProject,
+    isApproveForAll,
+    setApprovalForAll,
     initializeProvider,
     mintWithRUSD,
     getCurrentBalance,

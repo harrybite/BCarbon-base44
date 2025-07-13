@@ -100,7 +100,7 @@ export const useMarketplaceInteraction = () => {
     }
   };
 
-  const createListing = async (tokenContract, tokenId, quantity, pricePerUnit) => {
+  const createListing = async (tokenContract, tokenId = 1, quantity, pricePerUnit) => {
     if (!isConnected || !marketplaceContract || !signer) {
       throw new Error("Wallet not connected or contract not initialized");
     }

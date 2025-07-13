@@ -5,17 +5,74 @@ import ProjectCard from '../projects/ProjectCard';
 import { set } from 'date-fns';
 import { useConnectWallet } from '@/context/walletcontext';
 import { Link } from "react-router-dom";
+import { useMarketplaceInteraction } from '../contract/MarketplaceInteraction';
+import { number } from 'zod';
+import { useToast } from '../ui/use-toast';
 
 const BuyerTab = () => {
   const { isContractsInitised,
     getUserApproveProjectBalance,
-    getRUSDBalance,
+    isApproveForAll,
+    setApprovalForAll,
   } = useContractInteraction();
+
+  const { createListing }  = useMarketplaceInteraction()
   const [projects, setProjects] = useState([]);
   const [loading, setLoading] = useState(true);
   const [update, setUpdate] = useState(0);
-  const [rusdBalance, setRUSDBalance] = useState(0);
   const { walletAddress } = useConnectWallet();
+  const { toast } = useToast()
+
+  const [selectedProject, setSelectedProject] = useState(null);
+  const [quantity, setQuantity] = useState('');
+  const [price, setPrice] = useState('');
+  const [showModal, setShowModal] = useState(false);
+  const [isListing, setIsListing] = useState(false);
+
+  // listing function
+  const list = async () => {
+    if (!selectedProject || !quantity || !price) return alert('Fill all fields');
+    setIsListing(true);
+    try {
+      if (Number(selectedProject.balanceMinted) < Number(quantity)) {
+        toast({
+          title: "Insufficient Balance",
+          description: `You only have ${selectedProject.balanceMinted} tCO2 available for listing.`,
+          variant: "destructive",
+        });
+        return 
+      }
+
+      const tokenContract = selectedProject.projectContract;
+      const tokenId = 1;
+
+      const approved = await isApproveForAll(tokenContract, walletAddress);
+      console.log('Is approved for all:', approved);
+      if (!approved) {
+        await setApprovalForAll(tokenContract);
+      }
+
+      await createListing(tokenContract, tokenId, quantity, price);
+      toast({
+        title: "Listing Created",
+        description: `Successfully created listing`,
+        variant: "success",
+      });
+      setShowModal(false);
+      setQuantity('');
+      setPrice('');
+      setSelectedProject(null);
+    } catch (error) {
+      console.error('Error creating listing:', error);
+      toast({
+        title: "Listing Creation Failed",
+        description: "An error occurred while creating the listing.",
+        variant: "destructive",
+      });
+    } finally {
+      setIsListing(false);
+    }
+  };
 
   useEffect(() => {
     const fetchUserProjects = async () => {
@@ -92,9 +149,64 @@ const BuyerTab = () => {
                     View Project Details
                   </button>
                 </Link>
+              { project.balanceMinted && <button
+                  onClick={() => {
+                    setSelectedProject(project);
+                    setShowModal(true);
+                  }}
+                  className="w-full mt-2 bg-green-500 text-white font-semibold py-2 rounded-lg shadow hover:bg-green-600 transition"
+                >
+                  Create Listing
+                </button>}
               </div>
             </div>
           ))}
+        </div>
+      )}
+      {showModal && (
+        <div
+          className="fixed inset-0 bg-black bg-opacity-50 flex justify-center items-center z-50"
+          onClick={() => setShowModal(false)}
+        >
+          <div
+            className="bg-white p-6 rounded-lg w-full max-w-md shadow-lg"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <h3 className="text-xl font-bold mb-4">Create Listing</h3>
+            <label className="block mb-2">
+              Quantity
+              <input
+                type="number"
+                value={quantity}
+                onChange={(e) => setQuantity(e.target.value)}
+                className="w-full border px-3 py-2 rounded mt-1"
+              />
+            </label>
+            <label className="block mb-4">
+              Price per Unit
+              <input
+                type="number"
+                value={price}
+                onChange={(e) => setPrice(e.target.value)}
+                className="w-full border px-3 py-2 rounded mt-1"
+              />
+            </label>
+            <div className="flex justify-end gap-2">
+              <button
+                onClick={() => setShowModal(false)}
+                className="px-4 py-2 bg-gray-300 rounded hover:bg-gray-400"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={list}
+                className="px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700 disabled:opacity-50"
+                disabled={isListing}
+              >
+                {isListing ? "Listing..." : "Submit"}
+              </button>
+            </div>
+          </div>
         </div>
       )}
     </div>

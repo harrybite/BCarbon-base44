@@ -7,7 +7,7 @@ import { useContractInteraction } from '../contract/ContractInteraction';
 import { methodology } from '../contract/address';
 import { useToast } from '../ui/use-toast';
 
-const CreateProjectTab = () => {
+const CreateProjectTab = ({setUpdate}) => {
   const { userAddress, createAndListProject } = useContractInteraction();
   const { toast } = useToast();
   const [formData, setFormData] = useState({
@@ -102,6 +102,7 @@ const CreateProjectTab = () => {
       const receipt = await tx.wait();
       if (receipt.status === 1) {
         // alert(`Project created successfully! Transaction: ${tx.hash}`);
+        setUpdate(4);
         toast({
           title: "Project Created",
           description: `Project created successfully`,

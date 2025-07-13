@@ -11,20 +11,25 @@ import { Alert, AlertDescription } from "@/components/ui/alert";
 import { ArrowRight, AlertCircle, CheckCircle2 } from "lucide-react";
 import { useMarketplaceInteraction } from '@/components/contract/MarketplaceInteraction';
 import { useConnectWallet } from "@/context/walletcontext";
+import { useToast } from "../ui/use-toast";
 
 export default function TradeForm() {
-  const { marketplaceContract, getListings, purchase } = useMarketplaceInteraction();
+  const { marketplaceContract, getListings, purchase, getRUSDBalance } = useMarketplaceInteraction();
    const { walletAddress } = useConnectWallet();
   const [listings, setListings] = React.useState([]);
   const [cardStates, setCardStates] = React.useState({});
   const [update, setUpdate] = React.useState(0)
   const [isLoading, setIsLoading] = React.useState(true);
+  const [rusdBalance, setRUSDBalance] = React.useState('0');
 
+  const {toast} = useToast()
 
   React.useEffect(() => {
     const fetchListings = async () => {
        setIsLoading(true)
       try {
+        const rusdBalance = await getRUSDBalance(walletAddress);
+        setRUSDBalance(rusdBalance);
         const fetchedListings = await getListings();
         console.log("Fetched Listings:", fetchedListings);
        
@@ -72,6 +77,7 @@ export default function TradeForm() {
       }
     }));
   };
+
 
   const toggleInput = (listingId) => {
     const listing = listings.find(l => l.listingId === listingId);
@@ -123,6 +129,14 @@ export default function TradeForm() {
       }));
       return;
     }
+  
+    if( Number(rusdBalance) < (Number(listing.pricePerUnit) * quantity)) {
+      toast({
+        title: "Insufficient RUSD Balance",
+        description: `You need at least ${Number(listing.pricePerUnit) * quantity} RUSD to purchase this listing.`,
+        variant: "destructive",
+      })
+    }
 
     setCardStates(prev => ({
       ...prev,
@@ -147,6 +161,11 @@ export default function TradeForm() {
           showInput: false
         }
       }));
+      toast({
+        title: "Purchase Successful",
+        description: `Token purchased successfully`,
+        variant: "success",
+      });
       setUpdate(update + 1)
    
     } catch (error) {

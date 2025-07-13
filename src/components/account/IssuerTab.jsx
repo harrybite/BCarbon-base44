@@ -92,7 +92,7 @@ const IssuerTab = () => {
   return (
     <div className="p-4">
       <h2 className="text-2xl font-bold mb-4">Issuer Dashboard</h2>
-      <CreateProjectTab createAndListProject={createAndListProject} />
+      <CreateProjectTab createAndListProject={createAndListProject}  setUpdate={setUpdate}/>
       <p className=' border-t-2 mt-4'></p>
       {projects.length > 0 ? <h3 className="text-xl text-center font-semibold mt-6 mb-3">Your Projects</h3> : ''}
       {loading ? (
