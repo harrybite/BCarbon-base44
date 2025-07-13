@@ -10,6 +10,7 @@ import {
   Settings,
   Wallet,
   Leaf,
+  BadgeCheck,
   ChevronRight,
   Menu,
   User
@@ -32,17 +33,23 @@ const navigationItems = [
     icon: TreePine,
     description: "Carbon credit projects"
   },
-  // {
-  //   title: "Trade",
-  //   url: createPageUrl("Trade"),
-  //   icon: TrendingUp,
-  //   description: "Trade carbon credits"
-  // },
+  {
+    title: "Trade",
+    url: createPageUrl("Trade"),
+    icon: TrendingUp,
+    description: "Trade carbon credits"
+  },
+  {
+    title: "Validate",
+    url: createPageUrl("ValidateCertificate"),
+    icon: BadgeCheck,
+    description: "Validate BCO₂ Retirement Certificates on chain"
+  },
   {
     title: "My Account",
     url: createPageUrl("MyAccount"),
     icon: User,
-    description: "Manage your projects and assets"
+    description: "Manage your projects and BCO₂ assets"
   },
   {
     title: "Administration",

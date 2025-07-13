@@ -8,6 +8,7 @@ import ProjectDetails from "./ProjectDetails";
 import Trade from "./Trade";
 import Administration from "./Administration";
 import MyAccount from "./MyAccount";
+import ValidateCertificate from "./ValidateCertificate";
 
 // Page mapping
 const PAGES = {
@@ -15,6 +16,7 @@ const PAGES = {
   Projects,
   ProjectDetails,
   Trade,
+  ValidateCertificate,
   Administration,
   MyAccount
 };
@@ -49,6 +51,7 @@ function PagesContent() {
         <Route path="/Projects" element={<Projects />} />
         <Route path="/ProjectDetails/:projectContract" element={<ProjectDetails />} />
         <Route path="/Trade" element={<Trade />} />
+        <Route path="/ValidateCertificate" element={<ValidateCertificate />} />
         <Route path="/Administration" element={<Administration />} />
         <Route path="/MyAccount" element={<MyAccount />} />
         {/* Optional: redirect unknown paths */}

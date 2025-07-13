@@ -1,4 +1,5 @@
 export const RUSD = "0x604756016db44ad0a38d2787B8e2E3563b03Ab4e"; // Replace with actual RUSD contract address
+
 export const GOVERNANCE_ADDRESS = '0x44A94635802288aec7264e65BE14D598A9f5B317';
 export const projectData = "0x3FE0598081edE8a83B2d883F815DCbbB2d4dAaCC"
 export const projectManager = "0x8747951F30185A5F285dcB504F7f61063A498CBF";
@@ -8,6 +9,7 @@ export const chainInfo = {
   id: 7862,
 rpc: "https://node1-mainnet-new.maalscan.io",
 }
+
 
 
 export const methodology = [
