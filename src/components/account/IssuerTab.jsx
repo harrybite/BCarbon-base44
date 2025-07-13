@@ -3,6 +3,7 @@ import { useState, useEffect } from 'react';
 import { useContractInteraction } from '../contract/ContractInteraction';
 import CreateProjectTab from '../admin/CreateProjectTab';
 import ProjectCard from '../projects/ProjectCard';
+import { useToast } from '../ui/use-toast';
 
 const IssuerTab = () => {
   const { userAddress, createAndListProject, getUserProjects, setTokenURI, } = useContractInteraction();
@@ -13,6 +14,7 @@ const IssuerTab = () => {
   const [showModal, setShowModal] = useState(false);
   const [uriForm, setUriForm] = useState({ setUri: '', setKnownUri: '' });
   const [selectedProject, setSelectedProject] = useState(null);
+  const { toast } = useToast();
 
   useEffect(() => {
     const fetchProjects = async () => {
@@ -55,13 +57,23 @@ const handleUriSave = async () => {
     );
     const receipt = await tx.wait();
     if (receipt.status === 1) {
-setUpdate(update + 1);
+      toast({
+        title: "URI Set Successfully",  
+        description: `Transaction successful!`,
+        variant: "success",
+      }); 
+        setUpdate(update + 1);
     }
     closeModal();
   } catch (error) {
     // Optionally show an error message here
     console.error(error);
-    alert("Failed to set token URI: " + error.message);
+    // alert("Failed to set token URI: " + error.message);
+    toast({
+      title: "Error",
+      description: `Failed to set token URI: ${error.message}`,
+      variant: "destructive",
+    });
   }
 };
 

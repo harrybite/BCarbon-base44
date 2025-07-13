@@ -107,22 +107,6 @@ const handleMint = async (projectAddress, amount) => {
           {projects.map(project => (
             <div key={project.projectContract}>
               <ProjectCard project={project.projectContract} />
-              {/* {project.isApproved && <div className="mt-2">
-                <p>Balance: {project.balance}</p>
-                <p>RUSD Balance: {rusdBalance}</p>
-                <button
-                  onClick={() => handleMint(project.projectContract, prompt('Enter amount to mint:'))}
-                  className="bg-green-500 text-white px-4 py-2 rounded mr-2"
-                >
-                  Mint Credits
-                </button>
-                <button
-                  onClick={() => handleRetire(project.projectContract, prompt('Enter amount to retire:'))}
-                  className="bg-red-500 text-white px-4 py-2 rounded"
-                >
-                  Retire
-                </button>
-              </div>} */}
             </div>
           ))}
         </div>
