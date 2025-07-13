@@ -14,34 +14,36 @@ interface IERC7496 {
     );
     event TraitUpdatedList(bytes32 indexed traitKey, uint256[] tokenIds);
 
-    function getTraitValue(
-        uint256 tokenId,
-        bytes32 traitKey
-    ) external view returns (bytes32);
+    function getTraitValue(uint256 tokenId, bytes32 traitKey)
+        external
+        view
+        returns (bytes32);
 
-    function getTraitValues(
-        uint256 tokenId,
-        bytes32[] calldata traitKeys
-    ) external view returns (bytes32[] memory);
+    function getTraitValues(uint256 tokenId, bytes32[] calldata traitKeys)
+        external
+        view
+        returns (bytes32[] memory);
 }
 
 interface ICarbonCreditRegistry {
-    function isProjectApproved(
-        address projectContract
-    ) external view returns (bool);
+    function isProjectApproved(address projectContract)
+        external
+        view
+        returns (bool);
 
-    function creditAmountIssued(
-        address projectContract
-    ) external view returns (uint256);
+    function creditAmountIssued(address projectContract)
+        external
+        view
+        returns (uint256);
 }
 
 interface IERC20 {
     function balanceOf(address account) external view returns (uint256);
 
-    function allowance(
-        address owner,
-        address spender
-    ) external view returns (uint256);
+    function allowance(address owner, address spender)
+        external
+        view
+        returns (uint256);
 
     function transferFrom(
         address from,
@@ -68,8 +70,8 @@ contract BCO2 is ERC1155, Ownable, IERC7496, ReentrancyGuard {
     address public governance;
 
     // Token IDs for carbon credits
-    uint256 public constant unit_tCO2_TOKEN_ID = 1; // Represent 1 tCO2 - Active
-    uint256 public constant unit_tCO2_RETIRED_TOKEN_ID = 2; // Represtns 1 tCO2 - Retired
+    uint256 public constant unit_tCO2_TOKEN_ID = 1; // Represents 1 tCO2 - Active
+    uint256 public constant unit_tCO2_RETIRED_TOKEN_ID = 2; // Represents 1 tCO2 - Retired
     uint8 public tonnesPerToken = 1; // Default: 1 token = 1 tCO2
 
     // Trait keys
@@ -201,10 +203,9 @@ contract BCO2 is ERC1155, Ownable, IERC7496, ReentrancyGuard {
     }
 
     /// @notice Initializes traits for a token ID
-    function _initializeTraits(
-        uint256 tokenId,
-        bytes32 retirementStatus
-    ) private {
+    function _initializeTraits(uint256 tokenId, bytes32 retirementStatus)
+        private
+    {
         _traits[tokenId][IS_PERMANENT] = defaultIsPermanent;
         _traits[tokenId][VALIDITY] = defaultValidity;
         _traits[tokenId][VINTAGE] = defaultVintage;
@@ -247,9 +248,13 @@ contract BCO2 is ERC1155, Ownable, IERC7496, ReentrancyGuard {
     /// @notice Returns the URI for a token ID
     /// @param tokenId The token ID
     /// @return The URI for the token
-    function uri(
-        uint256 tokenId
-    ) public view virtual override returns (string memory) {
+    function uri(uint256 tokenId)
+        public
+        view
+        virtual
+        override
+        returns (string memory)
+    {
         if (
             tokenId != unit_tCO2_TOKEN_ID &&
             tokenId != unit_tCO2_RETIRED_TOKEN_ID
@@ -275,9 +280,10 @@ contract BCO2 is ERC1155, Ownable, IERC7496, ReentrancyGuard {
 
     /// @notice Updates the certificate ID (called by governance)
     /// @param _certificateId The new certificate ID
-    function _setCertificateId(
-        string memory _certificateId
-    ) external onlyGovernance {
+    function _setCertificateId(string memory _certificateId)
+        external
+        onlyGovernance
+    {
         certificateId = _certificateId;
         emit CertificateIDUpdated(_certificateId);
     }
@@ -293,11 +299,11 @@ contract BCO2 is ERC1155, Ownable, IERC7496, ReentrancyGuard {
     /// @param quantity The number of credits to mint
     function mintWithRUSD(uint256 quantity) external nonReentrant {
         if (!mintingActive) revert MintingClosed();
-        // if (!registry.isProjectApproved(address(this)))
-        //     revert ProjectNotApproved();
-        // uint256 creditsIssued = registry.creditAmountIssued(address(this));
-        // if (creditsIssued == 0 || totalSupply + quantity > creditsIssued)
-        //     revert ExceedsCreditsIssued();
+        if (!registry.isProjectApproved(address(this)))
+            revert ProjectNotApproved();
+        uint256 creditsIssued = registry.creditAmountIssued(address(this));
+        if (creditsIssued == 0 || totalSupply + quantity > creditsIssued)
+            revert ExceedsCreditsIssued();
         if (quantity == 0) revert InvalidQuantity();
         if (walletMinted[msg.sender] + quantity > maxPerWallet)
             revert ExceedsMaxPerWallet();
@@ -338,22 +344,15 @@ contract BCO2 is ERC1155, Ownable, IERC7496, ReentrancyGuard {
         if (block.timestamp < uint256(_traits[unit_tCO2_TOKEN_ID][VINTAGE]))
             revert VintageNotPassed();
         if (!isValid(unit_tCO2_TOKEN_ID)) revert ValidityExpired();
-        // emit DebugVintage(_traits[unit_tCO2_TOKEN_ID][VINTAGE], block.timestamp);
 
         // Transfer credits to retired token ID
         _burn(msg.sender, unit_tCO2_TOKEN_ID, quantity);
-        _mint(msg.sender, unit_tCO2_RETIRED_TOKEN_ID, quantity, "");
+
+        uint256 retireTimestamp = block.timestamp;
 
         // Generate certificate ID
         bytes32 certId = keccak256(
-            abi.encodePacked(
-                msg.sender,
-                quantity,
-                block.timestamp,
-                projectId,
-                certificateId,
-                userRetirementCertificates[msg.sender].length
-            )
+            abi.encodePacked(msg.sender, quantity, retireTimestamp, projectId)
         );
 
         // Create and store retirement certificate
@@ -361,7 +360,7 @@ contract BCO2 is ERC1155, Ownable, IERC7496, ReentrancyGuard {
             certificateId: certId,
             owner: msg.sender,
             tonnesRetired: quantity * tonnesPerToken,
-            retireTimestamp: block.timestamp
+            retireTimestamp: retireTimestamp
         });
         userRetirementCertificates[msg.sender].push(cert);
         certificateById[certId] = cert;
@@ -372,14 +371,26 @@ contract BCO2 is ERC1155, Ownable, IERC7496, ReentrancyGuard {
         walletRetired[msg.sender] += quantity;
         totalRetired += quantity;
 
+        _mint(msg.sender, unit_tCO2_RETIRED_TOKEN_ID, quantity, "");
+
         emit CreditsRetired(msg.sender, quantity);
     }
 
+    /// @notice gets all retirement certificate counts for a user
+    function getRetirementCertificateCount(address user)
+        external
+        view
+        returns (uint256)
+    {
+        return userRetirementCertificates[user].length;
+    }
+
     /// @notice Generates a retirement certificate hash for a specific certificate
-    function getRetirementCertificate(
-        address account,
-        uint256 certificateIndex
-    ) external view returns (bytes32) {
+    function getRetirementCertificate(address account, uint256 certificateIndex)
+        external
+        view
+        returns (bytes32)
+    {
         RetirementCertificate[] memory certs = userRetirementCertificates[
             account
         ];
@@ -392,8 +403,7 @@ contract BCO2 is ERC1155, Ownable, IERC7496, ReentrancyGuard {
                     account,
                     cert.tonnesRetired,
                     cert.retireTimestamp,
-                    projectId,
-                    cert.certificateId
+                    projectId
                 )
             );
     }
@@ -425,8 +435,7 @@ contract BCO2 is ERC1155, Ownable, IERC7496, ReentrancyGuard {
                 account,
                 cert.tonnesRetired,
                 cert.retireTimestamp,
-                projectId,
-                cert.certificateId
+                projectId
             )
         );
         isValidCert = certificateHash == expectedHash;
@@ -457,9 +466,11 @@ contract BCO2 is ERC1155, Ownable, IERC7496, ReentrancyGuard {
     /// @notice Gets the total supply for a specific token ID
     /// @param tokenId The token ID
     /// @return The total supply for the token ID
-    function getTotalSupplyByTokenId(
-        uint256 tokenId
-    ) external view returns (uint256) {
+    function getTotalSupplyByTokenId(uint256 tokenId)
+        external
+        view
+        returns (uint256)
+    {
         if (
             tokenId != unit_tCO2_TOKEN_ID &&
             tokenId != unit_tCO2_RETIRED_TOKEN_ID
@@ -477,10 +488,12 @@ contract BCO2 is ERC1155, Ownable, IERC7496, ReentrancyGuard {
     /// @param tokenId The token ID
     /// @param traitKey The trait key
     /// @return The trait value
-    function getTraitValue(
-        uint256 tokenId,
-        bytes32 traitKey
-    ) external view override returns (bytes32) {
+    function getTraitValue(uint256 tokenId, bytes32 traitKey)
+        external
+        view
+        override
+        returns (bytes32)
+    {
         if (
             tokenId != unit_tCO2_TOKEN_ID &&
             tokenId != unit_tCO2_RETIRED_TOKEN_ID
@@ -494,10 +507,12 @@ contract BCO2 is ERC1155, Ownable, IERC7496, ReentrancyGuard {
     /// @param tokenId The token ID
     /// @param traitKeys The trait keys
     /// @return The trait values
-    function getTraitValues(
-        uint256 tokenId,
-        bytes32[] calldata traitKeys
-    ) external view override returns (bytes32[] memory) {
+    function getTraitValues(uint256 tokenId, bytes32[] calldata traitKeys)
+        external
+        view
+        override
+        returns (bytes32[] memory)
+    {
         if (
             tokenId != unit_tCO2_TOKEN_ID &&
             tokenId != unit_tCO2_RETIRED_TOKEN_ID
@@ -515,9 +530,13 @@ contract BCO2 is ERC1155, Ownable, IERC7496, ReentrancyGuard {
     /// @notice Checks if the contract supports an interface
     /// @param interfaceId The interface ID
     /// @return True if the interface is supported
-    function supportsInterface(
-        bytes4 interfaceId
-    ) public view virtual override returns (bool) {
+    function supportsInterface(bytes4 interfaceId)
+        public
+        view
+        virtual
+        override
+        returns (bool)
+    {
         return
             interfaceId == type(IERC7496).interfaceId ||
             super.supportsInterface(interfaceId);
@@ -548,9 +567,8 @@ contract BCO2 is ERC1155, Ownable, IERC7496, ReentrancyGuard {
             if (_traits[ids[i]][IS_PERMANENT] == bytes32(0))
                 revert TokenDoesNotExist();
             if (ids[i] == unit_tCO2_RETIRED_TOKEN_ID) {
-                // Allow minting or burning retired tokens, but forbid transfers
-                if (from != address(0))
-                    revert AlreadyRetired();
+                // Allow minting of retired tokens within retire function, but forbid burning & transfers
+                if (from != address(0)) revert AlreadyRetired();
             }
             if (!isValid(ids[i])) revert ValidityExpired();
             if (block.timestamp < uint256(_traits[ids[i]][VINTAGE]))
