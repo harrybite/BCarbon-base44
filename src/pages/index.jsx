@@ -47,7 +47,7 @@ function PagesContent() {
         <Route path="/" element={<Home />} />
         <Route path="/Home" element={<Home />} />
         <Route path="/Projects" element={<Projects />} />
-        <Route path="/ProjectDetails" element={<ProjectDetails />} />
+        <Route path="/ProjectDetails/:projectContract" element={<ProjectDetails />} />
         <Route path="/Trade" element={<Trade />} />
         <Route path="/Administration" element={<Administration />} />
         <Route path="/MyAccount" element={<MyAccount />} />

@@ -57,7 +57,7 @@ export default function MyAccount() {
             </TabsTrigger>
             <TabsTrigger value="buyer" className="flex items-center space-x-2">
               <ShoppingBag className="w-4 h-4" />
-              <span>Credit Buyer</span>
+              <span>My tCO<sub>2</sub> Holdings</span>
             </TabsTrigger>
           </TabsList>
 
