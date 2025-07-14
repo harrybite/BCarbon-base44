@@ -41,7 +41,7 @@ const CertificatesTab = () => {
 
   return (
     <div className="p-4">
-      <h2 className="text-2xl font-bold mb-4">Buyer Dashboard</h2>
+      <h2 className="text-2xl font-bold mb-4">BCO<sub>2</sub> Retirement Certificates</h2>
       {loading ? (
         <p>Loading...</p>
       ) : (

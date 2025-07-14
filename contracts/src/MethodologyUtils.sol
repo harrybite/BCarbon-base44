@@ -36,6 +36,43 @@ library MethodologyUtils {
         EnergyEfficiency
     }
 
+    function getSymbol(Methodology m) internal pure returns (string memory) {
+        string[31] memory symbols = [
+            "ARR",
+            "IFM",
+            "REDD+",
+            "ALM",
+            "WRC",
+            "IFRC",
+            "MA",
+            "EC",
+            "RE",
+            "IPE",
+            "AP",
+            "RP",
+            "CCS",
+            "CCUS",
+            "Blue-Carbon",
+            "BA",
+            "SCS",
+            "PR",
+            "MR",
+            "GC",
+            "WR",
+            "Composting",
+            "MM",
+            "LGC",
+            "WMC",
+            "DAC",
+            "BECCS",
+            "SA",
+            "TE",
+            "FS",
+            "EE"
+        ];
+        return symbols[uint8(m)];
+    }
+
     function getName(Methodology m) internal pure returns (string memory) {
         string[31] memory names = [
             "Afforestation, Reforestation and Revegetation (ARR)",

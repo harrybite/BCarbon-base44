@@ -37,6 +37,16 @@
 	},
 	{
 		"inputs": [],
+		"name": "EnforcedPause",
+		"type": "error"
+	},
+	{
+		"inputs": [],
+		"name": "ExpectedPause",
+		"type": "error"
+	},
+	{
+		"inputs": [],
 		"name": "InvalidCreditAmount",
 		"type": "error"
 	},
