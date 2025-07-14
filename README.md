@@ -9,7 +9,7 @@ GitHub Repo: [github.com/arrnaya/BCarbon-base44](https://github.com/arrnaya/BCar
 
 ## 🌍 Overview
 
-**B-Carbon** is a blockchain-powered carbon credit registry and marketplace. It allows project developers to tokenize carbon credits, undergo validation and verification, and sell their carbon offsets on-chain — all while ensuring transparency, immutability, and auditability.
+**B-Carbon** is a blockchain-powered carbon credit registry and marketplace. It allows project developers/issuers to tokenize carbon credits, undergo validation and verification, and sell their carbon offsets on-chain — all while ensuring transparency, immutability, and auditability.
 
 The platform combines smart contracts, decentralized governance, and user-friendly interfaces to build trust and accessibility in voluntary carbon markets.
 
@@ -140,5 +140,6 @@ forge test -vv
 
 ✅ On-chain certificate registry with QR code validation
 
-📜 License
+## 📜 License
+
 This project is licensed under the MIT License.
