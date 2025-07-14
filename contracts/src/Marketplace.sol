@@ -1,9 +1,11 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.20;
 
+import "@openzeppelin/contracts/token/ERC1155/IERC1155Receiver.sol";
+import "@openzeppelin/contracts/utils/introspection/ERC165.sol";
 import "./Registry/ProjectData.sol";
 
-contract BCO2Marketplace is Ownable, ReentrancyGuard {
+contract BCO2Marketplace is Ownable, ReentrancyGuard, IERC1155Receiver, ERC165 {
     ProjectData public projectData;
 
     IERC20 public rusd; // RUSD ERC20 token
@@ -60,9 +62,14 @@ contract BCO2Marketplace is Ownable, ReentrancyGuard {
     error TransferFailed();
     error InvalidTokenContract();
 
-    constructor(address _rusd, address initialOwner) Ownable(initialOwner) {
+    constructor(
+        address _rusd,
+        address _projectData,
+        address initialOwner
+    ) Ownable(initialOwner) {
         if (_rusd == address(0)) revert InvalidTokenContract();
         rusd = IERC20(_rusd);
+        projectData = ProjectData(_projectData);
     }
 
     /// @notice Creates a new listing for ERC1155 carbon credit NFTs
@@ -178,10 +185,10 @@ contract BCO2Marketplace is Ownable, ReentrancyGuard {
     /// @notice Purchases a specified quantity from a listing using RUSD
     /// @param listingId The ID of the listing
     /// @param quantity The number of tokens to purchase
-    function purchase(uint256 listingId, uint256 quantity)
-        external
-        nonReentrant
-    {
+    function purchase(
+        uint256 listingId,
+        uint256 quantity
+    ) external nonReentrant {
         Listing storage listing = listings[listingId];
         if (!listing.active) revert ListingNotActive();
         if (quantity == 0 || quantity > listing.quantity)
@@ -249,22 +256,46 @@ contract BCO2Marketplace is Ownable, ReentrancyGuard {
     /// @notice Gets listing details
     /// @param listingId The ID of the listing
     /// @return The listing details
-    function getListing(uint256 listingId)
-        external
-        view
-        returns (Listing memory)
-    {
+    function getListing(
+        uint256 listingId
+    ) external view returns (Listing memory) {
         return listings[listingId];
     }
 
     /// @notice Gets all listings for a user
     /// @param user The address of the user
     /// @return Array of listing IDs
-    function getUserListings(address user)
-        external
-        view
-        returns (uint256[] memory)
-    {
+    function getUserListings(
+        address user
+    ) external view returns (uint256[] memory) {
         return userListings[user];
+    }
+
+    function supportsInterface(
+        bytes4 interfaceId
+    ) public view virtual override(IERC165, ERC165) returns (bool) {
+        return
+            interfaceId == type(IERC1155Receiver).interfaceId ||
+            super.supportsInterface(interfaceId);
+    }
+
+    function onERC1155Received(
+        address operator,
+        address from,
+        uint256 id,
+        uint256 value,
+        bytes calldata data
+    ) public pure override returns (bytes4) {
+        return this.onERC1155Received.selector;
+    }
+
+    function onERC1155BatchReceived(
+        address operator,
+        address from,
+        uint256[] calldata ids,
+        uint256[] calldata values,
+        bytes calldata data
+    ) public pure override returns (bytes4) {
+        return this.onERC1155BatchReceived.selector;
     }
 }

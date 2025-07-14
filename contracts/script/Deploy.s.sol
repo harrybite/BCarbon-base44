@@ -21,7 +21,7 @@ contract Deploy is Script {
         // address rusd = vm.envAddress("RUSD_BSC_TESTNET");
         address vvb = vm.envAddress("vvb");
 
-        vm.startBroadcast(deployerPrivateKey);
+        vm.startBroadcast();
 
         // Deploy governance, data, manager & factory
         // BCO2Governance governance = new BCO2Governance(owner);

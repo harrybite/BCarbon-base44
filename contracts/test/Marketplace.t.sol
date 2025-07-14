@@ -18,7 +18,6 @@ contract BCO2Test is Test {
     ProjectManager projectManager;
     ProjectFactory projectFactory;
     BCO2Marketplace marketplace;
-    
 
     address user = address(1);
     address vvb = address(2);
@@ -43,6 +42,7 @@ contract BCO2Test is Test {
         );
         marketplace = new BCO2Marketplace(
             address(rusd),
+            address(projectData),
             owner
         );
 
@@ -99,24 +99,28 @@ contract BCO2Test is Test {
 
         console.log("Project ID:", project.projectId);
         console.log("Certificate ID:", project.certificateId);
+        console.log("Marketplace:", address(marketplace));
 
         vm.startPrank(user);
         rusd.approve(address(bco2), 100 ether);
         bco2.mintWithRUSD(10); // Mint 10 tCO2 tokens
 
-        marketplace.createListing(address(bco2), 1, 5, 10000000000000000000);
-        (address seller,,,,, bool active) = marketplace.listings(0);
-        console.log("Lising Details:", seller , active);
-
         vm.stopPrank();
     }
 
     function testMintAndList() public {
+        vm.startPrank(user); // ← Switch sender to user
+
         // Assert initial balances
         assertEq(bco2.balanceOf(user, 1), 10);
 
+        bco2.setApprovalForAll(address(marketplace), true);
+
         // Check listing details
-        (address seller,,,,, bool active) = marketplace.listings(0);
+        marketplace.createListing(0x677f34F9968d4Be4933A108C15497584AD755626, 1, 5, 10000000000000000000);
+        (address seller, , , , , bool active) = marketplace.listings(0);
+        console.log("Listing Details:", seller, active);
+
         assertEq(seller, user);
         assertTrue(active);
     }
