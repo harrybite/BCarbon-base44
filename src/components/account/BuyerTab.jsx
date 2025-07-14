@@ -1,16 +1,19 @@
 /* eslint-disable no-unused-vars */
 import { useState, useEffect } from 'react';
 import { useContractInteraction } from '../contract/ContractInteraction';
-import ProjectCard from '../projects/ProjectCard';
+import { useNavigate } from "react-router-dom";
 import { useConnectWallet } from '@/context/walletcontext';
 import { Link } from "react-router-dom";
 import { useMarketplaceInteraction } from '../contract/MarketplaceInteraction';
 import { useToast } from '../ui/use-toast';
 
 const BuyerTab = () => {
-  const { isContractsInitised, getUserApproveProjectBalance, isApproveForAll, setApprovalForAll } =
+  const { isContractsInitised, getUserApproveProjectBalance,
+    isApproveForAll, setApprovalForAll } =
     useContractInteraction();
   const { createListing } = useMarketplaceInteraction();
+  const navigate = useNavigate();
+
   const [projects, setProjects] = useState([]);
   const [loading, setLoading] = useState(true);
   const [update, setUpdate] = useState(0);
@@ -22,6 +25,9 @@ const BuyerTab = () => {
   const [showModal, setShowModal] = useState(false);
   const [isListing, setIsListing] = useState(false);
 
+  const [isApproving, setIsApproving] = useState(false);
+  const [isReadyToList, setIsReadyToList] = useState(false);
+
   // Listing function
   const list = async () => {
     if (!selectedProject || !quantity || !price) {
@@ -32,31 +38,50 @@ const BuyerTab = () => {
       });
       return;
     }
-    setIsListing(true);
-    try {
-      if (Number(selectedProject.balanceMinted) < Number(quantity)) {
+
+    if (!isReadyToList) {
+      // Step 1: Approval
+     
+      try {
+        if (Number(selectedProject.balanceMinted) < Number(quantity)) {
+          toast({
+            title: "Insufficient Balance",
+            description: `You only have ${selectedProject.balanceMinted} tCO2 available for listing.`,
+            variant: "destructive",
+          });
+          setIsApproving(false);
+          return;
+        }
+
+        const tokenContract = selectedProject.projectContract;
+        const approved = await isApproveForAll(tokenContract, walletAddress);
+        if (!approved) {
+           setIsApproving(true);
+          await setApprovalForAll(tokenContract);
+          toast({
+            title: "Approval Set",
+            description: "Approval for all set successfully, you can now list your NFTs.",
+            variant: "success",
+          });
+        }
+        setIsReadyToList(true);
+      } catch (error) {
         toast({
-          title: "Insufficient Balance",
-          description: `You only have ${selectedProject.balanceMinted} tCO2 available for listing.`,
+          title: "Approval Failed",
+          description: error.message || "An error occurred during approval.",
           variant: "destructive",
         });
-        return;
+      } finally {
+        setIsApproving(false);
       }
+      return;
+    }
 
+    // Step 2: Listing
+    setIsListing(true);
+    try {
       const tokenContract = selectedProject.projectContract;
       const tokenId = 1;
-
-      const approved = await isApproveForAll(tokenContract, walletAddress);
-      console.log('Is approved for all:', approved);
-      if (!approved) {
-        await setApprovalForAll(tokenContract);
-        toast({
-          title: "Approval Set",
-          description: "Approval for all set successfully.",
-          variant: "success",
-        });
-      }
-
       await createListing(tokenContract, tokenId, quantity, price);
       toast({
         title: "Listing Created",
@@ -67,9 +92,10 @@ const BuyerTab = () => {
       setQuantity('');
       setPrice('');
       setSelectedProject(null);
-      setUpdate(update + 1); // Trigger refetch
+      setUpdate(update + 1);
+      setIsReadyToList(false);
+      navigate("/Trade");
     } catch (error) {
-      console.error('Error creating listing:', error);
       toast({
         title: "Listing Creation Failed",
         description: error.message || "An error occurred while creating the listing.",
@@ -221,7 +247,11 @@ const BuyerTab = () => {
             </label>
             <div className="flex justify-end gap-2">
               <button
-                onClick={() => setShowModal(false)}
+                onClick={() => {
+                  setShowModal(false);
+                  setIsReadyToList(false);
+                  setIsApproving(false);
+                }}
                 className="px-4 py-2 bg-gray-300 rounded hover:bg-gray-400"
               >
                 Cancel
@@ -229,9 +259,13 @@ const BuyerTab = () => {
               <button
                 onClick={list}
                 className="px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700 disabled:opacity-50"
-                disabled={isListing}
+                disabled={isApproving || isListing}
               >
-                {isListing ? "Listing..." : "Submit"}
+                {isApproving
+                  ? "Approving..."
+                  : isReadyToList
+                    ? (isListing ? "Listing..." : "List Now")
+                    : "Submit"}
               </button>
             </div>
           </div>

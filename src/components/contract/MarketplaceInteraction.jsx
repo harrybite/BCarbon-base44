@@ -203,7 +203,8 @@ export const useMarketplaceInteraction = () => {
       const listings = [];
       for (let i = 0; i < listingCount; i++) {
         const listing = await contract.getListing(i);
-        const tokenURI = await getTokenURIs(listing.tokenContract, 1);
+        let tokenURI = await getTokenURIs(listing.tokenContract, 1);
+        tokenURI = tokenURI?.replace(/^"|"$/g, "");
         const response = await fetch(tokenURI);
         const metadata = await response.json();
         listings.push({
