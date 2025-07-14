@@ -1,12 +1,10 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.20;
 
-import "@openzeppelin/contracts/token/ERC1155/IERC1155.sol";
-import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
-import "@openzeppelin/contracts/access/Ownable.sol";
-import "@openzeppelin/contracts/utils/ReentrancyGuard.sol";
+import "./Registry/ProjectData.sol";
 
 contract BCO2Marketplace is Ownable, ReentrancyGuard {
+    ProjectData public projectData;
 
     IERC20 public rusd; // RUSD ERC20 token
 
@@ -78,13 +76,27 @@ contract BCO2Marketplace is Ownable, ReentrancyGuard {
         uint256 quantity,
         uint256 pricePerUnit
     ) external nonReentrant returns (uint256 listingId) {
+        ProjectData.Project memory project = projectData.getProjectDetails(
+            tokenContract
+        );
         if (tokenContract == address(0)) revert InvalidTokenContract();
+        if (tokenContract != project.projectContract)
+            revert InvalidTokenContract();
         if (quantity == 0) revert InvalidQuantity();
         if (pricePerUnit == 0) revert InvalidPrice();
         if (IERC1155(tokenContract).balanceOf(msg.sender, tokenId) < quantity)
             revert InsufficientBalance();
-        if (!IERC1155(tokenContract).isApprovedForAll(msg.sender, address(this)))
-            revert InsufficientBalance(); // Requires setApprovalForAll
+        if (
+            !IERC1155(tokenContract).isApprovedForAll(msg.sender, address(this))
+        ) revert InsufficientBalance(); // Requires setApprovalForAll
+
+        ERC1155(tokenContract).safeTransferFrom(
+            msg.sender,
+            address(this),
+            tokenId,
+            quantity,
+            ""
+        );
 
         listingId = listingCounter++;
         listings[listingId] = Listing({
@@ -97,7 +109,14 @@ contract BCO2Marketplace is Ownable, ReentrancyGuard {
         });
         userListings[msg.sender].push(listingId);
 
-        emit ListingCreated(listingId, msg.sender, tokenContract, tokenId, quantity, pricePerUnit);
+        emit ListingCreated(
+            listingId,
+            msg.sender,
+            tokenContract,
+            tokenId,
+            quantity,
+            pricePerUnit
+        );
     }
 
     /// @notice Updates an existing listing
@@ -114,8 +133,12 @@ contract BCO2Marketplace is Ownable, ReentrancyGuard {
         if (listing.seller != msg.sender) revert NotSeller();
         if (quantity == 0) revert InvalidQuantity();
         if (pricePerUnit == 0) revert InvalidPrice();
-        if (IERC1155(listing.tokenContract).balanceOf(msg.sender, listing.tokenId) < quantity)
-            revert InsufficientBalance();
+        if (
+            IERC1155(listing.tokenContract).balanceOf(
+                msg.sender,
+                listing.tokenId
+            ) < quantity
+        ) revert InsufficientBalance();
 
         listing.quantity = quantity;
         listing.pricePerUnit = pricePerUnit;
@@ -141,40 +164,41 @@ contract BCO2Marketplace is Ownable, ReentrancyGuard {
             }
         }
 
+        ERC1155(listing.tokenContract).safeTransferFrom(
+            address(this),
+            msg.sender,
+            listing.tokenId,
+            listing.quantity,
+            ""
+        );
+
         emit ListingCancelled(listingId);
     }
 
     /// @notice Purchases a specified quantity from a listing using RUSD
     /// @param listingId The ID of the listing
     /// @param quantity The number of tokens to purchase
-    function purchase(uint256 listingId, uint256 quantity) external nonReentrant {
+    function purchase(uint256 listingId, uint256 quantity)
+        external
+        nonReentrant
+    {
         Listing storage listing = listings[listingId];
         if (!listing.active) revert ListingNotActive();
-        if (quantity == 0 || quantity > listing.quantity) revert InvalidQuantity();
+        if (quantity == 0 || quantity > listing.quantity)
+            revert InvalidQuantity();
 
         uint256 totalPrice = quantity * listing.pricePerUnit;
         uint256 fee = (totalPrice * FEE_PERCENTAGE) / FEE_DENOMINATOR;
         uint256 sellerAmount = totalPrice - fee;
 
         // Check RUSD balance and allowance
-        if (rusd.balanceOf(msg.sender) < totalPrice) revert InsufficientBalance();
-        if (rusd.allowance(msg.sender, address(this)) < totalPrice) revert InsufficientAllowance();
+        if (rusd.balanceOf(msg.sender) < totalPrice)
+            revert InsufficientBalance();
+        if (rusd.allowance(msg.sender, address(this)) < totalPrice)
+            revert InsufficientAllowance();
 
         // Transfer RUSD from buyer to contract
         bool success = rusd.transferFrom(msg.sender, address(this), totalPrice);
-        if (!success) revert TransferFailed();
-
-        // Transfer tokens to buyer
-        IERC1155(listing.tokenContract).safeTransferFrom(
-            listing.seller,
-            msg.sender,
-            listing.tokenId,
-            quantity,
-            ""
-        );
-
-        // Transfer RUSD to seller
-        success = rusd.transfer(listing.seller, sellerAmount);
         if (!success) revert TransferFailed();
 
         // Update listing
@@ -185,12 +209,27 @@ contract BCO2Marketplace is Ownable, ReentrancyGuard {
             uint256[] storage userListingIds = userListings[listing.seller];
             for (uint256 i = 0; i < userListingIds.length; i++) {
                 if (userListingIds[i] == listingId) {
-                    userListingIds[i] = userListingIds[userListingIds.length - 1];
+                    userListingIds[i] = userListingIds[
+                        userListingIds.length - 1
+                    ];
                     userListingIds.pop();
                     break;
                 }
             }
         }
+
+        // Transfer tokens to buyer
+        IERC1155(listing.tokenContract).safeTransferFrom(
+            address(this),
+            msg.sender,
+            listing.tokenId,
+            quantity,
+            ""
+        );
+
+        // Transfer RUSD to seller
+        success = rusd.transfer(listing.seller, sellerAmount);
+        if (!success) revert TransferFailed();
 
         // Accumulate platform fees
         platformFees = platformFees + fee;
@@ -210,14 +249,22 @@ contract BCO2Marketplace is Ownable, ReentrancyGuard {
     /// @notice Gets listing details
     /// @param listingId The ID of the listing
     /// @return The listing details
-    function getListing(uint256 listingId) external view returns (Listing memory) {
+    function getListing(uint256 listingId)
+        external
+        view
+        returns (Listing memory)
+    {
         return listings[listingId];
     }
 
     /// @notice Gets all listings for a user
     /// @param user The address of the user
     /// @return Array of listing IDs
-    function getUserListings(address user) external view returns (uint256[] memory) {
+    function getUserListings(address user)
+        external
+        view
+        returns (uint256[] memory)
+    {
         return userListings[user];
     }
 }
