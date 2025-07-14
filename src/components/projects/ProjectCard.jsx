@@ -71,10 +71,15 @@ const ProjectCard = ({ project }) => {
         setComment(''); // Clear the textarea
         setReloadData(reloadData + 1); // Trigger a reload to fetch new comments
       } else {
-        alert('Comment transaction failed!');
+        toster({
+          title: "Comment Failed",
+          description: `Transaction failed!`,
+          variant: "error",
+        });
+        // alert('Comment transaction failed!');
       }
     } catch (error) {
-      alert(`Comment failed: ${error.message}`);
+      // alert(`Comment failed: ${error.message}`);
     }
   };
 

@@ -218,7 +218,7 @@ export const useMarketplaceInteraction = () => {
           active: listing.active
         });
       }
-      return listings;
+      return listings.reverse();
     } catch (error) {
       throw new Error(`Failed to fetch listings: ${error.message}`);
     }
@@ -245,7 +245,7 @@ export const useMarketplaceInteraction = () => {
           active: listing.active
         });
       }
-      return listings;
+      return listings.reverse();
     } catch (error) {
       throw new Error(`Failed to fetch user listings: ${error.message}`);
     }
