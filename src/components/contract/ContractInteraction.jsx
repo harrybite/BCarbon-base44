@@ -212,11 +212,9 @@ export const useContractInteraction = () => {
             const response = await fetch(tokenURI);
          
             const metadata = await response.json();
-         
             nfts.push({
               projectContract: project,
               balanceMinted: balanceminted.toString(),
-      
               metadata: metadata,
               tokenURI: tokenURI
             });
@@ -230,7 +228,6 @@ export const useContractInteraction = () => {
             const metadata = await response.json();
             nfts.push({
               projectContract: project,
-           
               balanceRetired: balanceRetired.toString(),
               metadata: metadata,
               tokenURI: tokenURI
@@ -238,11 +235,11 @@ export const useContractInteraction = () => {
           }
         }
       }
-      return nfts;
+      return nfts.reverse();
     }
     catch (err) {
-      console.error("Error fetching user approved project balance:", error);
-      throw new Error(`Failed to fetch user approved project balance: ${error.message}`);
+      console.error("Error fetching user approved project balance:", err);
+      throw new Error(`Failed to fetch user approved project balance: ${err.message}`);
     }
   }
 
@@ -416,7 +413,7 @@ const getRetirementCertificates = async (projectAddress) => {
         retireTimestamp: cert.retireTimestamp?.toString?.() ?? ""
       });
     }
-    return certificates; // Array of { projectAddress, certificateId, owner, tonnesRetired, retireTimestamp }
+    return certificates.reverse(); // Array of { projectAddress, certificateId, owner, tonnesRetired, retireTimestamp }
   } catch (error) {
     throw new Error(`Failed to fetch retirement certificates: ${error.message}`);
   }
@@ -432,7 +429,7 @@ const getRetirementCertificates = async (projectAddress) => {
       if( certificates.length === 0) continue; // Skip if no certificates
       grouped.push({ projectAddress: project, certificates });
     }
-    return grouped; // Array of { projectAddress, certificates: [...] }
+    return grouped.reverse(); // Array of { projectAddress, certificates: [...] }
   } catch (error) {
     throw new Error(`Failed to fetch retirement certificates: ${error.message}`);
   }
@@ -739,20 +736,20 @@ const getRetirementCertificates = async (projectAddress) => {
     }
   };
 
-  const getListedProjects = async () => {
-    if (!projectDataContract) throw new Error("projectDataContract contract not initialized");
-    try {
-      const projects = await projectDataContract.getListedProjects();
-      const details = []
-      for (const project of projects) {
-        const detail = await getListedProjectDetails(project);
-        details.push(detail);
-      }
-      return details
-    } catch (error) {
-      throw new Error(`Failed to fetch listed projects: ${error.message}`);
+const getListedProjects = async () => {
+  if (!projectDataContract) throw new Error("projectDataContract contract not initialized");
+  try {
+    const projects = await projectDataContract.getListedProjects();
+    const details = [];
+    for (const project of projects) {
+      const detail = await getListedProjectDetails(project);
+      details.push(detail);
     }
-  };
+    return details.reverse(); // Reverse to show latest first
+  } catch (error) {
+    throw new Error(`Failed to fetch listed projects: ${error.message}`);
+  }
+};
 
   const getUserProjects = async () => {
     try {
