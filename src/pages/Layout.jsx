@@ -68,6 +68,7 @@ export default function Layout({ children, currentPageName }) {
   const [walletConnected, setWalletConnected] = useState(false);
   const { ConnectWallet, walletAddress, setWalletAddress } = useConnectWallet();
   const { initializeProvider } = useContractInteraction();
+  const [update, setUpdate] = useState(0);
 
   useEffect(() => {
     const checkWallet = async () => {
@@ -76,7 +77,7 @@ export default function Layout({ children, currentPageName }) {
           initializeProvider();
           if (typeof window !== "undefined" && window?.ethereum) {
             try {
-              const accounts = await window.ethereum.request({ method: "eth_accounts" });
+              const accounts = await window.ethereum.request({ method: "eth_requestAccounts" });
               if (accounts.length > 0) {
                 setWalletAddress(accounts[0]);
               }
@@ -90,8 +91,21 @@ export default function Layout({ children, currentPageName }) {
       }
     };
     checkWallet();
-  }, []);
+  }, [update]);
 
+   const checkWalletoutSide = async () => {
+     if (typeof window !== "undefined" && window.ethereum) {
+       try {
+         initializeProvider();
+         const accounts = await window.ethereum.request({ method: "eth_requestAccounts" });
+         if (accounts.length > 0) {
+           setWalletAddress(accounts[0]);
+         }
+       } catch (err) {
+         console.error("Wallet connection failed:", err);
+       }
+     }
+   };
 
 
   // const connectWallet = async () => {
@@ -183,7 +197,7 @@ export default function Layout({ children, currentPageName }) {
                 </>
               ) : (
                 <Button
-                  onClick={()=>ConnectWallet()}
+                  onClick={()=>checkWalletoutSide()}
                   className="bg-green-600 hover:bg-green-700 text-white shadow-lg"
                 >
                   <Wallet className="w-4 h-4 mr-2" />

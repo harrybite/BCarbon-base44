@@ -205,10 +205,14 @@ export const useContractInteraction = () => {
         const balanceminted = await bco2Contract.balanceOf(userAddress, 1);
         const balanceRetired = await bco2Contract.balanceOf(userAddress, 2);
         if (Number(balanceminted) > 0) {
-          const tokenURI = await getTokenURIs(project, 1);
+          let tokenURI = await getTokenURIs(project, 1);
           if (tokenURI && tokenURI !== "") {
+   
+            tokenURI = tokenURI?.replace(/^"|"$/g, "");
             const response = await fetch(tokenURI);
+         
             const metadata = await response.json();
+         
             nfts.push({
               projectContract: project,
               balanceMinted: balanceminted.toString(),
@@ -219,8 +223,9 @@ export const useContractInteraction = () => {
           }
         }
         if( Number(balanceRetired) > 0){
-          const tokenURI = await getTokenURIs(project, 2);
+          let tokenURI = await getTokenURIs(project, 2);
           if (tokenURI && tokenURI !== "") {
+            tokenURI = tokenURI?.replace(/^"|"$/g, "");
             const response = await fetch(tokenURI);
             const metadata = await response.json();
             nfts.push({

@@ -479,7 +479,7 @@ export default function ProjectDetails() {
               <CardContent className="space-y-4">
                 {(!project.tokenUri || project.tokenUri === "" || typeof project.tokenUri === "undefined") ? (
                   <div className="text-center text-sm text-gray-500">
-                    Minting is currently disabled. Project is awaiting approval.
+                    Minting is currently disabled. awaiting to set token URI.
                   </div>
                 ) : (
                   <>
