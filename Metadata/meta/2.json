@@ -1,0 +1,36 @@
+{
+    "name": "BCO2 - 1 tCO₂ Retired",
+    "description": "1 verified carbon unit (VCU) representing 1 tonne of CO₂ offset retired. Certified by MAAL, tokenized on-chain for transparent tracking and retirement.",
+    "image": "https://moccasin-charming-hare-120.mypinata.cloud/ipfs/bafybeigkjsaxmbxsnucs3bmusv6arue3vzq4ki6mmns2ssrox6d4xmsima/Retired-BCO2.jpg",
+    "external_url": "https://testnet.bscscan.com/address/0x1204058F5EC282aC273C4Ac6ca854ebe3510ae58",
+    "attributes": [
+        {
+            "trait_type": "Standard",
+            "value": "Verra VCS"
+        },
+        {
+            "trait_type": "Tonnes of CO₂",
+            "value": 1
+        },
+        {
+            "trait_type": "Retired",
+            "value": true
+        },
+        {
+            "trait_type": "Issuer",
+            "value": "BCO2"
+        },
+        {
+            "trait_type": "Registry",
+            "value": "MAAL Registry"
+        },
+        {
+            "trait_type": "Co-benefits",
+            "value": "Biodiversity, Indigenous Employment"
+        },
+        {
+            "trait_type": "Blockchain",
+            "value": "BSC Testnet"
+        }
+    ]
+}

@@ -36,6 +36,7 @@ const CreateProjectTab = ({ setUpdate }) => {
   const [isFullScreen, setIsFullScreen] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
   const [isSearching, setIsSearching] = useState(false);
+  const [coordinatesList, setCoordinatesList] = useState([{ lat: '', lng: '' }]);
 
   // Component to handle map interactions
   const LocationPicker = ({ setLocation }) => {
@@ -44,27 +45,50 @@ const CreateProjectTab = ({ setUpdate }) => {
       useMapEvents({
         click(e) {
           const { lat, lng } = e.latlng;
-          setLocation(`${lat.toFixed(6)},${lng.toFixed(6)}`);
+          setCoordinatesList((prev) => {
+            const newList = [...prev];
+            newList[newList.length - 1] = { lat: lat.toFixed(6), lng: lng.toFixed(6) };
+            updateLocationString(newList);
+            return newList;
+          });
           map.setView([lat, lng], map.getZoom());
         },
       });
-      return formData.location ? (
-        <Marker
-          position={formData.location.split(',').map(Number)}
-          draggable={true}
-          eventHandlers={{
-            dragend(e) {
-              const { lat, lng } = e.target.getLatLng();
-              setLocation(`${lat.toFixed(6)},${lng.toFixed(6)}`);
-              map.setView([lat, lng], map.getZoom());
-            },
-          }}
-        />
-      ) : null;
+
+      return coordinatesList.map((coord, index) => (
+        coord.lat && coord.lng ? (
+          <Marker
+            key={index}
+            position={[Number(coord.lat), Number(coord.lng)]}
+            draggable={true}
+            eventHandlers={{
+              dragend(e) {
+                const { lat, lng } = e.target.getLatLng();
+                setCoordinatesList((prev) => {
+                  const newList = [...prev];
+                  newList[index] = { lat: lat.toFixed(6), lng: lng.toFixed(6) };
+                  updateLocationString(newList);
+                  return newList;
+                });
+                map.setView([lat, lng], map.getZoom());
+              },
+            }}
+          />
+        ) : null
+      ));
     } catch (error) {
       setMapError(error.message);
       return null;
     }
+  };
+
+  // Update location string in formData
+  const updateLocationString = (coords) => {
+    const locationString = coords
+      .filter(coord => coord.lat && coord.lng)
+      .map((coord, index) => `Location ${index + 1} - (${coord.lng}, ${coord.lat})`)
+      .join(', ');
+    setFormData((prev) => ({ ...prev, location: locationString }));
   };
 
   // Handle location search
@@ -87,7 +111,12 @@ const CreateProjectTab = ({ setUpdate }) => {
       const results = await response.json();
       if (results.length > 0) {
         const { lat, lon } = results[0];
-        setFormData({ ...formData, location: `${parseFloat(lat).toFixed(6)},${parseFloat(lon).toFixed(6)}` });
+        setCoordinatesList((prev) => {
+          const newList = [...prev];
+          newList[0] = { lat: parseFloat(lat).toFixed(6), lng: parseFloat(lon).toFixed(6) };
+          updateLocationString(newList);
+          return newList;
+        });
         toast({
           title: "Location Found",
           description: `Set to ${results[0].display_name}`,
@@ -110,6 +139,21 @@ const CreateProjectTab = ({ setUpdate }) => {
     } finally {
       setIsSearching(false);
     }
+  };
+
+  // Add new coordinate input field
+  const addCoordinateField = () => {
+    setCoordinatesList((prev) => [...prev, { lat: '', lng: '' }]);
+  };
+
+  // Handle coordinate input change
+  const handleCoordinateChange = (index, field, value) => {
+    setCoordinatesList((prev) => {
+      const newList = [...prev];
+      newList[index] = { ...newList[index], [field]: value };
+      updateLocationString(newList);
+      return newList;
+    });
   };
 
   const handleChange = (e) => {
@@ -256,7 +300,7 @@ const CreateProjectTab = ({ setUpdate }) => {
       )}
       <form onSubmit={handleSubmit} className="space-y-4">
         <div>
-          <label className="block">Mint Price</label>
+          <label className="block">Target Price (in RUSD)</label>
           <input
             type="text"
             name="mintPrice"
@@ -267,7 +311,7 @@ const CreateProjectTab = ({ setUpdate }) => {
           />
         </div>
         <div>
-          <label className="block">Treasury Address</label>
+          <label className="block">Issuer's Treasury Wallet</label>
           <input
             type="text"
             name="treasury"
@@ -276,6 +320,11 @@ const CreateProjectTab = ({ setUpdate }) => {
             className="w-full border rounded px-2 py-1"
             required
           />
+          <p className="mt-1">
+            <a href="https://genzvault.com/#download" className="text-green-600 hover:underline">
+              Download GenZ Wallet
+            </a>
+          </p>
         </div>
         <div className="flex items-center">
           <button
@@ -339,10 +388,37 @@ const CreateProjectTab = ({ setUpdate }) => {
               {isSearching ? 'Searching...' : 'Search'}
             </button>
           </div>
+          {coordinatesList.map((coord, index) => (
+            <div key={index} className="flex items-center mb-2">
+              <input
+                type="text"
+                placeholder="Latitude"
+                value={coord.lat}
+                onChange={(e) => handleCoordinateChange(index, 'lat', e.target.value)}
+                className="w-1/2 border rounded px-2 py-1 mr-2"
+              />
+              <input
+                type="text"
+                placeholder="Longitude"
+                value={coord.lng}
+                onChange={(e) => handleCoordinateChange(index, 'lng', e.target.value)}
+                className="w-1/2 border rounded px-2 py-1"
+              />
+            </div>
+          ))}
+          <button
+            type="button"
+            onClick={addCoordinateField}
+            className="bg-green-500 text-white px-4 py-1 rounded mb-2"
+          >
+            + Add Coordinate
+          </button>
           <div className="relative">
             <div className={`${isFullScreen ? 'fixed inset-0 z-50 bg-white' : 'w-full h-64 border rounded'}`}>
               <MapContainer
-                center={formData.location ? formData.location.split(',').map(Number) : [51.505, -0.09]}
+                center={coordinatesList[0].lat && coordinatesList[0].lng 
+                  ? [Number(coordinatesList[0].lat), Number(coordinatesList[0].lng)] 
+                  : [51.505, -0.09]}
                 zoom={13}
                 style={{ height: '100%', width: '100%' }}
               >
@@ -419,6 +495,7 @@ const CreateProjectTab = ({ setUpdate }) => {
             className="w-full border rounded px-2 py-1"
             required
           />
+          <p>Check example here: <a href="https://github.com/arrnaya/BCO2_Listing_Application" className="text-green-600 hover:underline">Github Link</a></p>
         </div>
         <button type="submit" className="bg-blue-500 text-white px-4 py-2 rounded">
           Create Project

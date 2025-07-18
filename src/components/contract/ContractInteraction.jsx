@@ -275,7 +275,20 @@ export const useContractInteraction = () => {
     }
   };
 
+const getRetiredTokenURIs = async (projectAddress, tokenId = 2) => {
+    try {
+      const bco2Contract = new Contract(
+        projectAddress,
+        bco2Abi,
+        provider || new JsonRpcProvider(chainInfo.rpc)
+      );
+      const uri = await bco2Contract.uri(tokenId);
 
+      return uri;
+    } catch (error) {
+      throw new Error(`Failed to fetch retiredTokenURIs: ${error.message}`);
+    }
+  };
 
 
   const getDefaultIsPermanent = async (projectAddress) => {
@@ -817,6 +830,7 @@ const getListedProjects = async () => {
       const defaultVintage = await getDefaultVintage(address);
       const location = await getLocation(address);
       const tokenUri = await getTokenURIs(address);
+      const retiredTokenUri = await getRetiredTokenURIs(address);
       return {
         projectContract: detail.projectContract,
         projectId: detail.projectId,
@@ -840,6 +854,7 @@ const getListedProjects = async () => {
         defaultVintage: defaultVintage,
         location: location,
         tokenUri: tokenUri,
+        retiredTokenUri: retiredTokenUri,
       };
     } catch (error) {
       throw new Error(`Failed to fetch project details: ${error.message}`);

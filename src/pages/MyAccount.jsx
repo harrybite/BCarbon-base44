@@ -32,7 +32,7 @@ export default function MyAccount() {
             </div>
             <div>
               <h1 className="text-3xl font-bold text-gray-900">My Account</h1>
-              <p className="text-gray-600">Manage your projects, credits, and account settings</p>
+              <p className="text-gray-600">Manage your projects, tCO₂ credits, and retirement certificates</p>
             </div>
           </div>
         </div>
