@@ -2,7 +2,7 @@
 
 **A decentralized platform for managing, verifying, and trading tokenized carbon credits.**
 
-Live App: [https://b-carbon-base44.vercel.app](https://b-carbon-base44.vercel.app)  
+Live App: [https://decentralized-carbon-credit.vercel.app/](https://decentralized-carbon-credit.vercel.app/)  
 GitHub Repo: [github.com/arrnaya/BCarbon-base44](https://github.com/arrnaya/BCarbon-base44)
 
 ---
