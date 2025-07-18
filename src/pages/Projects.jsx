@@ -23,10 +23,6 @@ export default function Projects() {
     loadProjects();
   }, [walletAddress, isContractsInitised]);
 
-  useEffect(() => {
-    filterProjects();
-  }, [projects, searchTerm, statusFilter, walletAddress, isContractsInitised]);
-
   const loadProjects = async () => {
     setIsLoading(true);
     try {
@@ -38,6 +34,10 @@ export default function Projects() {
       setIsLoading(false);
     }
   };
+
+    useEffect(() => {
+    filterProjects();
+  }, [projects, searchTerm, statusFilter, walletAddress, isContractsInitised]);
 
 const filterProjects = () => {
   let filtered = [...projects];

@@ -750,6 +750,7 @@ const getRetirementCertificates = async (projectAddress) => {
   };
 
 const getListedProjects = async () => {
+
   if (!projectDataContract) throw new Error("projectDataContract contract not initialized");
   try {
     const projects = await projectDataContract.getListedProjects();
