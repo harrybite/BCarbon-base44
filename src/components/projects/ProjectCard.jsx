@@ -126,8 +126,8 @@ const ProjectCard = ({ project }) => {
   };
 
   // Parse and format location string into multiple lines
-  const formatLocations = (locationString) => {
-    if (!locationString) return 'N/A';
+    const formatLocations = (locationString) => {
+    if (!locationString) return ['N/A']; // Always return an array
     const locations = locationString.split(', ').map(loc => {
       const match = loc.match(/Location (\d+) - \(([^,]+), ([^)]+)\)/);
       if (match) {
@@ -135,8 +135,8 @@ const ProjectCard = ({ project }) => {
       }
       return loc;
     });
-    return locations.length > 0 ? locations : ['N/A'];
-  };
+    return locations.length > 0 ? locations : ['N/A']; // Ensure the return value is always an array
+    };
 
   return (
     <div className="border rounded p-4 w-full md:min-w-[450px]">
@@ -210,9 +210,14 @@ const ProjectCard = ({ project }) => {
         
         <div className="flex items-center">
           <span className="font-medium text-gray-700 w-[180px]">Credits Issued:</span>
-          <span className="font-semibold flex-grow text-right">
-            {details.isApproved ? `${Number(details.credits)} tCO<sub>2</sub>` : 'Pending Approval'}
-          </span>
+          <span
+          className="font-semibold flex-grow text-right"
+          dangerouslySetInnerHTML={{
+            __html: details.isApproved
+              ? `${Number(details.credits)} tCO<sub>2</sub>`
+              : 'Pending Approval',
+          }}
+        ></span>
         </div>
       </div>
       <div className="mt-6">
