@@ -16,8 +16,8 @@ export default function Projects() {
   const [searchTerm, setSearchTerm] = useState();
   const [statusFilter, setStatusFilter] = useState("all");
 
-    const { getListedProjects } = useContractInteraction();
-    const { walletAddress } = useConnectWallet();
+  const { getListedProjects } = useContractInteraction();
+  const { walletAddress } = useConnectWallet();
 
   useEffect(() => {
     loadProjects();

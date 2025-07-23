@@ -1,7 +1,8 @@
 /* eslint-disable no-unused-vars */
-import { useEffect, useState } from "react";
+import { useEffect, useState, useRef } from "react";
 import { Link, useLocation, useNavigate } from "react-router-dom";
 import { createPageUrl } from "@/utils";
+import { jwtDecode } from "jwt-decode";
 
 import {
   Home,
@@ -13,7 +14,6 @@ import {
   Menu,
   User
 } from "lucide-react";
-
 import { Button } from "@/components/ui/button";
 import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
 import { ConnectButton, useConnect } from "thirdweb/react";
@@ -21,6 +21,9 @@ import { thirdwebclient } from "@/thirwebClient";
 import { createWallet } from "thirdweb/wallets";
 import { bscTestnet } from "thirdweb/chains"
 import { useConnectWallet } from "@/context/walletcontext";
+import { apihost } from "@/components/contract/address";
+
+
 
 const navigationItems = [
   {
@@ -66,9 +69,26 @@ export default function Layout({ children }) {
   const location = useLocation();
   const navigate = useNavigate();
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+  const [userMenuOpen, setUserMenuOpen] = useState(false);
+  const userMenuRef = useRef(null);
   const { walletAddress } = useConnectWallet();
   const [pendingUrl, setPendingUrl] = useState(null);
   const { connect, } = useConnect();
+
+  // Close dropdown if clicked outside
+  useEffect(() => {
+    function handleClickOutside(event) {
+      if (userMenuRef.current && !userMenuRef.current.contains(event.target)) {
+        setUserMenuOpen(false);
+      }
+    }
+    if (userMenuOpen) {
+      document.addEventListener("mousedown", handleClickOutside);
+    } else {
+      document.removeEventListener("mousedown", handleClickOutside);
+    }
+    return () => document.removeEventListener("mousedown", handleClickOutside);
+  }, [userMenuOpen]);
 
   // Handler to trigger wallet connect and redirect
   const handleNavClick = (url) => {
@@ -97,6 +117,43 @@ export default function Layout({ children }) {
       setPendingUrl(null);
     }
   }, [walletAddress, pendingUrl, navigate]);
+
+  // Poll token validation every 5 seconds
+  useEffect(() => {
+    const interval = setInterval(async () => {
+      const token = localStorage.getItem("token");
+      if (!token) return;
+      try {
+        const res = await fetch(`${apihost}/api/protected`, {
+          headers: {
+            Authorization: `Bearer ${token}`,
+          },
+        });
+        if (res.status === 401) {
+          // Token invalid or expired
+          localStorage.removeItem("token");
+          navigate("/login");
+        }
+      } catch (err) {
+        // Network or server error, treat as logout
+        localStorage.removeItem("token");
+        navigate("/login");
+      }
+    }, 5000);
+    return () => clearInterval(interval);
+  }, [navigate]);
+
+
+  // Get user info from token
+  let userInfo = null;
+  const token = typeof window !== "undefined" ? localStorage.getItem("token") : null;
+  if (token) {
+    try {
+      userInfo = jwtDecode(token);
+    } catch (e) {
+      userInfo = null;
+    }
+  }
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-green-50 via-white to-blue-50">
@@ -150,8 +207,8 @@ export default function Layout({ children }) {
               ))}
             </nav>
 
-            {/* Wallet & Mobile Nav */}
-            <div className="flex items-center space-x-4">
+            {/* Wallet & User Dropdown */}
+            <div className="flex items-center space-x-4 relative">
               <ConnectButton
                 client={thirdwebclient}
                 wallets={[
@@ -160,7 +217,56 @@ export default function Layout({ children }) {
                 chain={bscTestnet}
                 data-testid="tw-connect-btn"
               />
-
+              {userInfo ? (
+                <div
+                  className="relative"
+                  ref={userMenuRef}
+                >
+                  <button
+                    className="flex items-center px-4 py-2 rounded-lg bg-green-100 text-green-700 font-medium transition-all duration-200 focus:outline-none hover:bg-green-200"
+                    style={{ minWidth: 90 }}
+                    onClick={() => setUserMenuOpen((v) => !v)}
+                    aria-haspopup="true"
+                    aria-expanded={userMenuOpen}
+                  >
+                    <span className="mr-2">
+                      {userInfo.role === "user" && "Isuer"}
+                      {userInfo.role === "vvb" && "VVB"}
+                      {userInfo.role === "gov" && "Gov"}
+                    </span>
+                    <svg className={`w-4 h-4 transition-transform duration-200 ${userMenuOpen ? "rotate-180" : ""}`} fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" d="M19 9l-7 7-7-7" />
+                    </svg>
+                  </button>
+                  <div
+                    className={`transition-all duration-200 ease-in-out ${userMenuOpen ? "opacity-100 scale-100 pointer-events-auto" : "opacity-0 scale-95 pointer-events-none"} absolute left-1/2 -translate-x-1/2 mt-2 w-64 bg-white border border-gray-200 rounded shadow-lg z-50`}
+                    style={{ minWidth: 220 }}
+                  >
+                    <div className="px-4 py-3 text-gray-700 text-sm border-b flex items-center gap-2">
+                      <User className="w-4 h-4 text-green-600" />
+                      <span className="truncate">{userInfo.email || userInfo.walletAddress}</span>
+                    </div>
+                    <button
+                      className="w-full text-left px-4 py-2 text-red-600 hover:bg-gray-50 text-sm transition-colors"
+                      onClick={() => {
+                        localStorage.removeItem("token");
+                        setUserMenuOpen(false);
+                        navigate("/login");
+                      }}
+                    >
+                      Logout
+                    </button>
+                  </div>
+                </div>
+              ) : (
+                <Button
+                  variant="outline"
+                  className="hidden md:inline-flex"
+                  onClick={() => navigate("/login")}
+                >
+                  Login
+                </Button>
+              )}
               {/* Mobile Nav */}
               <Sheet open={mobileMenuOpen} onOpenChange={setMobileMenuOpen}>
                 <SheetTrigger asChild>
@@ -170,6 +276,17 @@ export default function Layout({ children }) {
                 </SheetTrigger>
                 <SheetContent side="right" className="w-80">
                   <div className="flex flex-col space-y-4 mt-8">
+                    {/* Mobile Login Button */}
+                    <Button
+                      variant="outline"
+                      className="mb-2"
+                      onClick={() => {
+                        setMobileMenuOpen(false);
+                        navigate("/login");
+                      }}
+                    >
+                      Login
+                    </Button>
                     {navigationItems.map(({ title, url, icon: Icon, description }) => (
                       <button
                         key={title}
