@@ -16,12 +16,12 @@ export default function Projects() {
   const [searchTerm, setSearchTerm] = useState();
   const [statusFilter, setStatusFilter] = useState("all");
 
-    const { getListedProjects, isContractsInitised } = useContractInteraction();
+    const { getListedProjects } = useContractInteraction();
     const { walletAddress } = useConnectWallet();
 
   useEffect(() => {
     loadProjects();
-  }, [walletAddress, isContractsInitised]);
+  }, [walletAddress]);
 
   const loadProjects = async () => {
     setIsLoading(true);
@@ -34,10 +34,9 @@ export default function Projects() {
       setIsLoading(false);
     }
   };
-
     useEffect(() => {
     filterProjects();
-  }, [projects, searchTerm, statusFilter, walletAddress, isContractsInitised]);
+  }, [projects, searchTerm, statusFilter, walletAddress]);
 
 const filterProjects = () => {
   let filtered = [...projects];

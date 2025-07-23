@@ -13,13 +13,8 @@ const ProjectCard = ({ project }) => {
   const { checkAuthorizedVVB,
     checkIsProjectOwner,
     checkIsOwner,
-    rejectAndRemoveProject,
-    isContractsInitised,
     getListedProjectDetails,
-    mintWithETH,
     submitComment,
-    checkRUSDAllowance,
-    approveRUSD
   } = useContractInteraction();
 
   const [details, setDetails] = useState({
@@ -49,8 +44,9 @@ const ProjectCard = ({ project }) => {
       if (project) {
         try {
           const data = await getListedProjectDetails(project);
-          console.log('Project details:', data);
+          // console.log('Project details:', data);
           setDetails(data);
+        
           setCanComment((await checkAuthorizedVVB()) || (await checkIsProjectOwner(project)));
           setIsOwner(await checkIsOwner());
         } catch (error) {
@@ -58,10 +54,10 @@ const ProjectCard = ({ project }) => {
         }
       }
     };
-    if (walletAddress && isContractsInitised) {
+    if (walletAddress ) {
       fetchDetails();
     }
-  }, [walletAddress, reloadData, isContractsInitised]);
+  }, [walletAddress, reloadData]);
 
   const handleComment = async () => {
     if (!comment) return;

@@ -1,6 +1,6 @@
 /* eslint-disable no-unused-vars */
 import { useEffect, useState } from "react";
-import { Link, useLocation } from "react-router-dom";
+import { Link, useLocation, useNavigate } from "react-router-dom";
 import { createPageUrl } from "@/utils";
 
 import {
@@ -8,9 +8,7 @@ import {
   TreePine,
   TrendingUp,
   Settings,
-  Wallet,
   Leaf,
-  BadgeCheck,
   ChevronRight,
   Menu,
   User
@@ -18,8 +16,10 @@ import {
 
 import { Button } from "@/components/ui/button";
 import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
-import { Badge } from "@/components/ui/badge";
-import { useContractInteraction } from "@/components/contract/ContractInteraction";
+import { ConnectButton, useConnect } from "thirdweb/react";
+import { thirdwebclient } from "@/thirwebClient";
+import { createWallet } from "thirdweb/wallets";
+import { bscTestnet } from "thirdweb/chains"
 import { useConnectWallet } from "@/context/walletcontext";
 
 const navigationItems = [
@@ -62,70 +62,41 @@ const navigationItems = [
 ];
 
 // eslint-disable-next-line react/prop-types, no-unused-vars
-export default function Layout({ children, currentPageName }) {
+export default function Layout({ children }) {
   const location = useLocation();
+  const navigate = useNavigate();
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
-  const [walletConnected, setWalletConnected] = useState(false);
-  const { ConnectWallet, walletAddress, setWalletAddress } = useConnectWallet();
-  const { initializeProvider } = useContractInteraction();
-  const [update, setUpdate] = useState(0);
+  const { walletAddress } = useConnectWallet();
+  const [pendingUrl, setPendingUrl] = useState(null);
+  const { connect, } = useConnect();
 
-  useEffect(() => {
-    const checkWallet = async () => {
-      if (window.ethereum) {
-        try {
-          initializeProvider();
-          if (typeof window !== "undefined" && window?.ethereum) {
-            try {
-              const accounts = await window.ethereum.request({ method: "eth_requestAccounts" });
-              if (accounts.length > 0) {
-                setWalletAddress(accounts[0]);
-              }
-            } catch (err) {
-              console.error("Wallet check failed:", err);
-            }
-          }
-        } catch (err) {
-          console.error("Error checking wallet:", err);
-        }
-      }
-    };
-    checkWallet();
-  }, [update]);
-
-   const checkWalletoutSide = async () => {
-     if (typeof window !== "undefined" && window.ethereum) {
-       try {
-         initializeProvider();
-         const accounts = await window.ethereum.request({ method: "eth_requestAccounts" });
-         if (accounts.length > 0) {
-           setWalletAddress(accounts[0]);
-         }
-       } catch (err) {
-         console.error("Wallet connection failed:", err);
-       }
-     }
-   };
-
-
-  // const connectWallet = async () => {
-  //   if (window.ethereum) {
-  //     try {
-  //       const accounts = await window.ethereum.request({ method: "eth_requestAccounts" });
-  //       setWalletConnected(true);
-  //       setWalletAddress(accounts[0]);
-  //     } catch (err) {
-  //       console.error("Error connecting wallet:", err);
-  //     }
-  //   }
-  // };
-
-  const disconnectWallet = () => {
-    setWalletConnected(false);
-    setWalletAddress("");
+  // Handler to trigger wallet connect and redirect
+  const handleNavClick = (url) => {
+    if (!walletAddress) {
+      connect(async () => {
+        // instantiate wallet
+        const wallet = createWallet("io.metamask");
+        // connect wallet
+        await wallet.connect({
+          thirdwebclient,
+          chain: bscTestnet
+        });
+        // return the wallet
+        return wallet;
+      })
+      setPendingUrl(url);
+    } else {
+      navigate(url);
+    }
   };
 
-  const formatAddress = (addr) => `${addr?.slice(0, 6)}...${addr?.slice(-4)}`;
+  // Listen for wallet connection and redirect if pending
+  useEffect(() => {
+    if (walletAddress && pendingUrl) {
+      navigate(pendingUrl);
+      setPendingUrl(null);
+    }
+  }, [walletAddress, pendingUrl, navigate]);
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-green-50 via-white to-blue-50">
@@ -147,9 +118,9 @@ export default function Layout({ children, currentPageName }) {
             {/* Logo */}
             <Link to="/" className="flex items-center space-x-3">
               <div className="w-10 h-10 bg-gradient-to-br from-green-500 to-green-600 rounded-xl flex items-center justify-center shadow-lg">
-                <img 
-                  src="https://i.postimg.cc/mkJMjhYT/BCO2-Logo-01.png" 
-                  alt="BCO2 Logo" 
+                <img
+                  src="https://i.postimg.cc/mkJMjhYT/BCO2-Logo-01.png"
+                  alt="BCO2 Logo"
                   className="w-8 h-8 object-contain"
                 />
               </div>
@@ -164,46 +135,31 @@ export default function Layout({ children, currentPageName }) {
             {/* Desktop Nav */}
             <nav className="hidden md:flex items-center space-x-1">
               {navigationItems.map(({ title, url, icon: Icon }) => (
-                <Link
+                <button
                   key={title}
-                  to={url}
+                  onClick={() => handleNavClick(url)}
                   className={`flex items-center space-x-2 px-4 py-2 rounded-lg transition-all duration-200 ${location.pathname === url
                       ? "bg-green-100 text-green-700 shadow-sm"
                       : "text-gray-600 hover:bg-gray-50 hover:text-gray-900"
                     }`}
+                  style={{ background: "none", border: "none", cursor: "pointer" }}
                 >
                   <Icon className="w-4 h-4" />
                   <span className="font-medium">{title}</span>
-                </Link>
+                </button>
               ))}
             </nav>
 
-            {/* Wallet */}
+            {/* Wallet & Mobile Nav */}
             <div className="flex items-center space-x-4">
-              {walletAddress ? (
-                <>
-                  {/* <Badge className="bg-green-100 text-green-700 border-green-200">
-                    <div className="w-2 h-2 bg-green-500 rounded-full mr-2"></div>
-                    Connected
-                  </Badge> */}
-                  <Button
-                    variant="outline"
-                    onClick={disconnectWallet}
-                    className="hidden sm:flex items-center space-x-2"
-                  >
-                    <Wallet className="w-4 h-4" />
-                    <span>{formatAddress(walletAddress)}</span>
-                  </Button>
-                </>
-              ) : (
-                <Button
-                  onClick={()=>checkWalletoutSide()}
-                  className="bg-green-600 hover:bg-green-700 text-white shadow-lg"
-                >
-                  <Wallet className="w-4 h-4 mr-2" />
-                  Connect Wallet
-                </Button>
-              )}
+              <ConnectButton
+                client={thirdwebclient}
+                wallets={[
+                  createWallet("io.metamask"),
+                ]}
+                chain={bscTestnet}
+                data-testid="tw-connect-btn"
+              />
 
               {/* Mobile Nav */}
               <Sheet open={mobileMenuOpen} onOpenChange={setMobileMenuOpen}>
@@ -215,14 +171,17 @@ export default function Layout({ children, currentPageName }) {
                 <SheetContent side="right" className="w-80">
                   <div className="flex flex-col space-y-4 mt-8">
                     {navigationItems.map(({ title, url, icon: Icon, description }) => (
-                      <Link
+                      <button
                         key={title}
-                        to={url}
-                        onClick={() => setMobileMenuOpen(false)}
+                        onClick={() => {
+                          handleNavClick(url);
+                          setMobileMenuOpen(false);
+                        }}
                         className={`flex items-center justify-between p-4 rounded-lg transition-all duration-200 ${location.pathname === url
                             ? "bg-green-100 text-green-700"
                             : "text-gray-600 hover:bg-gray-50"
                           }`}
+                        style={{ background: "none", border: "none", cursor: "pointer" }}
                       >
                         <div className="flex items-center space-x-3">
                           <Icon className="w-5 h-5" />
@@ -232,7 +191,7 @@ export default function Layout({ children, currentPageName }) {
                           </div>
                         </div>
                         <ChevronRight className="w-4 h-4" />
-                      </Link>
+                      </button>
                     ))}
                   </div>
                 </SheetContent>

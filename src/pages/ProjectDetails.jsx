@@ -31,19 +31,30 @@ import { useContractInteraction } from "../components/contract/ContractInteracti
 import { methodology } from "@/components/contract/address";
 import { useToast } from "@/components/ui/use-toast";
 import { useConnectWallet } from "@/context/walletcontext";
+import { useActiveAccount } from "thirdweb/react";
+import { Textarea } from "@/components/ui/textarea";
 
 export default function ProjectDetails() {
   const { projectContract } = useParams();
-  const { mintWithRUSD, retireCredits,
+  const { 
+    mintWithRUSD, 
+    retireCredits,
     getListedProjectDetails,
-    getTokenURIs,
-    getRetiredTokenURIs,
-    isContractsInitised,
-    getWalletMinted, getRUSDBalance,
+    getWalletMinted, 
+    getRUSDBalance,
     getWalletRetrides,
     getCurrentBalance,
-    checkRUSDAllowance, approveRUSD } = useContractInteraction();
+    checkRUSDAllowance, 
+    approveRUSD,
+    checkAuthorizedVVB,
+    checkIsOwner,
+    approveAndIssueCredits,
+    validateProject,
+    verifyProject,
+    submitComment,
+  } = useContractInteraction();
   const { walletAddress } = useConnectWallet();
+  const account = useActiveAccount()
 
   const [project, setProject] = useState();
   const [isLoading, setIsLoading] = useState(true);
@@ -58,25 +69,30 @@ export default function ProjectDetails() {
   const [retiredBalance, setRetiredBalance] = useState(0);
   const [mintNftImage, setMintNftImage] = useState("");
   const [retireNftImage, setRetireNftImage] = useState("");
+  const [comment, setComment] = useState("");
+  const [isCommenting, setIsCommenting] = useState(false);
+
+  // Add these states for role checks
+  const [isOwner, setIsOwner] = useState(false);
+  const [isVVB, setIsVVB] = useState(false);
 
   const fallbackImage = "https://ibb.co/CpZ8x06y";
 
   const { toast } = useToast();
 
   useEffect(() => {
-    if (projectContract && walletAddress && isContractsInitised) {
+    if (projectContract && walletAddress) {
       loadProject(projectContract);
     }
-  }, [projectContract, walletAddress, isContractsInitised]);
+  }, [projectContract, walletAddress]);
 
   const loadProject = async (projectAddress) => {
     setIsLoading(true);
     try {
       const data = await getListedProjectDetails(projectAddress);
       setProject(data);
-      console.log('Project details:', data);
 
-      // Fetch NFT images for token IDs 1 (Mint) and 2 (Retire)
+
       try {
         // Token ID 1 for Mint
         const mintTokenUri = data.tokenUri;
@@ -85,13 +101,12 @@ export default function ProjectDetails() {
           if (response.ok) {
             const metadata = await response.json();
             setMintNftImage(metadata.image || fallbackImage);
-          }else {
+          } else {
             setRetireNftImage(fallbackImage);
           }
         }
         // Token ID 2 for Retire
         const retireTokenUri = data.retiredTokenUri;
-        console.log("Retire Token URI:", retireTokenUri);
         if (retireTokenUri) {
           const response = await fetch(retireTokenUri.replace('ipfs://', 'https://ipfs.io/ipfs/'));
           if (response.ok) {
@@ -110,7 +125,7 @@ export default function ProjectDetails() {
         });
       }
 
-      const balance = await getRUSDBalance();
+      const balance = await getRUSDBalance(walletAddress);
       setRUSDBalance(balance);
       const mintBalance = await getCurrentBalance(projectAddress, 1);
       const retiredBalance = await getCurrentBalance(projectAddress, 2);
@@ -147,9 +162,9 @@ export default function ProjectDetails() {
     if (BigInt(allowance) <= BigInt(0)) {
       console.log("Insufficient allowance, approving RUSD first...");
       try {
-        const approveTx = await approveRUSD(project.projectContract);
-        const approveReceipt = await approveTx.wait();
-        if (approveReceipt.status !== 1) {
+        const approveReceipt = await approveRUSD(project.projectContract, account);
+
+        if (approveReceipt.status === "reverted") {
           toast({
             variant: "destructive",
             title: "Error",
@@ -181,13 +196,22 @@ export default function ProjectDetails() {
     }
 
     try {
-      const tx = await mintWithRUSD(project.projectContract, parseInt(mintAmount));
-      const receipt = await tx.wait();
-      toast({
-        variant: "default",
-        title: "Success",
-        description: `Minting initiated`,
-      });
+      const tx = await mintWithRUSD(project.projectContract, parseInt(mintAmount), account);
+      if (tx.status === "success") {
+        toast({
+          variant: "default",
+          title: "Success",
+          description: `Minting initiated`,
+        });
+      }
+      else {
+        toast({
+          variant: "destructive",
+          title: "Error",
+          description: `Minting failed: ${tx.error}`,
+        });
+      }
+
       setMintAmount("");
       setTimeout(() => loadProject(project.projectContract), 3000);
     } catch (error) {
@@ -224,14 +248,23 @@ export default function ProjectDetails() {
     setIsRetiring(true);
 
     try {
-      const tx = await retireCredits(project.projectContract, parseInt(retireAmount));
-      const receipt = await tx.wait();
-      toast({
-        variant: "default",
-        title: "Success",
-        description: `Credits retired!`,
-      });
-      setTimeout(() => loadProject(project.projectContract), 3000);
+      const tx = await retireCredits(project.projectContract, parseInt(retireAmount), account);
+      if (tx.status === "success") {
+        toast({
+          variant: "default",
+          title: "Success",
+          description: `Credits retired!`,
+        });
+        setTimeout(() => loadProject(project.projectContract), 3000);
+      }
+      else {
+        toast({
+          variant: "destructive",
+          title: "Error",
+          description: `Retirement failed: ${tx.error}`,
+        });
+      }
+
     } catch (error) {
       toast({
         variant: "destructive",
@@ -259,6 +292,53 @@ export default function ProjectDetails() {
       return loc;
     });
     return locations.length > 0 ? locations : ['N/A'];
+  };
+
+  useEffect(() => {
+    if (projectContract && walletAddress) {
+      loadProject(projectContract);
+    }
+  }, [projectContract, walletAddress]);
+
+  // Check roles after loading project
+  useEffect(() => {
+    if (project && walletAddress) {
+      setIsOwner(walletAddress.toLowerCase() === project.proposer?.toLowerCase());
+      // You should implement checkAuthorizedVVB to check if walletAddress is a VVB for this project
+      (async () => {
+        try {
+          const vvbStatus = await checkAuthorizedVVB(project.projectContract, walletAddress);
+          console.log("VVB Status:", vvbStatus);
+          setIsVVB(vvbStatus);
+        } catch {
+          setIsVVB(false);
+        }
+      })();
+    }
+  }, [project, walletAddress]);
+
+  // Comment submit handler
+  const handleSubmitComment = async () => {
+    if (!comment.trim()) return;
+    setIsCommenting(true);
+    try {
+      await submitComment(project.projectContract, comment, account);
+      toast({
+        variant: "default",
+        title: "Comment Submitted",
+        description: "Your comment has been submitted.",
+      });
+      setComment("");
+      setTimeout(() => loadProject(project.projectContract), 2000);
+    } catch (error) {
+      toast({
+        variant: "destructive",
+        title: "Error",
+        description: `Failed to submit comment: ${error.message}`,
+      });
+    } finally {
+      setIsCommenting(false);
+    }
   };
 
   if (isLoading) {
@@ -549,133 +629,317 @@ export default function ProjectDetails() {
             </CardContent>
           </Card>
 
-          {/* Actions */}
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 sm:gap-6">
-            {/* Mint Credits */}
-            <Card>
-              <CardHeader>
-                <CardTitle className="flex items-center space-x-2">
-                  <Coins className="w-5 h-5 text-green-600" />
-                  <span>Mint Credits</span>
-                </CardTitle>
-              </CardHeader>
-              <CardContent className="space-y-4">
-                {(!project.tokenUri || project.tokenUri === "" || typeof project.tokenUri === "undefined") ? (
-                  <div className="text-center text-sm text-gray-500">
-                    Minting is currently disabled. Awaiting to set token URI.
-                  </div>
-                ) : (
-                  <>
-                    {mintNftImage && (
-                      <div className="w-full bg-black flex items-center justify-center" style={{ height: "180px sm:220px" }}>
-                        <img
-                          src={mintNftImage || fallbackImage}
-                          alt="Mint NFT"
-                          className="object-contain h-full w-full"
-                        />
-                      </div>
-                    )}
-                    <div>
-                      <Label htmlFor="mintAmount">Amount to Mint</Label>
-                      <Input
-                        id="mintAmount"
-                        type="number"
-                        step="1"
-                        min="1"
-                        placeholder="Enter amount"
-                        value={mintAmount}
-                        onChange={(e) => setMintAmount(e.target.value)}
-                        disabled={!project.isApproved}
-                      />
-                    </div>
-                    <Label htmlFor="mintAmount">Minted tCO<sub>2</sub>: {Number(mintedCredits)}</Label>
-                    <br />
-                    <Label htmlFor="mintAmount">Current Bal tCO<sub>2</sub>: {Number(mintBalance)}</Label>
-                    <br />
-                    <Label htmlFor="mintAmount">RUSD: {rusdBalance}</Label>
-                    <Button
-                      onClick={handleMintETH}
-                      disabled={isMinting || !project.isApproved}
-                      className="w-full bg-blue-600 hover:bg-blue-700"
-                    >
-                      {isMinting ? "Minting..." : "Mint with RUSD"}
-                    </Button>
-                    {!project.isApproved && (
-                      <p className="text-sm text-gray-500">
-                        Minting is currently disabled for this project. Project is awaiting approval.
-                      </p>
-                    )}
-                  </>
-                )}
-              </CardContent>
-            </Card>
+        </div>
 
-            {/* Retire Credits */}
-            <Card className={`${allowedRetire <= 0 ? "opacity-50 pointer-events-none" : ""}`}>
-              <CardHeader>
-                <CardTitle className="flex items-center space-x-2">
-                  <Recycle className="w-5 h-5 text-orange-600" />
-                  <span>Retire Credits</span>
-                </CardTitle>
-              </CardHeader>
-              <CardContent className="space-y-4">
-                {(!project.tokenUri || project.tokenUri === "" || typeof project.tokenUri === "undefined") ? (
-                  <div className="text-center text-sm text-gray-500">
-                    Retiring is currently disabled. Project is awaiting approval.
+        {/* Role-based Actions */}
+        <div className="mb-6 mt-3">
+          {isOwner ? (
+            <>
+              <Button
+                className="w-full bg-blue-700 hover:bg-blue-800 mb-4 mt-3"
+                onClick={async () => {
+                  try {
+                    const tx = await approveAndIssueCredits(project.projectContract, Number(project.credits), account);
+                    if (tx.status === "success") {
+                      toast({
+                        variant: "default",
+                        title: "Success",
+                        description: "Credits approved and issued.",
+                      });
+                      setTimeout(() => loadProject(project.projectContract), 2000);
+                    } else {
+                      toast({
+                        variant: "destructive",
+                        title: "Error",
+                        description: `Operation failed: ${tx.error}`,
+                      });
+                    }
+                  } catch (error) {
+                    toast({
+                      variant: "destructive",
+                      title: "Error",
+                      description: `Failed to approve and issue credits: ${error.message}`,
+                    });
+                  }
+                }}
+                disabled={!(project.isValidated && project.isVerified) || project.isApproved}
+              >
+                {project.isApproved ? 'Approved ' : 'Approve and Issue Credits' }
+              </Button>
+              {/* Show reason if disabled */}
+              {!(project.isValidated && project.isVerified) && (
+                <div className="text-sm text-gray-500 mb-2">
+                  { !project.isValidated
+                    ? "Approval is disabled: Project must be validated first."
+                    : !project.isVerified
+                      ? "Approval is disabled: Project must be verified after validation."
+                      : null
+                  }
+                </div>
+              )}
+            </>
+          ) : isVVB ? (
+            <div className="flex flex-col sm:flex-row gap-4 mb-4">
+              <div className="flex-1">
+                <Button
+                  className="bg-yellow-700 hover:bg-yellow-800 w-full"
+                  onClick={async () => {
+                    try {
+                      const tx = await validateProject(project.projectContract, account);
+                      if (tx.status === "success") {
+                        toast({
+                          variant: "default",
+                          title: "Success",
+                          description: "Project validated.",
+                        });
+                        setTimeout(() => loadProject(project.projectContract), 2000);
+                      } else {
+                        toast({
+                          variant: "destructive",
+                          title: "Error",
+                          description: `Validation failed: ${tx.error}`,
+                        });
+                      }
+                    } catch (error) {
+                      toast({
+                        variant: "destructive",
+                        title: "Error",
+                        description: `Failed to validate project: ${error.message}`,
+                      });
+                    }
+                  }}
+                  disabled={project.isValidated}
+                >
+                  Validate
+                </Button>
+                {/* Show reason if disabled */}
+                {project.isValidated && (
+                  <div className="text-sm text-gray-500 mt-1">
+                    Validation is already completed.
                   </div>
-                ) : (
-                  <>
-                    {retireNftImage && (
-                      <div className="w-full bg-black flex items-center justify-center" style={{ height: "180px sm:220px" }}>
-                        <img
-                          src={retireNftImage || fallbackImage}
-                          alt="Retire NFT"
-                          className="object-contain h-full w-full"
-                        />
-                      </div>
-                    )}
-                    <div>
-                      <Label htmlFor="retireAmount">Amount to Retire</Label>
-                      <div className="flex space-x-2">
+                )}
+              </div>
+              <div className="flex-1">
+                <Button
+                  className="bg-green-700 hover:bg-green-800 w-full"
+                  onClick={async () => {
+                    try {
+                      const tx = await verifyProject(project.projectContract, account);
+                      if (tx.status === "success") {
+                        toast({
+                          variant: "default",
+                          title: "Success",
+                          description: "Project verified.",
+                        });
+                        setTimeout(() => loadProject(project.projectContract), 2000);
+                      } else {
+                        toast({
+                          variant: "destructive",
+                          title: "Error",
+                          description: `Verification failed: ${tx.error}`,
+                        });
+                      }
+                    } catch (error) {
+                      toast({
+                        variant: "destructive",
+                        title: "Error",
+                        description: `Failed to verify project: ${error.message}`,
+                      });
+                    }
+                  }}
+                  disabled={!project.isValidated || project.isVerified}
+                >
+                  Verify
+                </Button>
+                {/* Show reason if disabled */}
+                {!project.isValidated && (
+                  <div className="text-sm text-gray-500 mt-1">
+                    Verification is disabled: Validation is pending.
+                  </div>
+                )}
+                {project.isValidated && project.isVerified && (
+                  <div className="text-sm text-gray-500 mt-1">
+                    Verification is already completed.
+                  </div>
+                )}
+              </div>
+            </div>
+          ) : (
+            // Show Mint and Retire section for users who are not owner or VVB
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 sm:gap-6">
+              {/* Mint Credits */}
+              <Card>
+                <CardHeader>
+                  <CardTitle className="flex items-center space-x-2">
+                    <Coins className="w-5 h-5 text-green-600" />
+                    <span>Mint Credits</span>
+                  </CardTitle>
+                </CardHeader>
+                <CardContent className="space-y-4">
+                  {(!project.tokenUri || project.tokenUri === "" || typeof project.tokenUri === "undefined") ? (
+                    <div className="text-center text-sm text-gray-500">
+                      Minting is currently disabled. Awaiting to set token URI.
+                    </div>
+                  ) : (
+                    <>
+                      {mintNftImage && (
+                        <div className="w-full bg-black flex items-center justify-center" style={{ height: "180px sm:220px" }}>
+                          <img
+                            src={mintNftImage || fallbackImage}
+                            alt="Mint NFT"
+                            className="object-contain h-full w-full"
+                          />
+                        </div>
+                      )}
+                      <div>
+                        <Label htmlFor="mintAmount">Amount to Mint</Label>
                         <Input
-                          id="retireAmount"
+                          id="mintAmount"
                           type="number"
                           step="1"
                           min="1"
                           placeholder="Enter amount"
-                          value={retireAmount}
-                          onChange={(e) => setRetireAmount(e.target.value)}
-                          className="flex-1"
+                          value={mintAmount}
+                          onChange={(e) => setMintAmount(e.target.value)}
+                          disabled={!project.isApproved}
                         />
-                        <Button
-                          type="button"
-                          variant="outline"
-                          className="px-3"
-                          onClick={handleMaxRetire}
-                        >
-                          Max
-                        </Button>
                       </div>
+                      <Label htmlFor="mintAmount">Minted tCO<sub>2</sub>: {Number(mintedCredits)}</Label>
+                      <br />
+                      <Label htmlFor="mintAmount">Current Bal tCO<sub>2</sub>: {Number(mintBalance)}</Label>
+                      <br />
+                      <Label htmlFor="mintAmount">RUSD: {rusdBalance}</Label>
+                      <Button
+                        onClick={handleMintETH}
+                        disabled={isMinting || !project.isApproved}
+                        className="w-full bg-blue-600 hover:bg-blue-700"
+                      >
+                        {isMinting ? "Minting..." : "Mint with RUSD"}
+                      </Button>
+                      {!project.isApproved && (
+                        <p className="text-sm text-gray-500">
+                          Minting is currently disabled for this project. Project is awaiting approval.
+                        </p>
+                      )}
+                    </>
+                  )}
+                </CardContent>
+              </Card>
+
+              {/* Retire Credits */}
+              <Card className={`${allowedRetire <= 0 ? "opacity-50 pointer-events-none" : ""}`}>
+                <CardHeader>
+                  <CardTitle className="flex items-center space-x-2">
+                    <Recycle className="w-5 h-5 text-orange-600" />
+                    <span>Retire Credits</span>
+                  </CardTitle>
+                </CardHeader>
+                <CardContent className="space-y-4">
+                  {(!project.tokenUri || project.tokenUri === "" || typeof project.tokenUri === "undefined") ? (
+                    <div className="text-center text-sm text-gray-500">
+                      Retiring is currently disabled. Project is awaiting approval.
                     </div>
-                    <Label htmlFor="mintAmount">Retired tCO<sub>2</sub>: {Number(retiredBalance)}</Label>
-                    <br />
-                    <Label htmlFor="mintAmount">Allowed retired tCO<sub>2</sub>: {allowedRetire}</Label>
-                    <Button
-                      onClick={handleRetire}
-                      disabled={isRetiring || allowedRetire <= 0}
-                      className="w-full bg-orange-600 hover:bg-orange-700"
-                    >
-                      {isRetiring ? "Retiring..." : "Retire Credits"}
-                    </Button>
-                    <p className="text-sm text-gray-500">
-                      Retiring credits permanently removes them from circulation.
-                    </p>
-                  </>
-                )}
-              </CardContent>
-            </Card>
-          </div>
+                  ) : (
+                    <>
+                      {retireNftImage && (
+                        <div className="w-full bg-black flex items-center justify-center" style={{ height: "180px sm:220px" }}>
+                          <img
+                            src={retireNftImage || fallbackImage}
+                            alt="Retire NFT"
+                            className="object-contain h-full w-full"
+                          />
+                        </div>
+                      )}
+                      <div>
+                        <Label htmlFor="retireAmount">Amount to Retire</Label>
+                        <div className="flex space-x-2">
+                          <Input
+                            id="retireAmount"
+                            type="number"
+                            step="1"
+                            min="1"
+                            placeholder="Enter amount"
+                            value={retireAmount}
+                            onChange={(e) => setRetireAmount(e.target.value)}
+                            className="flex-1"
+                          />
+                          <Button
+                            type="button"
+                            variant="outline"
+                            className="px-3"
+                            onClick={handleMaxRetire}
+                          >
+                            Max
+                          </Button>
+                        </div>
+                      </div>
+                      <Label htmlFor="mintAmount">Retired tCO<sub>2</sub>: {Number(retiredBalance)}</Label>
+                      <br />
+                      <Label htmlFor="mintAmount">Allowed retired tCO<sub>2</sub>: {allowedRetire}</Label>
+                      <Button
+                        onClick={handleRetire}
+                        disabled={isRetiring || allowedRetire <= 0}
+                        className="w-full bg-orange-600 hover:bg-orange-700"
+                      >
+                        {isRetiring ? "Retiring..." : "Retire Credits"}
+                      </Button>
+                      <p className="text-sm text-gray-500">
+                        Retiring credits permanently removes them from circulation.
+                      </p>
+                    </>
+                  )}
+                </CardContent>
+              </Card>
+            </div>
+          )}
         </div>
+
+        {/* Comment Section */}
+        {/* <Card className="mt-8">
+          <CardHeader>
+            <CardTitle>Comments</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="mb-4">
+              <Textarea
+                value={comment}
+                onChange={(e) => setComment(e.target.value)}
+                placeholder="Add a comment..."
+                rows={3}
+                disabled={isCommenting}
+              />
+              <Button
+                className="mt-2"
+                onClick={handleSubmitComment}
+                disabled={isCommenting || !comment.trim()}
+              >
+                {isCommenting ? "Submitting..." : "Submit Comment"}
+              </Button>
+            </div>
+       
+            {project.comments && project.comments.length > 0 ? (
+              <div className="space-y-3">
+                {project.comments.map((c, i) => (
+                  <div key={i} className="bg-gray-50 p-3 rounded">
+                    <div className="flex justify-between text-sm text-gray-500 mb-1">
+                      <span className="font-medium">
+                        {c.commenter && `${c.commenter.slice(0, 6)}...${c.commenter.slice(-4)}`}
+                      </span>
+                      <span>
+                        {c.timestamp
+                          ? new Date(Number(c.timestamp) * 1000).toLocaleString()
+                          : ""}
+                      </span>
+                    </div>
+                    <p className="text-gray-800">{c.comment}</p>
+                  </div>
+                ))}
+              </div>
+            ) : (
+              <p className="text-gray-500 italic">No comments yet.</p>
+            )}
+          </CardContent>
+        </Card> */}
       </div>
     </div>
   );
