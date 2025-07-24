@@ -8,19 +8,24 @@ import "../src/Registry/ProjectFactory.sol";
 import "../src/Registry/ProjectData.sol";
 import "../src/Registry/ProjectManager.sol";
 import "../src/Governance.sol";
+import "../src/BCO2DAO.sol";
 
 contract BCO2Test is Test {
     BCO2 bco2;
     MockRUSD rusd;
     BCO2Governance governance;
+    BCO2DAO bco2DAO;
     ProjectData projectData;
     ProjectManager projectManager;
     ProjectFactory projectFactory;
 
     address user = address(1);
     address vvb = address(2);
+    address issuer = address(3);
     address owner = address(this);
     bytes32 public constant VINTAGE = keccak256("Vintage");
+    
+    uint256 validVintage = 1752282049;
 
     function setUp() public {
         rusd = new MockRUSD();
@@ -31,13 +36,17 @@ contract BCO2Test is Test {
             address(governance),
             owner
         );
+        bco2DAO = new BCO2DAO(address(rusd), address(projectData), address(projectManager), address(governance));
         projectFactory = new ProjectFactory(
             address(projectData),
             address(projectManager),
             address(governance),
+            address(bco2DAO),
             address(rusd),
             owner
         );
+
+        vm.warp(validVintage + 1);
 
         // bco2 = new BCO2(
         //     "MAAL-0001", // projectId
@@ -48,25 +57,24 @@ contract BCO2Test is Test {
         //     validVintage, // vintage
         //     address(governance), // governance
         //     address(projectData), // registry
+        //     address(bco2DAO), // BCO2 DAO
         //     IERC20(address(rusd)), // RUSD token
         //     0, // methodologyId
         //     "Kenya" // location
         // );
 
-        governance.initialize(address(projectData), address(projectManager));
+        governance.initialize(address(projectData), address(projectManager),address(bco2DAO));
         projectData.setManager(address(projectManager));
         projectData.setFactory(address(projectFactory));
         governance.addVVB(vvb);
 
         rusd.setBalance(user, 10000 ether);
-        uint256 validVintage = 1752282049;
-        vm.warp(validVintage + 1);
 
         vm.startPrank(user);
         bco2 = BCO2(
             projectFactory.createAndListProject(
                 10000000000000000000,
-                user,
+                issuer,
                 true,
                 0,
                 validVintage,
@@ -90,12 +98,20 @@ contract BCO2Test is Test {
             address(bco2)
         );
 
+        ICarbonCreditDAO bco2DAOAdd = bco2.bCO2DAO();
+
         console.log("Project ID:", project.projectId);
         console.log("Certificate ID:", project.certificateId);
+        console.log("BCO2 DAO:", address(bco2DAOAdd));
+
+        // vm.startPrank(bco2);
+        // rusd.approve(address(bco2DAO), 10000 ether);
 
         vm.startPrank(user);
-        rusd.approve(address(bco2), 100 ether);
+        rusd.approve(address(bco2), 10000 ether);
         bco2.mintWithRUSD(10); // Mint 10 tCO2 tokens
+        uint256 DAOBal = rusd.balanceOf(address(bco2DAO));
+        console.log("BCO2 DAO Bal:", DAOBal);
         vm.stopPrank();
     }
 
@@ -146,5 +162,9 @@ contract BCO2Test is Test {
 
         console.logBytes32(certHash);
         console.log("Retired Tonnes:", retiredTonnes);
+    }
+
+    function testWithdrawalRequestCreationAndApproval() public {
+        
     }
 }

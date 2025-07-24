@@ -54,6 +54,10 @@ interface IERC20 {
     function transfer(address to, uint256 amount) external returns(bool);
 }
 
+interface ICarbonCreditDAO {
+    function depositRUSD(address projectContract, uint256 amount) external returns(bool);
+}
+
 contract BCO2 is ERC1155, Ownable, IERC7496, ReentrancyGuard {
     struct RetirementCertificate {
         bytes32 certificateId;
@@ -68,8 +72,6 @@ contract BCO2 is ERC1155, Ownable, IERC7496, ReentrancyGuard {
     string public certificateId;
     string public location;
     MethodologyUtils.Methodology public methodology;
-
-    address public governance;
 
     // Token IDs for carbon credits
     uint256 public constant unit_tCO2_TOKEN_ID = 1; // Represents 1 tCO2 - Active
@@ -87,7 +89,7 @@ contract BCO2 is ERC1155, Ownable, IERC7496, ReentrancyGuard {
 
     // Token for purchase of credits and treasury for collection
     IERC20 public RUSD;
-    address public treasury;
+    // address public treasury;
 
     // Mappings
     mapping(uint256 => string) public tokenURIs; // URI per token ID
@@ -110,6 +112,8 @@ contract BCO2 is ERC1155, Ownable, IERC7496, ReentrancyGuard {
     bytes32 public defaultVintage;
     bool public mintingActive = true;
     ICarbonCreditRegistry public registry; // ProjectData
+    ICarbonCreditDAO public bCO2DAO; // BCO2 DAO
+    address public governance; // BCO2 governance
 
     // Custom errors
     error InvalidVintage();
@@ -149,12 +153,14 @@ contract BCO2 is ERC1155, Ownable, IERC7496, ReentrancyGuard {
 
     /// @notice Constructor to initialize the contract
     /// @param _projectId The project ID
-    /// @param initialOwner The initial owner address
+    /// @param initialOwner The owner of the project
     /// @param _mintPrice The price to mint one credit
     /// @param _defaultIsPermanent Whether credits are permanent
     /// @param _defaultValidity The validity period in years
     /// @param _defaultVintage The vintage year
-    /// @param _governance The registry contract address
+    /// @param _governance The governance contract address
+    /// @param _registry The registry contract address
+    /// @param _bco2DAO The DAO contract address
     /// @param _rusd The RUSD token address
     /// @param _methodologyId the index id for methodology adopted
     /// @param _location of the project
@@ -167,6 +173,7 @@ contract BCO2 is ERC1155, Ownable, IERC7496, ReentrancyGuard {
         uint256 _defaultVintage,
         address _governance,
         address _registry,
+        address _bco2DAO,
         IERC20 _rusd,
         uint8 _methodologyId,
         string memory _location
@@ -185,7 +192,7 @@ contract BCO2 is ERC1155, Ownable, IERC7496, ReentrancyGuard {
 
         projectId = _projectId;
         mintPrice = _mintPrice;
-        treasury = initialOwner;
+        // treasury = initialOwner;
         defaultIsPermanent = _defaultIsPermanent
             ? bytes32("true")
             : bytes32("false");
@@ -195,6 +202,7 @@ contract BCO2 is ERC1155, Ownable, IERC7496, ReentrancyGuard {
         defaultVintage = bytes32(_defaultVintage);
         registry = ICarbonCreditRegistry(_registry);
         governance = _governance;
+        bCO2DAO = ICarbonCreditDAO(_bco2DAO);
         RUSD = IERC20(_rusd);
         methodology = MethodologyUtils.Methodology(_methodologyId);
         location = _location;
@@ -274,11 +282,11 @@ contract BCO2 is ERC1155, Ownable, IERC7496, ReentrancyGuard {
 
     /// @notice Updates the treasury address
     /// @param _newTreasury The new treasury address
-    function updateTreasury(address _newTreasury) external onlyOwner {
-        if (_newTreasury == address(0)) revert InvalidTreasury();
-        treasury = _newTreasury;
-        emit TreasuryUpdated(_newTreasury);
-    }
+    // function updateTreasury(address _newTreasury) external onlyOwner {
+    //     if (_newTreasury == address(0)) revert InvalidTreasury();
+    //     treasury = _newTreasury;
+    //     emit TreasuryUpdated(_newTreasury);
+    // }
 
     /// @notice Updates the certificate ID (called by governance)
     /// @param _certificateId The new certificate ID
@@ -319,9 +327,11 @@ contract BCO2 is ERC1155, Ownable, IERC7496, ReentrancyGuard {
             bytes(uri(unit_tCO2_RETIRED_TOKEN_ID)).length == 0
         ) revert tokenURINotSet();
 
-        // Transfer RUSD to treasury
-        bool success = RUSD.transferFrom(msg.sender, treasury, payableAmount);
+        // Transfer RUSD to this contract and call depositRUSD on DAo
+        bool success = RUSD.transferFrom(msg.sender, address(this), payableAmount);
         if (!success) revert TransferFailed();
+
+        bCO2DAO.depositRUSD(address(this), payableAmount);
 
         // Update mint timestamp on first mint
         if (totalSupply == 0) {

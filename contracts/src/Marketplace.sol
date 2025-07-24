@@ -97,13 +97,13 @@ contract BCO2Marketplace is Ownable, ReentrancyGuard, IERC1155Receiver, ERC165 {
             !IERC1155(tokenContract).isApprovedForAll(msg.sender, address(this))
         ) revert InsufficientBalance(); // Requires setApprovalForAll
 
-        ERC1155(tokenContract).safeTransferFrom(
-            msg.sender,
-            address(this),
-            tokenId,
-            quantity,
-            ""
-        );
+        // ERC1155(tokenContract).safeTransferFrom(
+        //     msg.sender,
+        //     address(this),
+        //     tokenId,
+        //     quantity,
+        //     ""
+        // );
 
         listingId = listingCounter++;
         listings[listingId] = Listing({
@@ -280,22 +280,22 @@ contract BCO2Marketplace is Ownable, ReentrancyGuard, IERC1155Receiver, ERC165 {
     }
 
     function onERC1155Received(
-        address operator,
-        address from,
-        uint256 id,
-        uint256 value,
-        bytes calldata data
-    ) public pure override returns (bytes4) {
+        address /* operator */,
+        address /* from */,
+        uint256 /* id */,
+        uint256 /* value */,
+        bytes calldata /* data */
+    ) external pure override returns (bytes4) {
         return this.onERC1155Received.selector;
     }
 
     function onERC1155BatchReceived(
-        address operator,
-        address from,
-        uint256[] calldata ids,
-        uint256[] calldata values,
-        bytes calldata data
-    ) public pure override returns (bytes4) {
+        address /* operator */,
+        address /* from */,
+        uint256[] calldata /* ids */,
+        uint256[] calldata /* values */,
+        bytes calldata /* data */
+    ) external pure override returns (bytes4) {
         return this.onERC1155BatchReceived.selector;
     }
 }

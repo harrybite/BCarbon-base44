@@ -7,10 +7,18 @@ interface IBCO2 {
     function _setCertificateId(string memory certificateId) external;
 }
 
+interface IBCO2DAO {
+    function extendVotingPeriod(uint256 requestId) external;
+    function governanceDecision(uint256 requestId, bool approve, uint256 approvedAmount) external;
+    function setVotingDuration(uint256 newDuration) external;
+}
+
 contract BCO2Governance is Ownable, Pausable {
     // State variables for split contracts
     ProjectData public projectData;
     ProjectManager public projectManager;
+
+    IBCO2DAO public bco2DAO;
 
     bool public initialized;
 
@@ -63,12 +71,14 @@ contract BCO2Governance is Ownable, Pausable {
     /// @notice Initializes the contract with ProjectData and ProjectManager addresses
     /// @param _projectData The address of the ProjectData contract
     /// @param _projectManager The address of the ProjectManager contract
-    function initialize(address _projectData, address _projectManager) external onlyOwner {
+    /// @param _bco2DAO The address of the BCO2 DAO contract
+    function initialize(address _projectData, address _projectManager, address _bco2DAO) external onlyOwner {
         require(!initialized, "Already initialized");
         require(_projectData != address(0), "Invalid ProjectData address");
         require(_projectManager != address(0), "Invalid ProjectManager address");
         projectData = ProjectData(_projectData);
         projectManager = ProjectManager(_projectManager);
+        bco2DAO = IBCO2DAO(_bco2DAO);
         initialized = true;
         emit Initialized();
     }
@@ -150,6 +160,26 @@ contract BCO2Governance is Ownable, Pausable {
         totalCreditsIssued[projectContract] = amount;
 
         emit CreditsIssued(projectContract, amount);
+    }
+
+    /// @notice Extends voting period on DAO contract for withdrawal requests
+    /// @param requestID Request Id of the withdrawal
+    function extendVotingPeriod(uint256 requestID) external onlyOwner {
+        bco2DAO.extendVotingPeriod(requestID);
+    }
+
+    /// @notice Executes final decision of the Governance for withdrawal requests
+    /// @param requestID Request Id of the withdrawal
+    /// @param approve Decision of approval
+    /// @param approvedAmount Amount of RUSD approved for withdrawal
+    function executeApprovalForWithdrawal(uint256 requestID, bool approve, uint256 approvedAmount) external onlyOwner {
+        bco2DAO.governanceDecision(requestID, approve, approvedAmount);
+    }
+
+    /// @notice Sets voting period for withdrawal requests in BCO2 DAO
+    /// @param newDuration Duration of voting in seconds
+    function setVotingDuration(uint256 newDuration) external onlyOwner {
+        bco2DAO.setVotingDuration(newDuration);
     }
 
     /// @notice Rejects and removes a project

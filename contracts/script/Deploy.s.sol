@@ -9,8 +9,8 @@ import "../src/Registry/ProjectFactory.sol";
 
 contract Deploy is Script {
     function run() external {
-        uint256 deployerPrivateKey = vm.envUint("PRIVATE_KEY");
-        address owner = vm.addr(deployerPrivateKey);
+        // uint256 deployerPrivateKey = vm.envUint("PRIVATE_KEY");
+        // address owner = vm.addr(deployerPrivateKey);
 
         BCO2Governance governance;
         // ProjectData projectData;

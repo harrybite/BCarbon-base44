@@ -7,6 +7,7 @@ contract ProjectFactory is Ownable, Pausable, ReentrancyGuard {
     ProjectData public projectData;
     ProjectManager public projectManager;
     address public governance;
+    address public bco2DAO;
     IERC20 public RUSD;
 
     // Events
@@ -20,17 +21,20 @@ contract ProjectFactory is Ownable, Pausable, ReentrancyGuard {
         address _projectData,
         address _projectManager,
         address _governance,
+        address _bco2DAO,
         address _RUSD,
         address initialOwner
     ) Ownable(initialOwner) {
         if (_projectData == address(0)) revert("Invalid ProjectData address");
         if (_projectManager == address(0)) revert("Invalid ProjectManager address");
         if (_governance == address(0)) revert ("Invalid Governance address");
+        if (_bco2DAO == address(0)) revert ("Invalid DAO address");
         if (_RUSD == address(0)) revert("Invalid RUSD address");
         if (initialOwner == address(0)) revert("Invalid owner address");
         projectData = ProjectData(_projectData);
         projectManager = ProjectManager(_projectManager);
         governance = _governance;
+        bco2DAO = _bco2DAO;
         RUSD = IERC20(_RUSD);
     }
 
@@ -95,6 +99,7 @@ contract ProjectFactory is Ownable, Pausable, ReentrancyGuard {
             defaultVintage,
             governance,
             address(projectData),
+            bco2DAO,
             RUSD,
             methodologyIndex,
             location
