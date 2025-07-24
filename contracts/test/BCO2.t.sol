@@ -168,13 +168,19 @@ contract BCO2Test is Test {
         // Check initial DAO balance (should already have RUSD from mintWithRUSD)
         console.log("DAO RUSD Balance before:", rusd.balanceOf(address(bco2DAO)));
 
-        address projectOwner = bco2.owner();
+        // address projectOwner = bco2.owner();
 
-        console.log("Project Owner:", projectOwner);
+        // (,,,,,,address proposer,,,,,,,,) = projectData.getProjectDetails(address(bco2));
+        // console.log("Proposer in Registry:", proposer);
+
+        ProjectData.Project memory project = projectData.getProjectDetails(address(bco2));
+        console.log("Project Owner:", project.proposer);
+        console.log("Expected Issuer:", issuer);
+
         // assertEq(projectOwner == issuer, "Issuer and project owner are not the same");
         // Step 1: Issuer creates withdrawal request
-        vm.prank(projectOwner);
-        console.log("Issuer RUSD Balance before approval:", rusd.balanceOf(projectOwner));
+        vm.prank(project.proposer);
+        console.log("Issuer RUSD Balance before approval:", rusd.balanceOf(project.proposer));
         uint256 withdrawalRequestID = bco2DAO.requestWithdrawal(
             address(bco2),
             5 ether,
@@ -194,7 +200,7 @@ contract BCO2Test is Test {
 
         // Step 4: Governance makes final decision
         vm.prank(owner);
-        bco2DAO.governanceDecision(withdrawalRequestID, true, 5 ether);
+        governance.executeApprovalForWithdrawal(withdrawalRequestID, true, 5 ether);
 
         // Final balance check
         console.log("Issuer RUSD Balance after approval:", rusd.balanceOf(issuer));
