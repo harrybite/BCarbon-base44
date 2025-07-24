@@ -93,9 +93,10 @@ contract BCO2DAO is ReentrancyGuard {
     }
 
     // Submit a withdrawal request
-    function requestWithdrawal(address projectContract, uint256 amount, string calldata proofOfWork) external nonReentrant {
+    function requestWithdrawal(address projectContract, uint256 amount, string calldata proofOfWork) external nonReentrant returns(uint256 _requestId){
+        ProjectData.Project memory project = projectData.getProjectDetails(projectContract);
         if (!projectData.isListed(projectContract)) revert InvalidProject();
-        if (!projectData.authorizedProjectOwners(projectContract, msg.sender)) revert NotProjectOwner();
+        if (msg.sender != project.proposer) revert NotProjectOwner();
         if (amount == 0 || amount > projectBalances[projectContract]) revert InvalidAmount();
 
         // Check total requests limit
@@ -128,6 +129,8 @@ contract BCO2DAO is ReentrancyGuard {
         withdrawalRequestIDsOfProposer[msg.sender].push(requestCounter);
 
         emit WithdrawalRequested(requestCounter, projectContract, msg.sender, amount);
+
+        return(requestCounter);
     }
 
     // Holders vote on a withdrawal request
