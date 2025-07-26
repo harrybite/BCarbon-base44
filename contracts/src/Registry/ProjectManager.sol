@@ -3,13 +3,7 @@ pragma solidity ^0.8.20;
 
 import "@openzeppelin/contracts/utils/Pausable.sol";
 import "./ProjectData.sol";
-
-interface IBCO2Governance {
-    /// @notice Checks if an address is an authorized VVB
-    /// @param _vvb The address to check
-    /// @return True if the address is an authorized VVB
-    function checkAuthorizedVVBs(address _vvb) external view returns (bool);
-}
+import "../IBCO2Governance.sol";
 
 contract ProjectManager is Ownable, Pausable, ReentrancyGuard {
     ProjectData public projectData;
@@ -17,7 +11,7 @@ contract ProjectManager is Ownable, Pausable, ReentrancyGuard {
 
     uint256 private constant MIN_COMMENT_PERIOD = 1 days;
     uint256 private constant MAX_COMMENT_PERIOD = 90 days;
-    uint256 public commentPeriod = 900; // Default for testing
+    uint256 public commentPeriod = 90 days; // Default for testing
 
     // Events
     event CommentPeriodUpdated(uint256 newPeriod);

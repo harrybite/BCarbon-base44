@@ -189,13 +189,6 @@ contract ProjectData is Ownable {
         if (bytes(_projectDetails).length == 0) revert("Empty project details");
         if (isListed[_projectContract]) revert("Project already listed");
 
-        // string memory fullProjectId = string.concat(
-        //     "MAAL-",
-        //     Strings.toString(counter),
-        //     "-",
-        //     Strings.toString(_methodologyIndex)
-        // );
-
         Project storage project = projects[_projectContract];
         project.projectContract = _projectContract;
         project.projectId = _projectId;

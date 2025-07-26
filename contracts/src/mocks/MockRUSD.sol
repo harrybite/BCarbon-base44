@@ -23,8 +23,17 @@ contract MockRUSD {
     }
 
     function transferFrom(address from, address to, uint256 amount) external returns (bool) {
+        require(to != address(0), "ERC20: transfer to the zero address");
         require(balances[from] >= amount, "Insufficient");
         balances[from] -= amount;
+        balances[to] += amount;
+        return true;
+    }
+
+    function transfer(address to, uint256 amount) external returns (bool) {
+        require(to != address(0), "ERC20: transfer to the zero address");
+        require(balances[msg.sender] >= amount, "ERC20: transfer amount exceeds balance");
+        balances[msg.sender] -= amount;
         balances[to] += amount;
         return true;
     }

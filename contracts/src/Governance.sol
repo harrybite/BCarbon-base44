@@ -22,6 +22,10 @@ contract BCO2Governance is Ownable, Pausable {
 
     bool public initialized;
 
+    uint8 public authorizedVVBCounter;
+
+    address[] public listOfAuthorizeVVBs;
+
     // Mappings
     mapping(address => bool) public authorizedVVBs;
     mapping(string => bool) private _usedCertificateIds;
@@ -106,6 +110,8 @@ contract BCO2Governance is Ownable, Pausable {
         if (vvb == address(0)) revert InvalidVVBAddress();
         if (authorizedVVBs[vvb]) revert VVBAlreadyAuthorized();
         authorizedVVBs[vvb] = true;
+        listOfAuthorizeVVBs.push(vvb);
+        authorizedVVBCounter++;
         emit VVBAdded(vvb);
     }
 
@@ -114,9 +120,22 @@ contract BCO2Governance is Ownable, Pausable {
     function removeVVB(address vvb) external onlyOwner {
         if (!initialized) revert notInitialized();
         if (!authorizedVVBs[vvb]) revert VVBNotAuthorized();
+        
         authorizedVVBs[vvb] = false;
+        authorizedVVBCounter--;
+
+        // Remove from listOfAuthorizeVVBs
+        for (uint256 i = 0; i < listOfAuthorizeVVBs.length; i++) {
+            if (listOfAuthorizeVVBs[i] == vvb) {
+                listOfAuthorizeVVBs[i] = listOfAuthorizeVVBs[listOfAuthorizeVVBs.length - 1];
+                listOfAuthorizeVVBs.pop();
+                break;
+            }
+        }
+
         emit VVBRemoved(vvb);
     }
+
 
     /// @notice Validates a project's design
     /// @param projectContract The address of the project contract
@@ -204,5 +223,9 @@ contract BCO2Governance is Ownable, Pausable {
     function checkAuthorizedVVBs(address _vvb) external view returns (bool) {
         if (_vvb == address(0)) revert InvalidVVBAddress();
         return authorizedVVBs[_vvb];
+    }
+
+    function getAuthorizedVVBs() external view returns(address[] memory) {
+        return listOfAuthorizeVVBs;
     }
 }

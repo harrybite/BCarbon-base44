@@ -36,7 +36,7 @@ contract BCO2Test is Test {
             address(governance),
             owner
         );
-        bco2DAO = new BCO2DAO(address(rusd), address(projectData), address(projectManager), address(governance));
+        bco2DAO = new BCO2DAO(address(rusd), address(projectData), address(governance));
         projectFactory = new ProjectFactory(
             address(projectData),
             address(projectManager),
@@ -183,15 +183,17 @@ contract BCO2Test is Test {
         console.log("Issuer RUSD Balance before approval:", rusd.balanceOf(project.proposer));
         uint256 withdrawalRequestID = bco2DAO.requestWithdrawal(
             address(bco2),
-            5 ether,
+            50000000000000000000,
             "link to proof of work"
         );
         console.log("Withdrawal Request ID:", withdrawalRequestID);
 
         // Step 2: VVB approves request
         vm.prank(vvb);
+        console.log("VVB is valid in Governance:", governance.checkAuthorizedVVBs(vvb));
         bco2DAO.vvbApproveWithdrawal(withdrawalRequestID);
-        console.log("VVB Approved:", bco2DAO.isVVBApproved(withdrawalRequestID));
+        console.log("VVB Approval status:", bco2DAO.getVVBApproval(withdrawalRequestID, vvb));
+        console.log("Is VVB Approved:", bco2DAO.isApprovedByVVB(withdrawalRequestID));
 
         // Step 3: Holder votes on request
         vm.prank(user);
@@ -200,10 +202,10 @@ contract BCO2Test is Test {
 
         // Step 4: Governance makes final decision
         vm.prank(owner);
-        governance.executeApprovalForWithdrawal(withdrawalRequestID, true, 5 ether);
+        governance.executeApprovalForWithdrawal(withdrawalRequestID, true, 50000000000000000000);
 
         // Final balance check
-        console.log("Issuer RUSD Balance after approval:", rusd.balanceOf(issuer));
+        console.log("Issuer RUSD Balance after approval:", rusd.balanceOf(project.proposer));
         console.log("DAO RUSD Balance after:", rusd.balanceOf(address(bco2DAO)));
     }
 

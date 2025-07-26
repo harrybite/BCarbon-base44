@@ -2,6 +2,7 @@
 pragma solidity ^0.8.20;
 
 import "@openzeppelin/contracts/token/ERC1155/ERC1155.sol";
+import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import "@openzeppelin/contracts/access/Ownable.sol";
 import "@openzeppelin/contracts/utils/ReentrancyGuard.sol";
 import "./MethodologyUtils.sol";
@@ -35,23 +36,6 @@ interface ICarbonCreditRegistry {
         external
         view
         returns (uint256);
-}
-
-interface IERC20 {
-    function balanceOf(address account) external view returns (uint256);
-
-    function allowance(address owner, address spender)
-        external
-        view
-        returns (uint256);
-
-    function transferFrom(
-        address from,
-        address to,
-        uint256 amount
-    ) external returns (bool);
-
-    function transfer(address to, uint256 amount) external returns(bool);
 }
 
 interface ICarbonCreditDAO {
