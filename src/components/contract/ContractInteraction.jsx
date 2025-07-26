@@ -73,7 +73,7 @@ export const useContractInteraction = () => {
 
 
   const getProvider = () => {
-    return new JsonRpcProvider(bscTestnet.rpc)
+    return new JsonRpcProvider("https://bsc-testnet.drpc.org")
   };
 
   const getGovernanceContract = async (withSigner = false) => {

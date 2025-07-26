@@ -4,13 +4,14 @@ import { useState, useEffect } from 'react';
 import { useContractInteraction } from '../contract/ContractInteraction';
 import { useParams } from 'react-router-dom';
 import { Link } from 'react-router-dom';
-import { methodology } from '../contract/address';
+import { apihost, methodology } from '../contract/address';
 import { useToast } from '../ui/use-toast';
 import { useConnectWallet } from '@/context/walletcontext';
 
 // eslint-disable-next-line react/prop-types
 const ProjectCard = ({ project }) => {
-  const { checkAuthorizedVVB,
+  const { 
+    checkAuthorizedVVB,
     checkIsProjectOwner,
     checkIsOwner,
     getListedProjectDetails,
@@ -43,9 +44,20 @@ const ProjectCard = ({ project }) => {
     const fetchDetails = async () => {
       if (project) {
         try {
-          const data = await getListedProjectDetails(project);
-          // console.log('Project details:', data);
-          setDetails(data);
+          // const data = await getListedProjectDetails(project);
+          // fetch project details from the backend
+          // if (!data) {
+          //   console.error('No project data found');
+          //   return;
+          // }
+          const projectdetails =await fetch(`${apihost}/project/getproject/${project}`);
+          if (!projectdetails.ok) {
+            console.error('Failed to fetch project details');
+            return;
+          }
+          const projectData = await projectdetails.json();
+          console.log("Project detials:", projectData);
+          setDetails(projectData.projectDetails);
         
           setCanComment((await checkAuthorizedVVB()) || (await checkIsProjectOwner(project)));
           setIsOwner(await checkIsOwner());

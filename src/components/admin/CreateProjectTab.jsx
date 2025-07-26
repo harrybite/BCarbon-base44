@@ -9,6 +9,8 @@ import { useToast } from '../ui/use-toast';
 import { MapContainer, TileLayer, Marker, useMap, useMapEvents } from 'react-leaflet';
 import 'leaflet/dist/leaflet.css';
 import L from 'leaflet';
+import { useActionState } from 'react';
+import { useActiveAccount } from 'thirdweb/react';
 
 // Fix Leaflet marker icon issue
 delete L.Icon.Default.prototype._getIconUrl;
@@ -37,6 +39,7 @@ const CreateProjectTab = ({ setUpdate }) => {
   const [searchQuery, setSearchQuery] = useState('');
   const [isSearching, setIsSearching] = useState(false);
   const [coordinatesList, setCoordinatesList] = useState([{ lat: '', lng: '' }]);
+  const account = useActiveAccount()
 
   // Component to handle map interactions
   const LocationPicker = ({ setLocation }) => {
@@ -264,9 +267,8 @@ const CreateProjectTab = ({ setUpdate }) => {
 
     try {
       console.log("formdata", preparedData);
-      const tx = await createAndListProject(preparedData);
-      const receipt = await tx.wait();
-      if (receipt.status === 1) {
+      const receipt = await createAndListProject(preparedData, account);
+      if (receipt.status === "success") {
         setUpdate(4);
         toast({
           title: "Project Created",
@@ -311,7 +313,7 @@ const CreateProjectTab = ({ setUpdate }) => {
           />
         </div>
         <div>
-          <label className="block">Issuer's Treasury Wallet</label>
+          <label className="block">{"Issuer's Treasury Wallet"}</label>
           <input
             type="text"
             name="treasury"
@@ -506,3 +508,5 @@ const CreateProjectTab = ({ setUpdate }) => {
 };
 
 export default CreateProjectTab;
+//22708240030673
+// lala ram mila

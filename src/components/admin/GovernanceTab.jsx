@@ -3,6 +3,7 @@ import { useState, useEffect } from 'react';
 import { useContractInteraction } from '../contract/ContractInteraction';
 import { useToast } from '../ui/use-toast';
 import { Card, CardHeader, CardTitle, CardContent } from '../ui/card';
+import { apihost } from '@/components/contract/address';
 
 
 const GovernanceTab = () => {
@@ -82,15 +83,30 @@ const GovernanceTab = () => {
       return;
     }
     try {
-      const tx = await addVVB(addVVBAddress);
-      const receipt = await tx.wait();
-      if (receipt.status === 1) {
-        toast({
-          title: "VVB Added",
-          description: "VVB added successfully.",
-          variant: "success",
+      // Call the contract function
+      const receipt = await addVVB(addVVBAddress);
+      if (receipt.status === "success") {
+        // Call the backend API to store the address
+        const res = await fetch(`${apihost}/gov/createvvb`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ walletAddress: addVVBAddress }),
         });
-        setAddVVBAddress("");
+        const data = await res.json();
+        if (res.ok) {
+          toast({
+            title: "VVB Added",
+            description: "VVB added successfully.",
+            variant: "success",
+          });
+          setAddVVBAddress("");
+        } else {
+          toast({
+            title: "API Error",
+            description: data.message || "Failed to store VVB address.",
+            variant: "destructive",
+          });
+        }
       } else {
         toast({
           title: "Transaction Failed",
@@ -117,15 +133,27 @@ const GovernanceTab = () => {
       return;
     }
     try {
-      const tx = await removeVVB(removeVVBAddress);
-      const receipt = await tx.wait();
-      if (receipt.status === 1) {
-        toast({
-          title: "VVB Removed",
-          description: "VVB removed successfully.",
-          variant: "success",
+      // Call the contract function
+      const receipt = await removeVVB(removeVVBAddress);
+      if (receipt.status === "success") {
+        const res = await fetch(`${apihost}/gov/removevvb/${removeVVBAddress}`, {
+          method: "POST",
         });
-        setRemoveVVBAddress("");
+        const data = await res.json();
+        if (res.ok) {
+          toast({
+            title: "VVB Removed",
+            description: "VVB removed successfully.",
+            variant: "success",
+          });
+          setRemoveVVBAddress("");
+        } else {
+          toast({
+            title: "API Error",
+            description: data.message || "Failed to remove VVB address.",
+            variant: "destructive",
+          });
+        }
       } else {
         toast({
           title: "Transaction Failed",
