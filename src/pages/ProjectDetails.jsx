@@ -303,13 +303,15 @@ export default function ProjectDetails() {
   // Check roles after loading project
   useEffect(() => {
     if (project && walletAddress) {
-      setIsOwner(walletAddress.toLowerCase() === project.proposer?.toLowerCase());
-      // You should implement checkAuthorizedVVB to check if walletAddress is a VVB for this project
+  
       (async () => {
         try {
           const vvbStatus = await checkAuthorizedVVB(project.projectContract, walletAddress);
           console.log("VVB Status:", vvbStatus);
           setIsVVB(vvbStatus);
+
+          const governanceOwner = await checkIsOwner();
+          setIsOwner(governanceOwner);
         } catch {
           setIsVVB(false);
         }

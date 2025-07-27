@@ -7,6 +7,7 @@ import BuyerTab from "../components/account/BuyerTab";
 import WalletConnection from "../components/wallet/WalletConnection";
 import { useConnectWallet } from "@/context/walletcontext";
 import CertificatesTab from "@/components/account/CertificateTab";
+import MyProjects from "@/components/account/Myproject";
 
 export default function MyAccount() {
 
@@ -39,11 +40,17 @@ export default function MyAccount() {
 
         {/* Tab View */}
         <Tabs defaultValue="issuer" className="space-y-6">
-         <TabsList className="grid w-full grid-cols-3">
+         <TabsList className="grid w-full grid-cols-4">
         <TabsTrigger value="issuer" className="flex items-center space-x-2">
           <Briefcase className="w-4 h-4" />
-          <span>Project Owned</span>
+          <span>Create Project</span>
         </TabsTrigger>
+
+        <TabsTrigger value="myproject" className="flex items-center space-x-2">
+          <Briefcase className="w-4 h-4" />
+          <span>My Project</span>
+        </TabsTrigger>
+
         <TabsTrigger value="buyer" className="flex items-center space-x-2">
           <ShoppingBag className="w-4 h-4" />
           <span>My tCO<sub>2</sub> Holdings</span>
@@ -56,6 +63,9 @@ export default function MyAccount() {
 
           <TabsContent value="issuer">
             <IssuerTab walletAddress={walletAddress} />
+          </TabsContent>
+           <TabsContent value="myproject">
+            <MyProjects/>
           </TabsContent>
           <TabsContent value="buyer">
             <BuyerTab walletAddress={walletAddress} />

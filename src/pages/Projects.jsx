@@ -54,7 +54,7 @@ export default function Projects() {
         setProjects(data.projects);
         setFilteredProjects(data.projects);
         
-        // Update pagination state
+
         if (data.pagination) {
           setTotalPages(data.pagination.totalPages);
           setTotalProjects(data.pagination.totalProjects);

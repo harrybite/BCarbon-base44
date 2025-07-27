@@ -4,7 +4,7 @@ import { useState } from 'react';
 import ReactDatePicker from "react-datepicker";
 import "react-datepicker/dist/react-datepicker.css";
 import { useContractInteraction } from '../contract/ContractInteraction';
-import { methodology } from '../contract/address';
+import { apihost, methodology } from '../contract/address';
 import { useToast } from '../ui/use-toast';
 import { MapContainer, TileLayer, Marker, useMap, useMapEvents } from 'react-leaflet';
 import 'leaflet/dist/leaflet.css';
@@ -269,6 +269,21 @@ const CreateProjectTab = ({ setUpdate }) => {
       console.log("formdata", preparedData);
       const receipt = await createAndListProject(preparedData, account);
       if (receipt.status === "success") {
+        // store project details in the backend
+        const response = await fetch(`${apihost}/project/addproject`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({ hash: receipt.transactionHash }),
+        });
+        if (!response.ok) {
+          throw new Error('Failed to store project details in the backend');
+        }
+        const data = await response.json();
+        if (data.success) {
+          console.log('Project details stored successfully:', data);
+        }
         setUpdate(4);
         toast({
           title: "Project Created",
