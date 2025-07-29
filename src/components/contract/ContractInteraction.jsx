@@ -11,7 +11,7 @@ import projectDataabi from './ProjectData.json';
 import bco2Abi from './BCO2.json';
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { AlertCircle } from "lucide-react";
-import { chainInfo, GOVERNANCE_ADDRESS, MARKETPLACE_ADDRESS, projectData, projectFactory, projectManager, RUSD } from './address';
+import { apihost, chainInfo, GOVERNANCE_ADDRESS, MARKETPLACE_ADDRESS, projectData, projectFactory, projectManager, RUSD } from './address';
 import { useConnectWallet } from '@/context/walletcontext';
 import { bscTestnet } from 'thirdweb/chains';
 import { thirdwebclient } from '@/thirwebClient';
@@ -73,7 +73,7 @@ export const useContractInteraction = () => {
 
 
   const getProvider = () => {
-    return new JsonRpcProvider("https://bsc-testnet.drpc.org")
+    return new JsonRpcProvider(chainInfo.rpc);
   };
 
   const getGovernanceContract = async (withSigner = false) => {
@@ -255,53 +255,88 @@ export const useContractInteraction = () => {
     }
   };
 
-  const getUserApproveProjectBalance = async () => {
-
-    try {
-      const approvedProjects = await getApprovedProjects();
-      const nfts = []
-      for (const project of approvedProjects) {
-        const bco2Contract = await getBCO2Contract(project, false);
+const getUserApproveProjectBalance = async (address, page = 1, limit = 10) => {
+  try {
+    const response = await fetch(`${apihost}/user/nfts/${address}?page=${page}&limit=${limit}`);
+    const data = await response.json();
+    
+    if (data.status !== 'success') {
+      throw new Error(data.message || 'Failed to fetch NFTs');
+    }
+    
+    const approvedProjects = data.nfts || [];
+    const pagination = data.pagination || {};
+    const nfts = [];
+    
+    for (const project of approvedProjects) {
+      const bco2Contract = await getBCO2Contract(project.projectContract, false);
+      
+      if (Number(project.tokenId) === 1) {
+        let tokenURI = await getTokenURIs(project.projectContract, 1);
         const balanceminted = await bco2Contract.balanceOf(userAddress, 1);
-        const balanceRetired = await bco2Contract.balanceOf(userAddress, 2);
-        if (Number(balanceminted) > 0) {
-          let tokenURI = await getTokenURIs(project, 1);
-          if (tokenURI && tokenURI !== "") {
-
-            tokenURI = tokenURI?.replace(/^"|"$/g, "");
+        
+        if (tokenURI && tokenURI !== "") {
+          tokenURI = tokenURI?.replace(/^"|"$/g, "");
+          try {
             const response = await fetch(tokenURI);
-
             const metadata = await response.json();
             nfts.push({
-              projectContract: project,
+              projectContract: project.projectContract,
               balanceMinted: balanceminted.toString(),
               metadata: metadata,
               tokenURI: tokenURI
             });
-          }
-        }
-        if (Number(balanceRetired) > 0) {
-          let tokenURI = await getTokenURIs(project, 2);
-          if (tokenURI && tokenURI !== "") {
-            tokenURI = tokenURI?.replace(/^"|"$/g, "");
-            const response = await fetch(tokenURI);
-            const metadata = await response.json();
+          } catch (metadataError) {
+            console.error('Error fetching metadata:', metadataError);
+            // Add project without metadata if URI fetch fails
             nfts.push({
-              projectContract: project,
-              balanceRetired: balanceRetired.toString(),
-              metadata: metadata,
+              projectContract: project.projectContract,
+              balanceMinted: balanceminted.toString(),
+              metadata: { name: 'Unknown Project', description: 'Metadata unavailable' },
               tokenURI: tokenURI
             });
           }
         }
       }
-      return nfts.reverse();
+      
+      if (Number(project.tokenId) === 2) {
+        let tokenURI = await getTokenURIs(project.projectContract, 2);
+        const balanceRetired = await bco2Contract.balanceOf(userAddress, 2);
+        
+        if (tokenURI && tokenURI !== "") {
+          tokenURI = tokenURI?.replace(/^"|"$/g, "");
+          try {
+            const response = await fetch(tokenURI);
+            const metadata = await response.json();
+            nfts.push({
+              projectContract: project.projectContract,
+              balanceRetired: balanceRetired.toString(),
+              metadata: metadata,
+              tokenURI: tokenURI
+            });
+          } catch (metadataError) {
+            console.error('Error fetching metadata:', metadataError);
+            // Add project without metadata if URI fetch fails
+            nfts.push({
+              projectContract: project.projectContract,
+              balanceRetired: balanceRetired.toString(),
+              metadata: { name: 'Unknown Project', description: 'Metadata unavailable' },
+              tokenURI: tokenURI
+            });
+          }
+        }
+      }
     }
-    catch (err) {
-      console.error("Error fetching user approved project balance:", err);
-      throw new Error(`Failed to fetch user approved project balance: ${err.message}`);
-    }
+    
+    return {
+      nfts,
+      pagination
+    };
+  } catch (err) {
+    console.error("Error fetching user approved project balance:", err);
+    throw new Error(`Failed to fetch user approved project balance: ${err.message}`);
   }
+};
 
 
 
@@ -520,18 +555,12 @@ export const useContractInteraction = () => {
 
     try {
       const MAX_UINT256 = "0xffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff";
-      // console.log("Approving RUSD for project:", projectAddress);
-      // const rusdContract = await getERC20Contract(RUSD, true);
-      // console.log("rusdContract", rusdContract);
-      // const tx = await rusdContract.approve(projectAddress, MAX_UINT256);
-      // return tx;
       const transaction = prepareContractCall({
         contract: thridWebERC20Contract,
         method: "approve",
         params: [projectAddress, MAX_UINT256],
 
       });
-      console.log("Transaction prepared:", transaction);
       const transactionReceipt = await sendAndConfirmTransaction({
         account,
         transaction,

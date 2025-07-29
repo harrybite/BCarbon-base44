@@ -16,16 +16,16 @@ import {
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
-import { ConnectButton, useConnect } from "thirdweb/react";
+import { ConnectButton, useActiveAccount, useConnect } from "thirdweb/react";
 import { thirdwebclient } from "@/thirwebClient";
 import { createWallet } from "thirdweb/wallets";
 import { bscTestnet } from "thirdweb/chains"
 import { useConnectWallet } from "@/context/walletcontext";
 import { apihost } from "@/components/contract/address";
+import { useContractInteraction } from "@/components/contract/ContractInteraction";
 
-
-
-const navigationItems = [
+// Base navigation items (always visible)
+const baseNavigationItems = [
   {
     title: "Home",
     url: createPageUrl("Home"),
@@ -55,14 +55,16 @@ const navigationItems = [
     url: createPageUrl("MyAccount"),
     icon: User,
     description: "Manage your projects and BCO₂ assets"
-  },
-  {
-    title: "Administration",
-    url: createPageUrl("Administration"),
-    icon: Settings,
-    description: "Admin controls"
   }
 ];
+
+// Admin/VVB only navigation item
+const adminNavigationItem = {
+  title: "Administration",
+  url: createPageUrl("Administration"),
+  icon: Settings,
+  description: "Admin controls"
+};
 
 // eslint-disable-next-line react/prop-types, no-unused-vars
 export default function Layout({ children }) {
@@ -74,6 +76,27 @@ export default function Layout({ children }) {
   const { walletAddress } = useConnectWallet();
   const [pendingUrl, setPendingUrl] = useState(null);
   const { connect, } = useConnect();
+  const { checkAuthorizedVVB, checkIsOwner } = useContractInteraction()
+  const aacount = useActiveAccount();
+
+  // Get user info from token
+  let userInfo = null;
+  const token = typeof window !== "undefined" ? localStorage.getItem("token") : null;
+  if (token) {
+    try {
+      userInfo = jwtDecode(token);
+    } catch (e) {
+      userInfo = null;
+    }
+  }
+
+  // Check if user is admin or VVB
+  const isAdminOrVVB = userInfo && (userInfo.role === "gov" || userInfo.role === "vvb");
+
+  // Create navigation items based on user role
+  const navigationItems = isAdminOrVVB 
+    ? [...baseNavigationItems, adminNavigationItem]
+    : baseNavigationItems;
 
   // Close dropdown if clicked outside
   useEffect(() => {
@@ -89,6 +112,12 @@ export default function Layout({ children }) {
     }
     return () => document.removeEventListener("mousedown", handleClickOutside);
   }, [userMenuOpen]);
+
+  useEffect(() => {
+      localStorage.removeItem("token");
+      setUserMenuOpen(false);
+      navigate("/login");
+  }, [aacount?.address]);
 
   // Handler to trigger wallet connect and redirect
   const handleNavClick = (url) => {
@@ -143,17 +172,6 @@ export default function Layout({ children }) {
     return () => clearInterval(interval);
   }, [navigate]);
 
-
-  // Get user info from token
-  let userInfo = null;
-  const token = typeof window !== "undefined" ? localStorage.getItem("token") : null;
-  if (token) {
-    try {
-      userInfo = jwtDecode(token);
-    } catch (e) {
-      userInfo = null;
-    }
-  }
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-green-50 via-white to-blue-50">
@@ -230,7 +248,7 @@ export default function Layout({ children }) {
                     aria-expanded={userMenuOpen}
                   >
                     <span className="mr-2">
-                      {userInfo.role === "user" && "Isuer"}
+                      {userInfo.role === "user" && "Issuer"}
                       {userInfo.role === "vvb" && "VVB"}
                       {userInfo.role === "gov" && "Gov"}
                     </span>
@@ -277,16 +295,18 @@ export default function Layout({ children }) {
                 <SheetContent side="right" className="w-80">
                   <div className="flex flex-col space-y-4 mt-8">
                     {/* Mobile Login Button */}
-                    <Button
-                      variant="outline"
-                      className="mb-2"
-                      onClick={() => {
-                        setMobileMenuOpen(false);
-                        navigate("/login");
-                      }}
-                    >
-                      Login
-                    </Button>
+                    {!userInfo && (
+                      <Button
+                        variant="outline"
+                        className="mb-2"
+                        onClick={() => {
+                          setMobileMenuOpen(false);
+                          navigate("/login");
+                        }}
+                      >
+                        Login
+                      </Button>
+                    )}
                     {navigationItems.map(({ title, url, icon: Icon, description }) => (
                       <button
                         key={title}

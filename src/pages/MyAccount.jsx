@@ -8,10 +8,56 @@ import WalletConnection from "../components/wallet/WalletConnection";
 import { useConnectWallet } from "@/context/walletcontext";
 import CertificatesTab from "@/components/account/CertificateTab";
 import MyProjects from "@/components/account/Myproject";
+import { useNavigate } from 'react-router-dom';
+import { useContractInteraction } from "@/components/contract/ContractInteraction";
+import {  useToast } from "@/components/ui/use-toast";
+
 
 export default function MyAccount() {
 
   const { walletAddress } = useConnectWallet();
+  const { toast } = useToast();
+  const navigate = useNavigate();
+  const [isOwner, setIsOwner] = useState(false);
+  const [isVVB, setIsVVB] = useState(false);
+  const { checkIsOwner, checkAuthorizedVVB } = useContractInteraction();
+
+    useEffect(() => {
+    // Check wallet connection
+    if (!walletAddress || walletAddress === '0x0000000000000000000000000000000000000000') {
+      toast({
+        title: 'Wallet Not Connected',
+        description: 'Please connect your wallet.',
+        variant: 'destructive',
+      });
+      return;
+    }
+    // Check owner and authorized VVB
+    const checkAccess = async () => {
+      try {
+        const isOwner = await checkIsOwner();
+        const isVVB = await checkAuthorizedVVB();
+        console.log('isOwner:', isOwner, 'isVVB:', isVVB);
+        if (isOwner || isVVB) {
+          toast({
+            title: 'Access Denied',
+            description: 'You are not the owner or an authorized VVB. Redirecting to Administration.',
+            variant: 'destructive',
+          });
+          navigate('/Administration');
+        }
+      } catch (err) {
+        // If check fails, treat as not authorized
+        toast({
+          title: 'Access Check Failed',
+          description: 'Unable to verify access. Redirecting to Administration.',
+          variant: 'destructive',
+        });
+        navigate('/Administration');
+      }
+    };
+    checkAccess();
+  }, [walletAddress]);
 
 
   if (!walletAddress) {

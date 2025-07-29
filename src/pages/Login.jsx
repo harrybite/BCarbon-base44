@@ -14,7 +14,7 @@ const Login = () => {
   const [loading, setLoading] = useState(false);
   const [message, setMessage] = useState("");
   const account = useActiveAccount();
-   const navigate = useNavigate();
+  const navigate = useNavigate();
  
 
   const handleSubmit = async (e) => {
@@ -35,14 +35,14 @@ const Login = () => {
       } else if (role === "gov") {
         endpoint = `${apihost}/gov/login`;
         body = { 
-           walletAddress: account?.address, 
+          walletAddress: account?.address, 
           email, 
           password 
          };
       } else {
         endpoint = `${apihost}/user/login`;
         body = { 
-           walletAddress: account?.address, 
+          walletAddress: account?.address, 
           email, 
           password 
          };

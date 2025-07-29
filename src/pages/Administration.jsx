@@ -186,9 +186,7 @@ export default function Administration() {
           </TabsList>
 
           <TabsContent value="approval">
-            <ProjectApproval
-
-            />
+            <ProjectApproval/>
           </TabsContent>
           {isOwner && (
             <TabsContent value="governance">

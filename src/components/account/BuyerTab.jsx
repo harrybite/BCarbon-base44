@@ -6,10 +6,17 @@ import { useConnectWallet } from '@/context/walletcontext';
 import { Link } from "react-router-dom";
 import { useMarketplaceInteraction } from '../contract/MarketplaceInteraction';
 import { useToast } from '../ui/use-toast';
+import { Button } from '../ui/button';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../ui/select';
+import { ChevronLeft, ChevronRight, Loader2 } from 'lucide-react';
+import { useActiveAccount } from 'thirdweb/react';
 
 const BuyerTab = () => {
-  const { isContractsInitised, getUserApproveProjectBalance,
-    isApproveForAll, setApprovalForAll } =
+  const {
+    getUserApproveProjectBalance,
+    isApproveForAll,
+    setApprovalForAll
+  } =
     useContractInteraction();
   const { createListing } = useMarketplaceInteraction();
   const navigate = useNavigate();
@@ -24,9 +31,17 @@ const BuyerTab = () => {
   const [price, setPrice] = useState('');
   const [showModal, setShowModal] = useState(false);
   const [isListing, setIsListing] = useState(false);
-
   const [isApproving, setIsApproving] = useState(false);
   const [isReadyToList, setIsReadyToList] = useState(false);
+  const account = useActiveAccount()
+
+  // Pagination state
+  const [currentPage, setCurrentPage] = useState(1);
+  const [totalPages, setTotalPages] = useState(1);
+  const [totalNFTs, setTotalNFTs] = useState(0);
+  const [nftsPerPage, setNftsPerPage] = useState(10);
+  const [hasNextPage, setHasNextPage] = useState(false);
+  const [hasPrevPage, setHasPrevPage] = useState(false);
 
   // Listing function
   const list = async () => {
@@ -41,7 +56,6 @@ const BuyerTab = () => {
 
     if (!isReadyToList) {
       // Step 1: Approval
-     
       try {
         if (Number(selectedProject.balanceMinted) < Number(quantity)) {
           toast({
@@ -56,13 +70,15 @@ const BuyerTab = () => {
         const tokenContract = selectedProject.projectContract;
         const approved = await isApproveForAll(tokenContract, walletAddress);
         if (!approved) {
-           setIsApproving(true);
-          await setApprovalForAll(tokenContract);
-          toast({
+          setIsApproving(true);
+          const recipt = await setApprovalForAll(tokenContract, account);
+          if (recipt.status === "success") {
+              toast({
             title: "Approval Set",
             description: "Approval for all set successfully, you can now list your NFTs.",
             variant: "success",
           });
+          }
         }
         setIsReadyToList(true);
       } catch (error) {
@@ -82,19 +98,24 @@ const BuyerTab = () => {
     try {
       const tokenContract = selectedProject.projectContract;
       const tokenId = 1;
-      await createListing(tokenContract, tokenId, quantity, price);
-      toast({
-        title: "Listing Created",
-        description: `Successfully created listing`,
-        variant: "success",
-      });
-      setShowModal(false);
-      setQuantity('');
-      setPrice('');
-      setSelectedProject(null);
-      setUpdate(update + 1);
-      setIsReadyToList(false);
-      navigate("/Trade");
+      const recipt = await createListing(tokenContract, tokenId, quantity, price, account);
+      if (recipt.status === "success") {
+        toast({
+          title: "Listing Created",
+          description: "Your listing has been created successfully.",
+          variant: "success",
+        });
+        setShowModal(false);
+        setQuantity('');
+        setPrice('');
+        setSelectedProject(null);
+        setUpdate(update + 1);
+        setIsReadyToList(false);
+        navigate("/Trade");
+      } else {
+        throw new Error("Failed to create listing");
+      }
+      
     } catch (error) {
       toast({
         title: "Listing Creation Failed",
@@ -106,21 +127,59 @@ const BuyerTab = () => {
     }
   };
 
+  const handlePageChange = (newPage) => {
+    if (newPage >= 1 && newPage <= totalPages) {
+      setCurrentPage(newPage);
+      window.scrollTo({ top: 0, behavior: 'smooth' });
+    }
+  };
+
+  const handleLimitChange = (newLimit) => {
+    setNftsPerPage(parseInt(newLimit));
+    setCurrentPage(1); // Reset to first page when changing limit
+  };
+
+  // Generate page numbers for pagination
+  const getPageNumbers = () => {
+    const pages = [];
+    const maxVisiblePages = 5;
+
+    let startPage = Math.max(1, currentPage - Math.floor(maxVisiblePages / 2));
+    let endPage = Math.min(totalPages, startPage + maxVisiblePages - 1);
+
+    if (endPage - startPage + 1 < maxVisiblePages) {
+      startPage = Math.max(1, endPage - maxVisiblePages + 1);
+    }
+
+    for (let i = startPage; i <= endPage; i++) {
+      pages.push(i);
+    }
+
+    return pages;
+  };
+
   useEffect(() => {
     const fetchUserProjects = async () => {
-      if (!walletAddress || !isContractsInitised) {
-        console.log('Skipping fetch: walletAddress or contracts not initialized', {
-          walletAddress,
-          isContractsInitised,
-        });
+      if (!walletAddress) {
+        console.log('Skipping fetch: walletAddress not initialized', { walletAddress });
         setLoading(false);
         return;
       }
+
       setLoading(true);
       try {
-        const usernftsproject = await getUserApproveProjectBalance();
-        console.log('User usernftsproject:', usernftsproject);
-        setProjects(Array.isArray(usernftsproject) ? usernftsproject : []);
+        const result = await getUserApproveProjectBalance(walletAddress, currentPage, nftsPerPage);
+        console.log('User NFTs result:', result);
+
+        setProjects(Array.isArray(result.nfts) ? result.nfts : []);
+
+        // Update pagination state
+        if (result.pagination) {
+          setTotalPages(result.pagination.totalPages);
+          setTotalNFTs(result.pagination.totalNFTs);
+          setHasNextPage(result.pagination.hasNextPage);
+          setHasPrevPage(result.pagination.hasPrevPage);
+        }
       } catch (error) {
         console.error('Error fetching projects:', error);
         toast({
@@ -133,19 +192,65 @@ const BuyerTab = () => {
         setLoading(false);
       }
     };
+
     fetchUserProjects();
-  }, [walletAddress, update, isContractsInitised]);
+  }, [walletAddress, update, currentPage, nftsPerPage]);
 
   return (
     <div className="p-4">
-      <h2 className="text-2xl font-bold mb-4">Buyer Dashboard</h2>
+      {/* Header with pagination info */}
+      <div className="mb-6">
+        <h2 className="text-2xl font-bold text-gray-900 mb-2">Buyer Dashboard</h2>
+        <p className="text-gray-600">
+          Manage your carbon credit NFTs ({totalNFTs} total NFTs)
+        </p>
+      </div>
+
       {!walletAddress && (
-        <p className="text-red-500 mb-4">Please connect your wallet to view projects.</p>
+        <div className="text-center py-12">
+          <p className="text-red-500 mb-4">Please connect your wallet to view projects.</p>
+        </div>
       )}
+
+      {/* Projects per page selector */}
+      {walletAddress && (
+        <div className="bg-white rounded-xl shadow-sm border p-4 mb-6">
+          <div className="flex items-center justify-between">
+            <div className="text-sm text-gray-600">
+              {loading ? (
+                "Loading NFTs..."
+              ) : (
+                `Showing ${((currentPage - 1) * nftsPerPage) + 1} to ${Math.min(currentPage * nftsPerPage, totalNFTs)} of ${totalNFTs} NFTs`
+              )}
+            </div>
+            <Select value={nftsPerPage.toString()} onValueChange={handleLimitChange}>
+              <SelectTrigger className="w-32">
+                <SelectValue placeholder="Per page" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="5">5 per page</SelectItem>
+                <SelectItem value="10">10 per page</SelectItem>
+                <SelectItem value="20">20 per page</SelectItem>
+                <SelectItem value="50">50 per page</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
+        </div>
+      )}
+
       {loading ? (
-        <p>Loading...</p>
+        <div className="flex items-center justify-center py-12">
+          <Loader2 className="w-8 h-8 animate-spin text-green-600" />
+          <span className="ml-2 text-gray-600">Loading your NFTs...</span>
+        </div>
       ) : projects.length === 0 ? (
-        <p className="text-gray-500">No projects available.</p>
+        <div className="text-center py-12">
+          <div className="w-16 h-16 bg-gray-100 rounded-full flex items-center justify-center mx-auto mb-4">
+            <span className="text-2xl">💳</span>
+          </div>
+          <h3 className="text-lg font-semibold text-gray-900 mb-2">No NFTs Found</h3>
+          <p className="text-gray-600">{"You don't have any carbon credit NFTs yet."}</p>
+        </div>
       ) : (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
           {projects.map((project, i) => (
@@ -156,9 +261,12 @@ const BuyerTab = () => {
               {/* NFT Image */}
               <div className="w-full bg-black flex items-center justify-center" style={{ height: "220px" }}>
                 <img
-                  src={project.metadata?.image}
+                  src={project.metadata?.image || '/placeholder-image.png'}
                   alt={project.metadata?.name || "NFT"}
                   className="object-contain h-full w-full"
+                  onError={(e) => {
+                    e.target.src = '/placeholder-image.png';
+                  }}
                 />
               </div>
 
@@ -214,6 +322,90 @@ const BuyerTab = () => {
           ))}
         </div>
       )}
+
+      {/* Pagination */}
+      {!loading && totalPages > 1 && (
+        <div className="bg-white rounded-xl shadow-sm border p-6 mt-8">
+          <div className="flex flex-col sm:flex-row items-center justify-between gap-4">
+            {/* Pagination Info */}
+            <div className="text-sm text-gray-600">
+              Showing {((currentPage - 1) * nftsPerPage) + 1} to{' '}
+              {Math.min(currentPage * nftsPerPage, totalNFTs)} of{' '}
+              {totalNFTs} NFTs
+            </div>
+
+            {/* Pagination Controls */}
+            <div className="flex items-center space-x-2">
+              {/* Previous Button */}
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => handlePageChange(currentPage - 1)}
+                disabled={!hasPrevPage}
+                className="flex items-center space-x-1"
+              >
+                <ChevronLeft className="w-4 h-4" />
+                <span>Previous</span>
+              </Button>
+
+              {/* Page Numbers */}
+              <div className="flex items-center space-x-1">
+                {currentPage > 3 && (
+                  <>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => handlePageChange(1)}
+                    >
+                      1
+                    </Button>
+                    {currentPage > 4 && <span className="px-2 text-gray-400">...</span>}
+                  </>
+                )}
+
+                {getPageNumbers().map((pageNumber) => (
+                  <Button
+                    key={pageNumber}
+                    variant={currentPage === pageNumber ? "default" : "outline"}
+                    size="sm"
+                    onClick={() => handlePageChange(pageNumber)}
+                    className={currentPage === pageNumber ? "bg-green-600 hover:bg-green-700" : ""}
+                  >
+                    {pageNumber}
+                  </Button>
+                ))}
+
+                {currentPage < totalPages - 2 && (
+                  <>
+                    {currentPage < totalPages - 3 && <span className="px-2 text-gray-400">...</span>}
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => handlePageChange(totalPages)}
+                    >
+                      {totalPages}
+                    </Button>
+                  </>
+                )}
+              </div>
+
+              {/* Next Button */}
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => handlePageChange(currentPage + 1)}
+                disabled={!hasNextPage}
+                className="flex items-center space-x-1"
+              >
+                <span>Next</span>
+                <ChevronRight className="w-4 h-4" />
+              </Button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Modal */}
       {showModal && (
         <div
           className="fixed inset-0 bg-black bg-opacity-50 flex justify-center items-center z-50"

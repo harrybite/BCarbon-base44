@@ -4,6 +4,7 @@ import { useContractInteraction } from '../contract/ContractInteraction';
 import { useToast } from '../ui/use-toast';
 import { Card, CardHeader, CardTitle, CardContent } from '../ui/card';
 import { apihost } from '@/components/contract/address';
+import { useActiveAccount } from 'thirdweb/react';
 
 
 const GovernanceTab = () => {
@@ -12,6 +13,7 @@ const GovernanceTab = () => {
   const [addVVBAddress, setAddVVBAddress] = useState("");
   const [removeVVBAddress, setRemoveVVBAddress] = useState("");
   const { toast } = useToast();
+  const account = useActiveAccount();
 
   useEffect(() => {
     const checkOwner = async () => {
@@ -84,9 +86,8 @@ const GovernanceTab = () => {
     }
     try {
       // Call the contract function
-      const receipt = await addVVB(addVVBAddress);
+      const receipt = await addVVB(addVVBAddress, account);
       if (receipt.status === "success") {
-        // Call the backend API to store the address
         const res = await fetch(`${apihost}/gov/createvvb`, {
           method: "POST",
           headers: { "Content-Type": "application/json" },
@@ -134,7 +135,7 @@ const GovernanceTab = () => {
     }
     try {
       // Call the contract function
-      const receipt = await removeVVB(removeVVBAddress);
+      const receipt = await removeVVB(removeVVBAddress, account);
       if (receipt.status === "success") {
         const res = await fetch(`${apihost}/gov/removevvb/${removeVVBAddress}`, {
           method: "POST",

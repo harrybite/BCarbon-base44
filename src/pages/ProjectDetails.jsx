@@ -1,3 +1,4 @@
+/* eslint-disable no-constant-condition */
 /* eslint-disable no-unused-vars */
 import { useState, useEffect } from "react";
 import { useParams } from "react-router-dom";
@@ -28,7 +29,7 @@ import {
 import { Link } from "react-router-dom";
 import { createPageUrl } from "@/utils";
 import { useContractInteraction } from "../components/contract/ContractInteraction";
-import { methodology } from "@/components/contract/address";
+import { apihost, methodology } from "@/components/contract/address";
 import { useToast } from "@/components/ui/use-toast";
 import { useConnectWallet } from "@/context/walletcontext";
 import { useActiveAccount } from "thirdweb/react";
@@ -168,7 +169,7 @@ export default function ProjectDetails() {
           toast({
             variant: "destructive",
             title: "Error",
-            description: "RUSD approval failed",
+            description: `RUSD approval failed ${approveReceipt}`,
           });
           setIsMinting(false);
           return;
@@ -198,6 +199,25 @@ export default function ProjectDetails() {
     try {
       const tx = await mintWithRUSD(project.projectContract, parseInt(mintAmount), account);
       if (tx.status === "success") {
+        // store nft in backend
+        const nftData = {
+          projectContract: project.projectContract,
+          owner: account.address,
+          amount: mintAmount,
+          tokenId: 1, // Assuming tokenId 1 for mint
+          image: mintNftImage || fallbackImage,
+        };
+        const response = await fetch(`${apihost}/user/store-nft`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify(nftData),
+        });
+        if (response.ok) {
+          const data = await response.json();
+          console.log('NFT stored successfully:', data);
+        }
         toast({
           variant: "default",
           title: "Success",
@@ -250,6 +270,25 @@ export default function ProjectDetails() {
     try {
       const tx = await retireCredits(project.projectContract, parseInt(retireAmount), account);
       if (tx.status === "success") {
+        // store retired nft in backend
+        const nftData = {
+          projectContract: project.projectContract,
+          owner: account.address,
+          amount: retireAmount,
+          tokenId: 2, // Assuming tokenId 2 for retire
+          image: retireNftImage || fallbackImage,
+        };
+        const response = await fetch(`${apihost}/user/store-retired-nft`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify(nftData),
+        });
+        if (response.ok) {
+          const data = await response.json();
+          console.log('Retired NFT stored successfully:', data);
+        }
         toast({
           variant: "default",
           title: "Success",
@@ -524,14 +563,14 @@ export default function ProjectDetails() {
                 <div className="flex items-center">
                   <span className="font-medium text-gray-700 w-[140px] sm:w-[180px] flex items-center">
                     <CoinsIcon className="w-4 h-4 text-gray-400 mr-2" />
-                    Emission Reduction:
+                    Emission Reduction Goal:
                   </span>
                   <span className="font-semibold flex-grow text-right">{Number(project.emissionReductions)} tCO<sub>2</sub></span>
                 </div>
                 <div className="flex items-center">
-                  <span className="font-medium text-gray-700 w-[140px] sm:w-[180px] flex items-center">
+                  <span className="font-medium text-gray-700 w-[140px] sm:w-[200px] flex items-center">
                     <CoinsIcon className="w-4 h-4 text-gray-400 mr-2" />
-                    Credits tCO<sub>2</sub>:
+                    Approved Credits tCO<sub>2</sub>
                   </span>
                   <span className="font-semibold flex-grow text-right">
                     {project.isValidated ? Number(project.credits) : "To be issued after approval from governance"}
@@ -641,8 +680,18 @@ export default function ProjectDetails() {
                 className="w-full bg-blue-700 hover:bg-blue-800 mb-4 mt-3"
                 onClick={async () => {
                   try {
-                    const tx = await approveAndIssueCredits(project.projectContract, Number(project.credits), account);
+                    const tx = await approveAndIssueCredits(project.projectContract, Number(project.emissionReductions), account);
                     if (tx.status === "success") {
+                      const data = await fetch(`${apihost}/gov/approve-project/${project.projectContract}`, {
+                        method: 'POST',
+                        headers: {
+                          'Content-Type': 'application/json',
+                        },
+                      });
+                      if (data.ok) {
+                        const result = await data.json();
+                        console.log("Approval result:", result);
+                      }
                       toast({
                         variant: "default",
                         title: "Success",
@@ -688,7 +737,19 @@ export default function ProjectDetails() {
                   onClick={async () => {
                     try {
                       const tx = await validateProject(project.projectContract, account);
+                     
                       if (tx.status === "success") {
+                        const data = await fetch(`${apihost}/vvb/validate-project/${project.projectContract}`, {
+                          method: 'POST',
+                          headers: {
+                            'Content-Type': 'application/json',
+                          },
+                        });
+                        if (data.ok) {
+                          const result = await data.json();
+                          console.log("Validation result:", result);
+                        }
+                        
                         toast({
                           variant: "default",
                           title: "Success",
@@ -728,6 +789,16 @@ export default function ProjectDetails() {
                     try {
                       const tx = await verifyProject(project.projectContract, account);
                       if (tx.status === "success") {
+                        const data = await fetch(`${apihost}/vvb/verify-project/${(project.projectContract)}`, {
+                          method: 'POST',
+                          headers: {
+                            'Content-Type': 'application/json',
+                          },
+                        });
+                        if (data.ok) {
+                          const result = await data.json();
+                          console.log("Verification result:", result);
+                        }
                         toast({
                           variant: "default",
                           title: "Success",
