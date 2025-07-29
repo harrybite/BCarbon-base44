@@ -7,6 +7,7 @@ import { Link } from 'react-router-dom';
 import { apihost, methodology } from '../contract/address';
 import { useToast } from '../ui/use-toast';
 import { useConnectWallet } from '@/context/walletcontext';
+import { useActiveAccount } from 'thirdweb/react';
 
 // eslint-disable-next-line react/prop-types
 const ProjectCard = ({ project }) => {
@@ -38,6 +39,7 @@ const ProjectCard = ({ project }) => {
   const [comment, setComment] = useState('');
   const [isOwner, setIsOwner] = useState(false);
   const [reloadData, setReloadData] = useState(0);
+  const account = useActiveAccount()
   const { toster } = useToast();
 
   useEffect(() => {
@@ -74,9 +76,27 @@ const ProjectCard = ({ project }) => {
   const handleComment = async () => {
     if (!comment) return;
     try {
-      const tx = await submitComment(details.projectContract, comment);
-      const receipt = await tx.wait();
-      if (receipt.status === 1) {
+      const receipt = await submitComment(details.projectContract, comment, account);
+      if (receipt.status === 'success') {
+        // update comment in backend
+        const response = await fetch(`${apihost}/vvb/make-comments`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            projectContract: details.projectContract,
+            comment: comment,
+            user: walletAddress,
+          }),
+        });
+        if (response.ok) {
+          // const updatedComments = await response.json();
+          // setDetails((prevDetails) => ({
+          //   ...prevDetails,
+          //   comments: updatedComments.comments,
+          // }));
+        }
         toster({
           title: "Comment Submitted",
           description: `Transaction successful!`,
@@ -251,7 +271,7 @@ const ProjectCard = ({ project }) => {
                 <div key={i} className="bg-gray-50 p-3 rounded">
                   <div className="flex justify-between text-sm text-gray-500 mb-1">
                     <span className="font-medium">
-                      {c.commenter && `${c.commenter.slice(0, 6)}...${c.commenter.slice(-4)}`}
+                      {c.author && `${c.author.slice(0, 6)}...${c.author.slice(-4)}`}
                     </span>
                     {/* <span>{c.timestamp && new Date(Number(c.timestamp) * 1000).toLocaleString()}</span> */}
                   </div>

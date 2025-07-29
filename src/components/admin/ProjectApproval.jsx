@@ -8,6 +8,7 @@ import { apihost } from '../contract/address';
 import { Button } from '../ui/button';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../ui/select';
 import { ChevronLeft, ChevronRight, Loader2 } from 'lucide-react';
+import { useActiveAccount } from 'thirdweb/react';
 
 const ProjectApproval = () => {
   const {
@@ -37,6 +38,8 @@ const ProjectApproval = () => {
   const [showApproveModal, setShowApproveModal] = useState(false);
   const [approveProjectAddress, setApproveProjectAddress] = useState(null);
   const [creditAmount, setCreditAmount] = useState('');
+
+  const account = useActiveAccount()
 
   const { toast } = useToast();
 
@@ -147,7 +150,7 @@ const ProjectApproval = () => {
     }
 
     try {
-      const receipt = await approveAndIssueCredits(projectAddress, creditAmount);
+      const receipt = await approveAndIssueCredits(projectAddress, creditAmount, account);
       if (receipt.status === "success") {
         const data = await fetch(`${apihost}/gov/approve-project/${projectAddress}`, {
           method: 'POST',
@@ -176,7 +179,7 @@ const ProjectApproval = () => {
 
   const handleReject = async (projectAddress) => {
     try {
-      const tx = await rejectAndRemoveProject(projectAddress);
+      const tx = await rejectAndRemoveProject(projectAddress, account);
       const receipt = await tx.wait();
       if (receipt.status === 1) {
         toast({
@@ -200,7 +203,7 @@ const ProjectApproval = () => {
 
   const handleValidate = async (projectAddress) => {
     try {
-      const receipt = await validateProject(projectAddress);
+      const receipt = await validateProject(projectAddress, account);
       if (receipt.status === "success") {
         const data = await fetch(`${apihost}/vvb/validate-project/${projectAddress}`, {
           method: 'POST',
@@ -233,7 +236,7 @@ const ProjectApproval = () => {
 
   const handleVerify = async (projectAddress) => {
     try {
-      const receipt = await verifyProject(projectAddress);
+      const receipt = await verifyProject(projectAddress, account);
       if (receipt.status === "success") {
         const data = await fetch(`${apihost}/vvb/verify-project/${(projectAddress)}`, {
           method: 'POST',

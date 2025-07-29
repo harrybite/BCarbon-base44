@@ -24,7 +24,8 @@ import {
   GitBranch,
   Coins,
   AlertCircle,
-  CheckCircle2
+  CheckCircle2,
+  DollarSign
 } from "lucide-react";
 import { Link } from "react-router-dom";
 import { createPageUrl } from "@/utils";
@@ -76,6 +77,11 @@ export default function ProjectDetails() {
   // Add these states for role checks
   const [isOwner, setIsOwner] = useState(false);
   const [isVVB, setIsVVB] = useState(false);
+
+  // Add states for approval modal
+  const [showApproveModal, setShowApproveModal] = useState(false);
+  const [creditAmount, setCreditAmount] = useState('');
+  const [isApproving, setIsApproving] = useState(false);
 
   const fallbackImage = "https://ibb.co/CpZ8x06y";
 
@@ -145,6 +151,67 @@ export default function ProjectDetails() {
       });
     } finally {
       setIsLoading(false);
+    }
+  };
+
+  // Handle approval with custom amount
+  const handleApprove = async () => {
+    if (!creditAmount || parseFloat(creditAmount) <= 0) {
+      toast({
+        variant: "destructive",
+        title: "Error",
+        description: "Please enter a valid credit amount",
+      });
+      return;
+    }
+
+    const emissionReductions = Number(project?.emissionReductions ?? 0);
+    if (Number(creditAmount) > emissionReductions) {
+      toast({
+        title: "Credit amount error",
+        description: "Credit amount must be less than or equal to emission reductions.",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    setIsApproving(true);
+    try {
+      const tx = await approveAndIssueCredits(project.projectContract, Number(creditAmount), account);
+      if (tx.status === "success") {
+        const data = await fetch(`${apihost}/gov/approve-project/${project.projectContract}`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+        });
+        if (data.ok) {
+          const result = await data.json();
+          console.log("Approval result:", result);
+        }
+        toast({
+          variant: "default",
+          title: "Success",
+          description: "Credits approved and issued.",
+        });
+        setTimeout(() => loadProject(project.projectContract), 2000);
+        setShowApproveModal(false);
+        setCreditAmount('');
+      } else {
+        toast({
+          variant: "destructive",
+          title: "Error",
+          description: `Operation failed: ${tx.error}`,
+        });
+      }
+    } catch (error) {
+      toast({
+        variant: "destructive",
+        title: "Error",
+        description: `Failed to approve and issue credits: ${error.message}`,
+      });
+    } finally {
+      setIsApproving(false);
     }
   };
 
@@ -457,6 +524,15 @@ export default function ProjectDetails() {
                 </Badge>
               )}
             </div>
+
+            <div className="mt-2 sm:mt-0 sm:ml-auto">
+             
+                <Badge className="px-3 py-1 text-sm font-semibold rounded-full bg-green-100 text-green-700 border-green-200">
+                  <DollarSign className="w-4 h-4 mr-1" />
+                  Total RUSD Collected { Number(project.totalSupply) * Number(project.prokectMintPrice)}
+                </Badge>
+              
+            </div>
           </div>
         </div>
 
@@ -678,40 +754,9 @@ export default function ProjectDetails() {
             <>
               <Button
                 className="w-full bg-blue-700 hover:bg-blue-800 mb-4 mt-3"
-                onClick={async () => {
-                  try {
-                    const tx = await approveAndIssueCredits(project.projectContract, Number(project.emissionReductions), account);
-                    if (tx.status === "success") {
-                      const data = await fetch(`${apihost}/gov/approve-project/${project.projectContract}`, {
-                        method: 'POST',
-                        headers: {
-                          'Content-Type': 'application/json',
-                        },
-                      });
-                      if (data.ok) {
-                        const result = await data.json();
-                        console.log("Approval result:", result);
-                      }
-                      toast({
-                        variant: "default",
-                        title: "Success",
-                        description: "Credits approved and issued.",
-                      });
-                      setTimeout(() => loadProject(project.projectContract), 2000);
-                    } else {
-                      toast({
-                        variant: "destructive",
-                        title: "Error",
-                        description: `Operation failed: ${tx.error}`,
-                      });
-                    }
-                  } catch (error) {
-                    toast({
-                      variant: "destructive",
-                      title: "Error",
-                      description: `Failed to approve and issue credits: ${error.message}`,
-                    });
-                  }
+                onClick={() => {
+                  setShowApproveModal(true);
+                  setCreditAmount('');
                 }}
                 disabled={!(project.isValidated && project.isVerified) || project.isApproved}
               >
@@ -966,6 +1011,52 @@ export default function ProjectDetails() {
             </div>
           )}
         </div>
+
+        {/* Approval Modal */}
+        {showApproveModal && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-40">
+            <div className="bg-white rounded-lg p-6 w-full max-w-sm shadow-lg">
+              <h2 className="text-xl font-bold mb-4">Enter Credit Amount to Approve</h2>
+              <div className="mb-4">
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Credit Amount (Max: {Number(project.emissionReductions)} tCO₂)
+                </label>
+                <input
+                  type="number"
+                  min="1"
+                  max={Number(project.emissionReductions)}
+                  className="w-full border rounded px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                  placeholder="Enter credit amount"
+                  value={creditAmount}
+                  onChange={e => setCreditAmount(e.target.value)}
+                  disabled={isApproving}
+                />
+                <p className="text-xs text-gray-500 mt-1">
+                  Available emission reductions: {Number(project.emissionReductions)} tCO₂
+                </p>
+              </div>
+              <div className="flex justify-end space-x-2">
+                <button
+                  className="bg-gray-300 text-gray-800 px-4 py-2 rounded hover:bg-gray-400 transition-colors"
+                  onClick={() => {
+                    setShowApproveModal(false);
+                    setCreditAmount('');
+                  }}
+                  disabled={isApproving}
+                >
+                  Cancel
+                </button>
+                <button
+                  className="bg-green-600 text-white px-4 py-2 rounded hover:bg-green-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                  onClick={handleApprove}
+                  disabled={!creditAmount || isApproving || Number(creditAmount) <= 0 || Number(creditAmount) > Number(project.emissionReductions)}
+                >
+                  {isApproving ? "Approving..." : "Approve & Issue Credits"}
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
 
         {/* Comment Section */}
         {/* <Card className="mt-8">

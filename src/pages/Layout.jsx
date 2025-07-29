@@ -44,12 +44,6 @@ const baseNavigationItems = [
     icon: TrendingUp,
     description: "Trade carbon credits"
   },
-  // {
-  //   title: "Validate",
-  //   url: createPageUrl("ValidateCertificate"),
-  //   icon: BadgeCheck,
-  //   description: "Validate BCO₂ Retirement Certificates on chain"
-  // },
   {
     title: "My Account",
     url: createPageUrl("MyAccount"),
@@ -75,9 +69,10 @@ export default function Layout({ children }) {
   const userMenuRef = useRef(null);
   const { walletAddress } = useConnectWallet();
   const [pendingUrl, setPendingUrl] = useState(null);
+  const [initialLoad, setInitialLoad] = useState(true);
   const { connect, } = useConnect();
   const { checkAuthorizedVVB, checkIsOwner } = useContractInteraction()
-  const aacount = useActiveAccount();
+  const account = useActiveAccount();
 
   // Get user info from token
   let userInfo = null;
@@ -113,11 +108,28 @@ export default function Layout({ children }) {
     return () => document.removeEventListener("mousedown", handleClickOutside);
   }, [userMenuOpen]);
 
+  // Handle account changes - but only after initial load
   useEffect(() => {
-      localStorage.removeItem("token");
-      setUserMenuOpen(false);
-      navigate("/login");
-  }, [aacount?.address]);
+    // Give some time for wallet to initialize on page load
+    const initTimer = setTimeout(() => {
+      setInitialLoad(false);
+    }, 2000); // Wait 2 seconds before considering account changes
+
+    return () => clearTimeout(initTimer);
+  }, []);
+
+  // Only handle account changes after initial load period
+  useEffect(() => {
+    if (!initialLoad && account?.address !== walletAddress) {
+      // Only logout if there was a previous wallet address and now it's different
+      if (walletAddress && account?.address && account.address !== walletAddress) {
+        console.log("Wallet address changed, logging out");
+        localStorage.removeItem("token");
+        setUserMenuOpen(false);
+        navigate("/login");
+      }
+    }
+  }, [account?.address, walletAddress, initialLoad, navigate]);
 
   // Handler to trigger wallet connect and redirect
   const handleNavClick = (url) => {
@@ -147,11 +159,15 @@ export default function Layout({ children }) {
     }
   }, [walletAddress, pendingUrl, navigate]);
 
-  // Poll token validation every 5 seconds
+  // Poll token validation every 30 seconds (reduced frequency)
   useEffect(() => {
+    // Don't start polling immediately, wait for initial load
+    if (initialLoad) return;
+
     const interval = setInterval(async () => {
       const token = localStorage.getItem("token");
       if (!token) return;
+      
       try {
         const res = await fetch(`${apihost}/api/protected`, {
           headers: {
@@ -160,18 +176,19 @@ export default function Layout({ children }) {
         });
         if (res.status === 401) {
           // Token invalid or expired
+          console.log("Token expired, logging out");
           localStorage.removeItem("token");
           navigate("/login");
         }
       } catch (err) {
-        // Network or server error, treat as logout
-        localStorage.removeItem("token");
-        navigate("/login");
+        // Only logout on network errors if we're sure the token is invalid
+        // Don't logout on temporary network issues
+        console.log("Network error during token validation:", err.message);
       }
-    }, 5000);
-    return () => clearInterval(interval);
-  }, [navigate]);
+    }, 30000); // Check every 30 seconds instead of 5
 
+    return () => clearInterval(interval);
+  }, [navigate, initialLoad]);
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-green-50 via-white to-blue-50">

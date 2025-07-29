@@ -1,3 +1,4 @@
+/* eslint-disable no-constant-condition */
 /* eslint-disable no-unused-vars */
 import { useState, useEffect } from 'react';
 import { BrowserProvider, Contract, formatEther, parseEther, JsonRpcProvider } from 'ethers';
@@ -49,6 +50,13 @@ export const useMarketplaceInteraction = () => {
     if (!account) throw new Error("Account is required to set token URI");
 
     try {
+      console.log("Creating listing with params:", {
+        tokenContract,
+        tokenId,
+        quantity,
+        pricePerUnit,
+        account,
+      });
       const pricePerUnitWei = parseEther(pricePerUnit.toString());
       // user thirdweb marketplace contract for sending tx
       const transaction = prepareContractCall({
@@ -116,6 +124,7 @@ export const useMarketplaceInteraction = () => {
 
       const rusdContract = await getProjectERC20Contract();
       const allowance = await rusdContract.allowance(walletAddress, MARKETPLACE_ADDRESS);
+      console.log("RUSD Allowance:", allowance, listingId, quantity);
       if (Number(allowance) === 0) {
         const RUSDtransaction = prepareContractCall({
           contract: thridWebERC20Contract,
@@ -126,14 +135,16 @@ export const useMarketplaceInteraction = () => {
           account,
           transaction: RUSDtransaction,
         });
-        console.log("RUSD approved:", transactionReceipt);
+        if (transactionReceipt.status !== "success") {
+          throw new Error("Failed to approve RUSD for marketplace");
+        } 
       }
 
 
       const transaction = prepareContractCall({
         contract: thridWeb_MARKETPLACE_Contract,
         method: "purchase",
-        params: [listingId, quantity, totalPrice],
+        params: [listingId, quantity],
       });
       const transactionReceipt = await sendAndConfirmTransaction({
         account,

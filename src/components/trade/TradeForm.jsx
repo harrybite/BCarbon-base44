@@ -13,9 +13,11 @@ import { useMarketplaceInteraction } from '@/components/contract/MarketplaceInte
 import { useConnectWallet } from "@/context/walletcontext";
 import { useToast } from "../ui/use-toast";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { apihost } from "../contract/address";
+import { useActiveAccount } from "thirdweb/react";
 
 export default function TradeForm() {
-  const { marketplaceContract, getListings, purchase, getRUSDBalance } = useMarketplaceInteraction();
+  const {  getListings, purchase, getRUSDBalance } = useMarketplaceInteraction();
   const { walletAddress } = useConnectWallet();
   const [listings, setListings] = React.useState([]);
   const [cardStates, setCardStates] = React.useState({});
@@ -23,7 +25,7 @@ export default function TradeForm() {
   const [isLoading, setIsLoading] = React.useState(true);
   const [rusdBalance, setRUSDBalance] = React.useState('0');
   const [filter, setFilter] = React.useState('active'); // New state for filter
-
+  const account = useActiveAccount();
   const { toast } = useToast();
 
   React.useEffect(() => {
@@ -33,8 +35,6 @@ export default function TradeForm() {
         const rusdBalance = await getRUSDBalance(walletAddress);
         setRUSDBalance(rusdBalance);
         const fetchedListings = await getListings();
-        console.log("Fetched Listings:", fetchedListings);
-
         // Keep all listings, no filtering for active status
         setListings(fetchedListings);
 
@@ -62,10 +62,10 @@ export default function TradeForm() {
         setIsLoading(false);
       }
     };
-    if (walletAddress && marketplaceContract) {
+    if (walletAddress) {
       fetchListings();
     }
-  }, [walletAddress, marketplaceContract, update]);
+  }, [walletAddress, update]);
 
   const handleInputChange = (listingId, value) => {
     setCardStates(prev => ({
@@ -150,8 +150,28 @@ export default function TradeForm() {
     }));
 
     try {
-      const { hash } = await purchase(listingId, quantity);
+      const receipt = await purchase(listingId, quantity, account);
+      if (receipt.status === "success") {
+      // trade nft in backend
+      const nftdata = {
+        projectContract: listing.tokenContract,
+        tokenId: listing.tokenId,
+        amount: quantity,
+        buyer: walletAddress,
+        owner: listing.seller,
 
+      };
+      console.log("NFT Data for trade:", nftdata);
+      const data = await fetch(`${apihost}/user/trade-nft`, {
+        method: 'POST', 
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(nftdata),
+      });
+      if (data.ok) {
+        console.log("Trade NFT successful:", data);
+      }
       setCardStates(prev => ({
         ...prev,
         [listingId]: {
@@ -168,6 +188,7 @@ export default function TradeForm() {
         variant: "success",
       });
       setUpdate(update + 1);
+      }
     } catch (error) {
       console.error("Purchase error:", error);
       setCardStates(prev => ({
