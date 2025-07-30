@@ -8,6 +8,7 @@ import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Alert, AlertDescription } from "@/components/ui/alert";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import {
   ArrowLeft,
   TreePine,
@@ -25,7 +26,13 @@ import {
   Coins,
   AlertCircle,
   CheckCircle2,
-  DollarSign
+  DollarSign,
+  PersonStanding,
+  ChevronLeft,
+  ChevronRight,
+  Loader2,
+  X,
+  Users
 } from "lucide-react";
 import { Link } from "react-router-dom";
 import { createPageUrl } from "@/utils";
@@ -83,6 +90,17 @@ export default function ProjectDetails() {
   const [creditAmount, setCreditAmount] = useState('');
   const [isApproving, setIsApproving] = useState(false);
 
+  // Add states for holders modal
+  const [showHoldersModal, setShowHoldersModal] = useState(false);
+  const [holders, setHolders] = useState([]);
+  const [holdersLoading, setHoldersLoading] = useState(false);
+  const [holdersCurrentPage, setHoldersCurrentPage] = useState(1);
+  const [holdersTotalPages, setHoldersTotalPages] = useState(1);
+  const [holdersTotalNFTs, setHoldersTotalNFTs] = useState(0);
+  const [holdersPerPage, setHoldersPerPage] = useState(10);
+  const [holdersHasNextPage, setHoldersHasNextPage] = useState(false);
+  const [holdersHasPrevPage, setHoldersHasPrevPage] = useState(false);
+
   const fallbackImage = "https://ibb.co/CpZ8x06y";
 
   const { toast } = useToast();
@@ -98,7 +116,6 @@ export default function ProjectDetails() {
     try {
       const data = await getListedProjectDetails(projectAddress);
       setProject(data);
-
 
       try {
         // Token ID 1 for Mint
@@ -152,6 +169,83 @@ export default function ProjectDetails() {
     } finally {
       setIsLoading(false);
     }
+  };
+
+  // Fetch holders data
+  const fetchHolders = async (page = 1, limit = 10) => {
+    if (!projectContract) return;
+    
+    setHoldersLoading(true);
+    try {
+      const response = await fetch(`${apihost}/user/nftsholders/${projectContract}?page=${page}&limit=${limit}`);
+      const data = await response.json();
+      
+      if (data.status === 'success') {
+        setHolders(data.nfts || []);
+        console.log("Fetched holders:", data.nfts);
+        // Update pagination state
+        if (data.pagination) {
+          setHoldersTotalPages(data.pagination.totalPages);
+          setHoldersTotalNFTs(data.pagination.totalNFTs);
+          setHoldersHasNextPage(data.pagination.hasNextPage);
+          setHoldersHasPrevPage(data.pagination.hasPrevPage);
+          setHoldersCurrentPage(data.pagination.currentPage);
+        }
+      } else {
+        throw new Error(data.message || 'Failed to fetch holders');
+      }
+    } catch (error) {
+      console.error('Error fetching holders:', error);
+      toast({
+        variant: "destructive",
+        title: "Error",
+        description: "Failed to fetch project holders.",
+      });
+      setHolders([]);
+    } finally {
+      setHoldersLoading(false);
+    }
+  };
+
+  // Handle holders modal open
+  const handleOpenHoldersModal = () => {
+    setShowHoldersModal(true);
+    setHoldersCurrentPage(1);
+    fetchHolders(1, holdersPerPage);
+  };
+
+  // Handle holders page change
+  const handleHoldersPageChange = (newPage) => {
+    if (newPage >= 1 && newPage <= holdersTotalPages) {
+      setHoldersCurrentPage(newPage);
+      fetchHolders(newPage, holdersPerPage);
+    }
+  };
+
+  // Handle holders limit change
+  const handleHoldersLimitChange = (newLimit) => {
+    setHoldersPerPage(parseInt(newLimit));
+    setHoldersCurrentPage(1);
+    fetchHolders(1, parseInt(newLimit));
+  };
+
+  // Generate page numbers for holders pagination
+  const getHoldersPageNumbers = () => {
+    const pages = [];
+    const maxVisiblePages = 5;
+    
+    let startPage = Math.max(1, holdersCurrentPage - Math.floor(maxVisiblePages / 2));
+    let endPage = Math.min(holdersTotalPages, startPage + maxVisiblePages - 1);
+    
+    if (endPage - startPage + 1 < maxVisiblePages) {
+      startPage = Math.max(1, endPage - maxVisiblePages + 1);
+    }
+    
+    for (let i = startPage; i <= endPage; i++) {
+      pages.push(i);
+    }
+    
+    return pages;
   };
 
   // Handle approval with custom amount
@@ -400,12 +494,6 @@ export default function ProjectDetails() {
     return locations.length > 0 ? locations : ['N/A'];
   };
 
-  useEffect(() => {
-    if (projectContract && walletAddress) {
-      loadProject(projectContract);
-    }
-  }, [projectContract, walletAddress]);
-
   // Check roles after loading project
   useEffect(() => {
     if (project && walletAddress) {
@@ -526,12 +614,20 @@ export default function ProjectDetails() {
             </div>
 
             <div className="mt-2 sm:mt-0 sm:ml-auto">
-             
-                <Badge className="px-3 py-1 text-sm font-semibold rounded-full bg-green-100 text-green-700 border-green-200">
-                  <DollarSign className="w-4 h-4 mr-1" />
-                  Total RUSD Collected { Number(project.totalSupply) * Number(project.prokectMintPrice)}
-                </Badge>
-              
+              <Badge className="px-3 py-1 text-sm font-semibold rounded-full bg-green-100 text-green-700 border-green-200">
+                <DollarSign className="w-4 h-4 mr-1" />
+                Total RUSD Collected {Number(project.totalSupply) * Number(project.prokectMintPrice)}
+              </Badge>
+            </div>
+
+            <div className="mt-2 sm:mt-0 sm:ml-auto">
+              <Badge 
+                className="px-3 py-1 text-sm font-semibold rounded-full bg-green-100 text-green-700 border-green-200 cursor-pointer hover:bg-green-200 transition-colors"
+                onClick={handleOpenHoldersModal}
+              >
+                <PersonStanding className="w-4 h-4 mr-1" />
+                Holders
+              </Badge>
             </div>
           </div>
         </div>
@@ -1053,6 +1149,289 @@ export default function ProjectDetails() {
                 >
                   {isApproving ? "Approving..." : "Approve & Issue Credits"}
                 </button>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* Holders Modal */}
+        {showHoldersModal && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-50 p-4">
+            <div className="bg-white rounded-lg w-full max-w-6xl max-h-[80vh] overflow-hidden shadow-2xl">
+              {/* Modal Header */}
+              <div className="flex items-center justify-between p-6 border-b border-gray-200">
+                <div className="flex items-center space-x-2">
+                  <Users className="w-6 h-6 text-green-600" />
+                  <h2 className="text-2xl font-bold text-gray-900">Project Holders</h2>
+                </div>
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  onClick={() => setShowHoldersModal(false)}
+                  className="hover:bg-gray-100"
+                >
+                  <X className="w-5 h-5" />
+                </Button>
+              </div>
+
+              {/* Modal Content */}
+              <div className="p-6">
+                {/* Pagination Controls Header */}
+                <div className="flex flex-col sm:flex-row items-center justify-between gap-4 mb-6">
+                  <div className="text-sm text-gray-600">
+                    {holdersLoading ? (
+                      "Loading holders..."
+                    ) : (
+                      `Showing ${((holdersCurrentPage - 1) * holdersPerPage) + 1} to ${Math.min(holdersCurrentPage * holdersPerPage, holdersTotalNFTs)} of ${holdersTotalNFTs} holders`
+                    )}
+                  </div>
+                  <Select value={holdersPerPage.toString()} onValueChange={handleHoldersLimitChange}>
+                    <SelectTrigger className="w-32">
+                      <SelectValue placeholder="Per page" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="5">5 per page</SelectItem>
+                      <SelectItem value="10">10 per page</SelectItem>
+                      <SelectItem value="20">20 per page</SelectItem>
+                      <SelectItem value="50">50 per page</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+
+                {/* Holders Table */}
+                <div className="max-h-[50vh] overflow-auto border border-gray-200 rounded-lg">
+                  {holdersLoading ? (
+                    <div className="flex items-center justify-center py-12">
+                      <Loader2 className="w-8 h-8 animate-spin text-green-600" />
+                      <span className="ml-2 text-gray-600">Loading holders...</span>
+                    </div>
+                  ) : holders.length === 0 ? (
+                    <div className="text-center py-12">
+                      <div className="w-16 h-16 bg-gray-100 rounded-full flex items-center justify-center mx-auto mb-4">
+                        <Users className="w-8 h-8 text-gray-400" />
+                      </div>
+                      <h3 className="text-lg font-semibold text-gray-900 mb-2">No Holders Found</h3>
+                      <p className="text-gray-600">{"This project doesn't have any token holders yet."}</p>
+                    </div>
+                  ) : (
+                    <table className="w-full">
+                      {/* Table Header */}
+                      <thead className="bg-gray-50 border-b border-gray-200 sticky top-0">
+                        <tr>
+                          <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                            #
+                          </th>
+                          <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                            Holder Address
+                          </th>
+                          <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider hidden md:table-cell">
+                            Project Contract
+                          </th>
+                          <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                            Token ID
+                          </th>
+                          <th className="px-4 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">
+                            Amount (tCO₂)
+                          </th>
+                          {/* <th className="px-4 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">
+                            Actions
+                          </th> */}
+                        </tr>
+                      </thead>
+                      
+                      {/* Table Body */}
+                      <tbody className="bg-white divide-y divide-gray-200">
+                        {holders.map((holder, index) => (
+                          <tr key={index} className="hover:bg-gray-50 transition-colors">
+                            {/* Row Number */}
+                            <td className="px-4 py-4 whitespace-nowrap text-sm text-gray-900">
+                              {((holdersCurrentPage - 1) * holdersPerPage) + index + 1}
+                            </td>
+                            
+                            {/* Holder Address */}
+                            <td className="px-4 py-4 whitespace-nowrap">
+                              <div className="flex items-center space-x-3">
+                                <div className="w-8 h-8 bg-green-100 rounded-full flex items-center justify-center flex-shrink-0">
+                                  <User className="w-4 h-4 text-green-600" />
+                                </div>
+                                <div className="min-w-0">
+                                  <a
+                                    href={`https://testnet.bscscan.com/address/${holder.owner}`}
+                                    target="_blank"
+                                    rel="noopener noreferrer"
+                                    className="text-blue-600 hover:underline font-medium"
+                                    title={holder.owner}
+                                  >
+                                    <span className="block sm:hidden">
+                                      {holder.owner ? `${holder.owner.slice(0, 6)}...${holder.owner.slice(-4)}` : "N/A"}
+                                    </span>
+                                    <span className="hidden sm:block">
+                                      {holder.owner ? `${holder.owner.slice(0, 10)}...${holder.owner.slice(-8)}` : "N/A"}
+                                    </span>
+                                  </a>
+                                </div>
+                              </div>
+                            </td>
+                            
+                            {/* Project Contract - Hidden on mobile */}
+                            <td className="px-4 py-4 whitespace-nowrap hidden md:table-cell">
+                              <a
+                                href={`https://testnet.bscscan.com/address/${holder.projectContract}`}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                className="text-blue-600 hover:underline text-sm"
+                                title={holder.projectContract}
+                              >
+                                {holder.projectContract ? `${holder.projectContract.slice(0, 10)}...${holder.projectContract.slice(-8)}` : "N/A"}
+                              </a>
+                            </td>
+                            
+                            {/* Token ID */}
+                            <td className="px-4 py-4 whitespace-nowrap">
+                              <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-800">
+                                #{holder.tokenId}
+                              </span>
+                            </td>
+                            
+                            {/* Amount */}
+                            <td className="px-4 py-4 whitespace-nowrap text-right">
+                              <div className="text-sm font-semibold text-gray-900">
+                                {Number(holder.amount).toLocaleString()}
+                              </div>
+                              {/* <div className="text-xs text-gray-500">
+                                tCO₂
+                              </div> */}
+                            </td>
+                            
+                            {/* Actions */}
+                            {/* <td className="px-4 py-4 whitespace-nowrap text-center">
+                              <div className="flex items-center justify-center space-x-2">
+                          
+                                <Button
+                                  variant="outline"
+                                  size="sm"
+                                  asChild
+                                  className="text-xs"
+                                >
+                                  <a
+                                    href={`https://testnet.bscscan.com/address/${holder.owner}`}
+                                    target="_blank"
+                                    rel="noopener noreferrer"
+                                    className="flex items-center space-x-1"
+                                  >
+                                    <span>View</span>
+                                  </a>
+                                </Button>
+                                
+                          
+                                <Button
+                                  variant="ghost"
+                                  size="sm"
+                                  className="text-xs"
+                                  onClick={() => {
+                                    navigator.clipboard.writeText(holder.owner);
+                                    toast({
+                                      title: "Copied!",
+                                      description: "Address copied to clipboard",
+                                      variant: "default",
+                                    });
+                                  }}
+                                >
+                                  Copy
+                                </Button>
+                              </div>
+                            </td> */}
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  )}
+                </div>
+
+                {/* Mobile Card View - Alternative for small screens */}
+                <div className="block md:hidden mt-4">
+                  {!holdersLoading && holders.length > 0 && (
+                    <div className="text-xs text-gray-500 mb-2">
+                      💡 Scroll horizontally in the table above or view individual cards below
+                    </div>
+                  )}
+                </div>
+
+                {/* Pagination Footer */}
+                {!holdersLoading && holdersTotalPages > 1 && (
+                  <div className="flex flex-col sm:flex-row items-center justify-between gap-4 mt-6 pt-4 border-t border-gray-200">
+                    <div className="text-sm text-gray-600">
+                      Page {holdersCurrentPage} of {holdersTotalPages} • Total: {holdersTotalNFTs} holders
+                    </div>
+                    
+                    <div className="flex items-center space-x-2">
+                      {/* Previous Button */}
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => handleHoldersPageChange(holdersCurrentPage - 1)}
+                        disabled={!holdersHasPrevPage}
+                        className="flex items-center space-x-1"
+                      >
+                        <ChevronLeft className="w-4 h-4" />
+                        <span>Previous</span>
+                      </Button>
+
+                      {/* Page Numbers */}
+                      <div className="flex items-center space-x-1">
+                        {holdersCurrentPage > 3 && (
+                          <>
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              onClick={() => handleHoldersPageChange(1)}
+                            >
+                              1
+                            </Button>
+                            {holdersCurrentPage > 4 && <span className="px-2 text-gray-400">...</span>}
+                          </>
+                        )}
+
+                        {getHoldersPageNumbers().map((pageNumber) => (
+                          <Button
+                            key={pageNumber}
+                            variant={holdersCurrentPage === pageNumber ? "default" : "outline"}
+                            size="sm"
+                            onClick={() => handleHoldersPageChange(pageNumber)}
+                            className={holdersCurrentPage === pageNumber ? "bg-green-600 hover:bg-green-700" : ""}
+                          >
+                            {pageNumber}
+                          </Button>
+                        ))}
+
+                        {holdersCurrentPage < holdersTotalPages - 2 && (
+                          <>
+                            {holdersCurrentPage < holdersTotalPages - 3 && <span className="px-2 text-gray-400">...</span>}
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              onClick={() => handleHoldersPageChange(holdersTotalPages)}
+                            >
+                              {holdersTotalPages}
+                            </Button>
+                          </>
+                        )}
+                      </div>
+
+                      {/* Next Button */}
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => handleHoldersPageChange(holdersCurrentPage + 1)}
+                        disabled={!holdersHasNextPage}
+                        className="flex items-center space-x-1"
+                      >
+                        <span>Next</span>
+                        <ChevronRight className="w-4 h-4" />
+                      </Button>
+                    </div>
+                  </div>
+                )}
               </div>
             </div>
           </div>
