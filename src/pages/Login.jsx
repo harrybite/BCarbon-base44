@@ -82,7 +82,7 @@ const Login = () => {
                 onChange={e => setRole(e.target.value)}
                 className="w-full border rounded px-3 py-2"
               >
-                <option value="user">User</option>
+                <option value="user">Issuer/User</option>
                 <option value="vvb">VVB</option>
                 <option value="gov">Gov</option>
               </select>
