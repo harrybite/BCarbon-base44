@@ -51,6 +51,7 @@ const Register = () => {
           walletAddress: account.address,
           email,
           password,
+          role, // Include role for User registration
         };
       }
 
@@ -85,8 +86,10 @@ const Register = () => {
                 onChange={e => setRole(e.target.value)}
                 className="w-full border rounded px-3 py-2"
               >
-                <option value="user">Issuer/User</option>
+                <option value="issuer">Issuer</option>
                 <option value="vvb">VVB</option>
+                <option value="user">User</option>
+               
               </select>
             </div>
             <div>

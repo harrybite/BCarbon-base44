@@ -42,18 +42,19 @@ import { useToast } from "@/components/ui/use-toast";
 import { useConnectWallet } from "@/context/walletcontext";
 import { useActiveAccount } from "thirdweb/react";
 import { Textarea } from "@/components/ui/textarea";
+import { jwtDecode } from "jwt-decode";
 
 export default function ProjectDetails() {
   const { projectContract } = useParams();
-  const { 
-    mintWithRUSD, 
+  const {
+    mintWithRUSD,
     retireCredits,
     getListedProjectDetails,
-    getWalletMinted, 
+    getWalletMinted,
     getRUSDBalance,
     getWalletRetrides,
     getCurrentBalance,
-    checkRUSDAllowance, 
+    checkRUSDAllowance,
     approveRUSD,
     checkAuthorizedVVB,
     checkIsOwner,
@@ -100,6 +101,7 @@ export default function ProjectDetails() {
   const [holdersPerPage, setHoldersPerPage] = useState(10);
   const [holdersHasNextPage, setHoldersHasNextPage] = useState(false);
   const [holdersHasPrevPage, setHoldersHasPrevPage] = useState(false);
+  const [selectedTokenId, setSelectedTokenId] = useState("all"); // Add tokenId filter state
 
   const fallbackImage = "https://ibb.co/CpZ8x06y";
 
@@ -171,15 +173,28 @@ export default function ProjectDetails() {
     }
   };
 
-  // Fetch holders data
-  const fetchHolders = async (page = 1, limit = 10) => {
+  // Fetch holders data with tokenId filter
+  const fetchHolders = async (page = 1, limit = 10, tokenId = "all") => {
     if (!projectContract) return;
-    
+
     setHoldersLoading(true);
     try {
-      const response = await fetch(`${apihost}/user/nftsholders/${projectContract}?page=${page}&limit=${limit}`);
+      const requestBody = {
+        ...(tokenId !== "all" && { tokenId: parseInt(tokenId) })
+      };
+
+      const response = await fetch(`${apihost}/user/nftsholders/${projectContract}?page=${page}&limit=${limit}`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          "tokenId": tokenId
+        }),
+      });
+
       const data = await response.json();
-      
+
       if (data.status === 'success') {
         setHolders(data.nfts || []);
         console.log("Fetched holders:", data.nfts);
@@ -207,18 +222,28 @@ export default function ProjectDetails() {
     }
   };
 
+  let userInfo = null;
+  const token = typeof window !== "undefined" ? localStorage.getItem("token") : null;
+  if (token) {
+    try {
+      userInfo = jwtDecode(token);
+    } catch (e) {
+      userInfo = null;
+    }
+  }
   // Handle holders modal open
   const handleOpenHoldersModal = () => {
     setShowHoldersModal(true);
     setHoldersCurrentPage(1);
-    fetchHolders(1, holdersPerPage);
+    setSelectedTokenId("all"); // Reset filter when opening modal
+    fetchHolders(1, holdersPerPage, "all");
   };
 
   // Handle holders page change
   const handleHoldersPageChange = (newPage) => {
     if (newPage >= 1 && newPage <= holdersTotalPages) {
       setHoldersCurrentPage(newPage);
-      fetchHolders(newPage, holdersPerPage);
+      fetchHolders(newPage, holdersPerPage, selectedTokenId);
     }
   };
 
@@ -226,25 +251,32 @@ export default function ProjectDetails() {
   const handleHoldersLimitChange = (newLimit) => {
     setHoldersPerPage(parseInt(newLimit));
     setHoldersCurrentPage(1);
-    fetchHolders(1, parseInt(newLimit));
+    fetchHolders(1, parseInt(newLimit), selectedTokenId);
+  };
+
+  // Handle tokenId filter change
+  const handleTokenIdFilterChange = (newTokenId) => {
+    setSelectedTokenId(newTokenId);
+    setHoldersCurrentPage(1);
+    fetchHolders(1, holdersPerPage, newTokenId);
   };
 
   // Generate page numbers for holders pagination
   const getHoldersPageNumbers = () => {
     const pages = [];
     const maxVisiblePages = 5;
-    
+
     let startPage = Math.max(1, holdersCurrentPage - Math.floor(maxVisiblePages / 2));
     let endPage = Math.min(holdersTotalPages, startPage + maxVisiblePages - 1);
-    
+
     if (endPage - startPage + 1 < maxVisiblePages) {
       startPage = Math.max(1, endPage - maxVisiblePages + 1);
     }
-    
+
     for (let i = startPage; i <= endPage; i++) {
       pages.push(i);
     }
-    
+
     return pages;
   };
 
@@ -497,7 +529,7 @@ export default function ProjectDetails() {
   // Check roles after loading project
   useEffect(() => {
     if (project && walletAddress) {
-  
+
       (async () => {
         try {
           const vvbStatus = await checkAuthorizedVVB(project.projectContract, walletAddress);
@@ -518,14 +550,28 @@ export default function ProjectDetails() {
     if (!comment.trim()) return;
     setIsCommenting(true);
     try {
-      await submitComment(project.projectContract, comment, account);
-      toast({
-        variant: "default",
-        title: "Comment Submitted",
-        description: "Your comment has been submitted.",
-      });
-      setComment("");
-      setTimeout(() => loadProject(project.projectContract), 2000);
+      const recept = await submitComment(project.projectContract, comment, account);
+      if (recept.status === "success") {
+        const response = await fetch(`${apihost}/vvb/make-comments`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            projectContract: project.projectContract,
+            comment: comment,
+            user: walletAddress,
+          }),
+        });
+        toast({
+          variant: "default",
+          title: "Comment Submitted",
+          description: "Your comment has been submitted.",
+        });
+        setComment("");
+        setTimeout(() => loadProject(project.projectContract), 2000);
+      }
+
     } catch (error) {
       toast({
         variant: "destructive",
@@ -621,7 +667,7 @@ export default function ProjectDetails() {
             </div>
 
             <div className="mt-2 sm:mt-0 sm:ml-auto">
-              <Badge 
+              <Badge
                 className="px-3 py-1 text-sm font-semibold rounded-full bg-green-100 text-green-700 border-green-200 cursor-pointer hover:bg-green-200 transition-colors"
                 onClick={handleOpenHoldersModal}
               >
@@ -852,16 +898,16 @@ export default function ProjectDetails() {
                 className="w-full bg-blue-700 hover:bg-blue-800 mb-4 mt-3"
                 onClick={() => {
                   setShowApproveModal(true);
-                  setCreditAmount('');
+                  setCreditAmount(project.emissionReductions);
                 }}
                 disabled={!(project.isValidated && project.isVerified) || project.isApproved}
               >
-                {project.isApproved ? 'Approved ' : 'Approve and Issue Credits' }
+                {project.isApproved ? 'Approved ' : 'Approve and Issue Credits'}
               </Button>
               {/* Show reason if disabled */}
               {!(project.isValidated && project.isVerified) && (
                 <div className="text-sm text-gray-500 mb-2">
-                  { !project.isValidated
+                  {!project.isValidated
                     ? "Approval is disabled: Project must be validated first."
                     : !project.isVerified
                       ? "Approval is disabled: Project must be verified after validation."
@@ -878,7 +924,7 @@ export default function ProjectDetails() {
                   onClick={async () => {
                     try {
                       const tx = await validateProject(project.projectContract, account);
-                     
+
                       if (tx.status === "success") {
                         const data = await fetch(`${apihost}/vvb/validate-project/${project.projectContract}`, {
                           method: 'POST',
@@ -890,7 +936,7 @@ export default function ProjectDetails() {
                           const result = await data.json();
                           console.log("Validation result:", result);
                         }
-                        
+
                         toast({
                           variant: "default",
                           title: "Success",
@@ -1177,27 +1223,63 @@ export default function ProjectDetails() {
 
               {/* Modal Content */}
               <div className="p-6">
-                {/* Pagination Controls Header */}
+                {/* Filter and Pagination Controls Header */}
                 <div className="flex flex-col sm:flex-row items-center justify-between gap-4 mb-6">
-                  <div className="text-sm text-gray-600">
-                    {holdersLoading ? (
-                      "Loading holders..."
-                    ) : (
-                      `Showing ${((holdersCurrentPage - 1) * holdersPerPage) + 1} to ${Math.min(holdersCurrentPage * holdersPerPage, holdersTotalNFTs)} of ${holdersTotalNFTs} holders`
-                    )}
+                  <div className="flex items-center space-x-4">
+                    <div className="text-sm text-gray-600">
+                      {holdersLoading ? (
+                        "Loading holders..."
+                      ) : (
+                        `Showing ${((holdersCurrentPage - 1) * holdersPerPage) + 1} to ${Math.min(holdersCurrentPage * holdersPerPage, holdersTotalNFTs)} of ${holdersTotalNFTs} holders`
+                      )}
+                    </div>
                   </div>
-                  <Select value={holdersPerPage.toString()} onValueChange={handleHoldersLimitChange}>
-                    <SelectTrigger className="w-32">
-                      <SelectValue placeholder="Per page" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="5">5 per page</SelectItem>
-                      <SelectItem value="10">10 per page</SelectItem>
-                      <SelectItem value="20">20 per page</SelectItem>
-                      <SelectItem value="50">50 per page</SelectItem>
-                    </SelectContent>
-                  </Select>
+
+                  <div className="flex items-center space-x-4">
+                    {/* Token ID Filter */}
+                    <div className="flex items-center space-x-2">
+                      <label className="text-sm font-medium text-gray-700">Token ID:</label>
+                      <Select value={selectedTokenId} onValueChange={handleTokenIdFilterChange}>
+                        <SelectTrigger className="w-32">
+                          <SelectValue placeholder="Filter by Token ID" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="all">All</SelectItem>
+                          <SelectItem value="1">Minted</SelectItem>
+                          <SelectItem value="2">Retired</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </div>
+
+                    {/* Per Page Selector */}
+                    <Select value={holdersPerPage.toString()} onValueChange={handleHoldersLimitChange}>
+                      <SelectTrigger className="w-32">
+                        <SelectValue placeholder="Per page" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="5">5 per page</SelectItem>
+                        <SelectItem value="10">10 per page</SelectItem>
+                        <SelectItem value="20">20 per page</SelectItem>
+                        <SelectItem value="50">50 per page</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
                 </div>
+
+                {/* Active Filter Display */}
+                {selectedTokenId !== "all" && (
+                  <div className="mb-4">
+                    <div className="inline-flex items-center px-3 py-1 rounded-full text-sm bg-blue-100 text-blue-800">
+                      <span className="mr-2">Filtered by Token ID: {selectedTokenId}</span>
+                      <button
+                        onClick={() => handleTokenIdFilterChange("all")}
+                        className="ml-1 hover:bg-blue-200 rounded-full p-1"
+                      >
+                        <X className="w-3 h-3" />
+                      </button>
+                    </div>
+                  </div>
+                )}
 
                 {/* Holders Table */}
                 <div className="max-h-[50vh] overflow-auto border border-gray-200 rounded-lg">
@@ -1212,7 +1294,12 @@ export default function ProjectDetails() {
                         <Users className="w-8 h-8 text-gray-400" />
                       </div>
                       <h3 className="text-lg font-semibold text-gray-900 mb-2">No Holders Found</h3>
-                      <p className="text-gray-600">{"This project doesn't have any token holders yet."}</p>
+                      <p className="text-gray-600">
+                        {selectedTokenId !== "all"
+                          ? `No holders found for Token ID ${selectedTokenId}.`
+                          : "This project doesn't have any token holders yet."
+                        }
+                      </p>
                     </div>
                   ) : (
                     <table className="w-full">
@@ -1234,12 +1321,9 @@ export default function ProjectDetails() {
                           <th className="px-4 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">
                             Amount (tCO₂)
                           </th>
-                          {/* <th className="px-4 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">
-                            Actions
-                          </th> */}
                         </tr>
                       </thead>
-                      
+
                       {/* Table Body */}
                       <tbody className="bg-white divide-y divide-gray-200">
                         {holders.map((holder, index) => (
@@ -1248,7 +1332,7 @@ export default function ProjectDetails() {
                             <td className="px-4 py-4 whitespace-nowrap text-sm text-gray-900">
                               {((holdersCurrentPage - 1) * holdersPerPage) + index + 1}
                             </td>
-                            
+
                             {/* Holder Address */}
                             <td className="px-4 py-4 whitespace-nowrap">
                               <div className="flex items-center space-x-3">
@@ -1273,7 +1357,7 @@ export default function ProjectDetails() {
                                 </div>
                               </div>
                             </td>
-                            
+
                             {/* Project Contract - Hidden on mobile */}
                             <td className="px-4 py-4 whitespace-nowrap hidden md:table-cell">
                               <a
@@ -1286,62 +1370,23 @@ export default function ProjectDetails() {
                                 {holder.projectContract ? `${holder.projectContract.slice(0, 10)}...${holder.projectContract.slice(-8)}` : "N/A"}
                               </a>
                             </td>
-                            
+
                             {/* Token ID */}
                             <td className="px-4 py-4 whitespace-nowrap">
-                              <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-800">
-                                #{holder.tokenId}
+                              <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${holder.tokenId === 1
+                                  ? "bg-green-100 text-green-800"
+                                  : "bg-orange-100 text-orange-800"
+                                }`}>
+                                #{holder.tokenId} {holder.tokenId === 1 ? "(Mint)" : "(Retired)"}
                               </span>
                             </td>
-                            
+
                             {/* Amount */}
                             <td className="px-4 py-4 whitespace-nowrap text-right">
                               <div className="text-sm font-semibold text-gray-900">
                                 {Number(holder.amount).toLocaleString()}
                               </div>
-                              {/* <div className="text-xs text-gray-500">
-                                tCO₂
-                              </div> */}
                             </td>
-                            
-                            {/* Actions */}
-                            {/* <td className="px-4 py-4 whitespace-nowrap text-center">
-                              <div className="flex items-center justify-center space-x-2">
-                          
-                                <Button
-                                  variant="outline"
-                                  size="sm"
-                                  asChild
-                                  className="text-xs"
-                                >
-                                  <a
-                                    href={`https://testnet.bscscan.com/address/${holder.owner}`}
-                                    target="_blank"
-                                    rel="noopener noreferrer"
-                                    className="flex items-center space-x-1"
-                                  >
-                                    <span>View</span>
-                                  </a>
-                                </Button>
-                                
-                          
-                                <Button
-                                  variant="ghost"
-                                  size="sm"
-                                  className="text-xs"
-                                  onClick={() => {
-                                    navigator.clipboard.writeText(holder.owner);
-                                    toast({
-                                      title: "Copied!",
-                                      description: "Address copied to clipboard",
-                                      variant: "default",
-                                    });
-                                  }}
-                                >
-                                  Copy
-                                </Button>
-                              </div>
-                            </td> */}
                           </tr>
                         ))}
                       </tbody>
@@ -1363,8 +1408,9 @@ export default function ProjectDetails() {
                   <div className="flex flex-col sm:flex-row items-center justify-between gap-4 mt-6 pt-4 border-t border-gray-200">
                     <div className="text-sm text-gray-600">
                       Page {holdersCurrentPage} of {holdersTotalPages} • Total: {holdersTotalNFTs} holders
+                      {selectedTokenId !== "all" && ` (Token ID ${selectedTokenId})`}
                     </div>
-                    
+
                     <div className="flex items-center space-x-2">
                       {/* Previous Button */}
                       <Button
@@ -1439,7 +1485,7 @@ export default function ProjectDetails() {
         )}
 
         {/* Comment Section */}
-        {/* <Card className="mt-8">
+        {userInfo && userInfo.role !== "user" && <Card className="mt-8">
           <CardHeader>
             <CardTitle>Comments</CardTitle>
           </CardHeader>
@@ -1460,19 +1506,15 @@ export default function ProjectDetails() {
                 {isCommenting ? "Submitting..." : "Submit Comment"}
               </Button>
             </div>
-       
+
             {project.comments && project.comments.length > 0 ? (
               <div className="space-y-3">
                 {project.comments.map((c, i) => (
                   <div key={i} className="bg-gray-50 p-3 rounded">
+                    {console.log("Comment:", c)}
                     <div className="flex justify-between text-sm text-gray-500 mb-1">
                       <span className="font-medium">
                         {c.commenter && `${c.commenter.slice(0, 6)}...${c.commenter.slice(-4)}`}
-                      </span>
-                      <span>
-                        {c.timestamp
-                          ? new Date(Number(c.timestamp) * 1000).toLocaleString()
-                          : ""}
                       </span>
                     </div>
                     <p className="text-gray-800">{c.comment}</p>
@@ -1483,7 +1525,7 @@ export default function ProjectDetails() {
               <p className="text-gray-500 italic">No comments yet.</p>
             )}
           </CardContent>
-        </Card> */}
+        </Card>}
       </div>
     </div>
   );

@@ -10,6 +10,7 @@ import { Button } from '../ui/button';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../ui/select';
 import { ChevronLeft, ChevronRight, Loader2 } from 'lucide-react';
 import { useActiveAccount } from 'thirdweb/react';
+import { apihost } from '../contract/address';
 
 const BuyerTab = () => {
   const {
@@ -100,6 +101,20 @@ const BuyerTab = () => {
       const tokenId = 1;
       const recipt = await createListing(tokenContract, tokenId, quantity, price, account);
       if (recipt.status === "success") {
+        const listingData = {
+          hash: recipt.transactionHash
+        }
+        const response = await fetch(`${apihost}/user/list-nft`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify(listingData),
+        });
+        if (response.ok) {
+          const data = await response.json();
+          console.log('Listing created successfully:', data);
+        } 
         toast({
           title: "Listing Created",
           description: "Your listing has been created successfully.",

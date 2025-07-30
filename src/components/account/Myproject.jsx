@@ -23,6 +23,9 @@ const MyProjects = () => {
   const [submittingUri, setSubmittingUri] = useState(false);
   const account = useActiveAccount()
 
+  const uriTokenOne = 'https://ipfs.io/ipfs/bafkreighdb436wagnvm7nnesxqcag72hkjgh62bwvc5r5tigctssn3tbw4?filename=1.json'
+  const uriTokenTwo = 'https://ipfs.io/ipfs/bafkreih7bu4stqoh76fb2unhzdj6ck5vm4vozmjgkox5q7lvftyknpsudi?filename=2.json'
+
   console.log("Wallet Address:", walletAddress);
   useEffect(() => {
     const fetchProjects = async () => {
@@ -101,8 +104,8 @@ const MyProjects = () => {
     try {
       const receipt = await setTokenURI(
         selectedProject.projectContract,
-        uriForm.setUri.trim(),
-        uriForm.setKnownUri.trim(),
+        uriTokenOne,
+        uriTokenTwo,
         account
       );
       
@@ -219,11 +222,11 @@ const MyProjects = () => {
                 <input
                   type="text"
                   name="setUri"
-                  value={uriForm.setUri}
+                  value={uriTokenOne}
                   onChange={handleUriChange}
                   placeholder="https://example.com/metadata/active.json"
                   className="w-full border border-gray-300 rounded-md px-3 py-2 focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-transparent"
-                  disabled={submittingUri}
+                  disabled={true}
                 />
               </div>
               
@@ -234,11 +237,12 @@ const MyProjects = () => {
                 <input
                   type="text"
                   name="setKnownUri"
-                  value={uriForm.setKnownUri}
+
+                  value={uriTokenTwo}
                   onChange={handleUriChange}
                   placeholder="https://example.com/metadata/retired.json"
                   className="w-full border border-gray-300 rounded-md px-3 py-2 focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-transparent"
-                  disabled={submittingUri}
+                  disabled={true}
                 />
               </div>
             </div>

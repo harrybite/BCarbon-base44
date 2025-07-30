@@ -43,14 +43,23 @@ const baseNavigationItems = [
     url: createPageUrl("Trade"),
     icon: TrendingUp,
     description: "Trade carbon credits"
-  },
-  {
-    title: "My Account",
-    url: createPageUrl("MyAccount"),
-    icon: User,
-    description: "Manage your projects and BCO₂ assets"
   }
 ];
+
+// Role-specific navigation items
+const createProjectItem = {
+  title: "Create Project",
+  url: createPageUrl("MyAccount"),
+  icon: User,
+  description: "Create and manage your carbon credit projects"
+};
+
+const myAccountItem = {
+  title: "My Account",
+  url: createPageUrl("MyAccount"),
+  icon: User,
+  description: "Manage your account and BCO₂ assets"
+};
 
 // Admin/VVB only navigation item
 const adminNavigationItem = {
@@ -85,13 +94,38 @@ export default function Layout({ children }) {
     }
   }
 
+  console.log("User Info:", userInfo);
   // Check if user is admin or VVB
   const isAdminOrVVB = userInfo && (userInfo.role === "gov" || userInfo.role === "vvb");
 
   // Create navigation items based on user role
-  const navigationItems = isAdminOrVVB 
-    ? [...baseNavigationItems, adminNavigationItem]
-    : baseNavigationItems;
+  const getNavigationItems = () => {
+    let items = [...baseNavigationItems];
+    
+    // Add role-specific navigation items
+    if (userInfo) {
+      if (userInfo.role === "issuer") {
+        // Show "Create Project" for Issuer
+        items.push(createProjectItem);
+      } else if (userInfo.role === "user") {
+        // Show "My Account" for User
+        items.push(myAccountItem);
+      } else if (userInfo.role === "gov" || userInfo.role === "vvb") {
+        // Show both Create Project and My Account for Gov/VVB (as before)
+        items.push(createProjectItem);
+        items.push(myAccountItem);
+      }
+    }
+    
+    // Add admin item for admin/VVB roles
+    if (isAdminOrVVB) {
+      items.push(adminNavigationItem);
+    }
+    
+    return items;
+  };
+
+  const navigationItems = getNavigationItems();
 
   // Close dropdown if clicked outside
   useEffect(() => {
@@ -265,7 +299,8 @@ export default function Layout({ children }) {
                     aria-expanded={userMenuOpen}
                   >
                     <span className="mr-2">
-                      {userInfo.role === "user" && "Issuer"}
+                      {userInfo.role === "user" && "User"}
+                      {userInfo.role === "issuer" && "Issuer"}
                       {userInfo.role === "vvb" && "VVB"}
                       {userInfo.role === "gov" && "Gov"}
                     </span>

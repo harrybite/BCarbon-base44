@@ -44,7 +44,8 @@ const Login = () => {
         body = { 
           walletAddress: account?.address, 
           email, 
-          password 
+          password,
+          role // Include role for User login
          };
       }
 
@@ -82,9 +83,10 @@ const Login = () => {
                 onChange={e => setRole(e.target.value)}
                 className="w-full border rounded px-3 py-2"
               >
-                <option value="user">Issuer/User</option>
+                <option value="issuer">Issuer</option>
                 <option value="vvb">VVB</option>
                 <option value="gov">Gov</option>
+                 <option value="user">User</option>
               </select>
             </div>
             <div>
