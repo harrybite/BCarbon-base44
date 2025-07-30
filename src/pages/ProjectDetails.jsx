@@ -1013,6 +1013,7 @@ export default function ProjectDetails() {
                           step="1"
                           min="1"
                           placeholder="Enter amount"
+                          className="appearance-none"
                           value={mintAmount}
                           onChange={(e) => setMintAmount(e.target.value)}
                           disabled={!project.isApproved}
@@ -1075,7 +1076,7 @@ export default function ProjectDetails() {
                             placeholder="Enter amount"
                             value={retireAmount}
                             onChange={(e) => setRetireAmount(e.target.value)}
-                            className="flex-1"
+                            className="flex-1 appearance-none"
                           />
                           <Button
                             type="button"
@@ -1121,7 +1122,7 @@ export default function ProjectDetails() {
                   type="number"
                   min="1"
                   max={Number(project.emissionReductions)}
-                  className="w-full border rounded px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                  className="w-full border rounded px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent appearance-none"
                   placeholder="Enter credit amount"
                   value={creditAmount}
                   onChange={e => setCreditAmount(e.target.value)}

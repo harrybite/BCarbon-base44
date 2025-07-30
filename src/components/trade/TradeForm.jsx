@@ -301,6 +301,7 @@ export default function TradeForm() {
                           type="number"
                           step="1"
                           min="1"
+                          className="appearance-none"
                           placeholder="Enter quantity"
                           value={cardStates[listing.listingId].quantity}
                           onChange={(e) => handleInputChange(listing.listingId, e.target.value)}

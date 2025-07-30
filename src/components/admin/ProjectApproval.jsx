@@ -482,7 +482,7 @@ const ProjectApproval = () => {
             <input
               type="number"
               min="0"
-              className="w-full border rounded px-2 py-1 mb-4"
+              className="w-full border rounded px-2 py-1 mb-4 appearance-none"
               placeholder="Credit Amount"
               value={creditAmount}
               onChange={e => setCreditAmount(e.target.value)}

@@ -422,7 +422,7 @@ const BuyerTab = () => {
                 type="number"
                 value={quantity}
                 onChange={(e) => setQuantity(e.target.value)}
-                className="w-full border px-3 py-2 rounded mt-1"
+                className="w-full border px-3 py-2 rounded mt-1 appearance-none"
                 min="1"
               />
             </label>
@@ -432,7 +432,7 @@ const BuyerTab = () => {
                 type="number"
                 value={price}
                 onChange={(e) => setPrice(e.target.value)}
-                className="w-full border px-3 py-2 rounded mt-1"
+                className="w-full border px-3 py-2 rounded mt-1 appearance-none"
                 min="0"
                 step="0.01"
               />
