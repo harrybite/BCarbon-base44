@@ -48,7 +48,7 @@ const Login = () => {
           role // Include role for User login
          };
       }
-
+      console.log("api endpoint", endpoint);
       const res = await fetch(endpoint, {
         method: "POST",
         headers: { "Content-Type": "application/json" },

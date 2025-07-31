@@ -5,7 +5,9 @@ export const projectData = "0x1204058F5EC282aC273C4Ac6ca854ebe3510ae58"
 export const projectManager = "0xa74965d242028Af3d15bb43007e2dBAd75B7b7b8";
 export const projectFactory = "0xB5608BdBceE578AA743Ae421c5CB91c34Ed6B1B4";
 
-export const apihost = "http://localhost:4000"
+//http://localhost:4000
+//bico2-backend-api.aigb.io
+export const apihost = "https://bico2-backend-api.aigb.io"
 
 export const chainInfo = {
   id: 7862,
