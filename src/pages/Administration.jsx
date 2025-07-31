@@ -147,7 +147,7 @@ export default function Administration() {
           </div>
         </div>
 
-        {isOwner && (
+        {/* {isOwner && (
           <Card className="mb-6">
             <CardHeader>
               <CardTitle className="flex items-center space-x-2">
@@ -164,11 +164,11 @@ export default function Administration() {
                   <RefreshCw className={`w-4 h-4 mr-2 ${isSyncing ? 'animate-spin' : ''}`} />
                   {isSyncing ? 'Syncing...' : 'Sync Projects'}
                 </Button>
-                {/* {syncMessage && <p className="text-sm text-gray-600">{syncMessage}</p>} */}
+          
               </div>
             </CardContent>
           </Card>
-        )}
+        )} */}
 
         {/* Admin Tabs */}
         <Tabs defaultValue="approval" className="space-y-6">

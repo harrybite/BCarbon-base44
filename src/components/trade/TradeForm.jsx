@@ -430,6 +430,8 @@ export default function TradeForm() {
                 <CardContent className="flex-grow">
                   <div className="space-y-2">
                     <p><strong>Token ID:</strong> {listing.tokenId}</p>
+                    <p><strong>Certificate ID:</strong> {listing.certificateId}</p>
+                    <p><strong>Project ID:</strong> {listing.projectID}</p>
                     <p><strong>Quantity (tCO2):</strong> {listing.quantity}</p>
                     <p><strong>Price per Unit (RUSD):</strong> {listing.pricePerUnit}</p>
                     <p><strong>Total Price (RUSD):</strong> {listing.pricePerUnit}</p>

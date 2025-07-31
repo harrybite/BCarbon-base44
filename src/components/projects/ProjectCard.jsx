@@ -179,7 +179,18 @@ const ProjectCard = ({ project }) => {
       <div className="space-y-3">
         {/* Key-value pairs with labels on left, values on right */}
         <div className="flex items-center">
-          <span className="font-medium text-gray-700 w-[180px]">Emission Reductions:</span>
+          <span className="font-medium text-gray-700 w-[180px]">Approved tCO<sub>2</sub> Credits:</span>
+          <span
+          className="font-semibold flex-grow text-right"
+          dangerouslySetInnerHTML={{
+            __html: details.isApproved
+              ? `${Number(details.credits)} tCO<sub>2</sub>`
+              : 'Pending Approval',
+          }}
+        ></span>
+        </div>
+        <div className="flex items-center">
+          <span className="font-medium text-gray-700 w-[180px]">Emission Reductions Goal:</span>
           <span className="font-semibold flex-grow text-right">{Number(details.emissionReductions)} tCO<sub>2</sub></span>
         </div>
         
@@ -236,7 +247,7 @@ const ProjectCard = ({ project }) => {
           </span>
         </div>
         
-        <div className="flex items-center">
+        {/* <div className="flex items-center">
           <span className="font-medium text-gray-700 w-[180px]">Credits Issued:</span>
           <span
           className="font-semibold flex-grow text-right"
@@ -246,7 +257,7 @@ const ProjectCard = ({ project }) => {
               : 'Pending Approval',
           }}
         ></span>
-        </div>
+        </div> */}
       </div>
       <div className="mt-6">
         <Link to={`/ProjectDetails/${details.projectContract}`}>

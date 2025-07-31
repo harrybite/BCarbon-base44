@@ -6,7 +6,7 @@ export const projectManager = "0xa74965d242028Af3d15bb43007e2dBAd75B7b7b8";
 export const projectFactory = "0xB5608BdBceE578AA743Ae421c5CB91c34Ed6B1B4";
 
 //http://localhost:4000
-//bico2-backend-api.aigb.io
+//https://bico2-backend-api.aigb.io
 export const apihost = "https://bico2-backend-api.aigb.io"
 
 export const chainInfo = {
@@ -47,3 +47,5 @@ export const methodology = [
   "Fuel Switching",
   "Energy Efficiency"
 ]
+
+// drsham19@gmail.com

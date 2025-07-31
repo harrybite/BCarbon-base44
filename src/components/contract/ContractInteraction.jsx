@@ -283,6 +283,9 @@ const getUserApproveProjectBalance = async (address, page = 1, limit = 10) => {
             nfts.push({
               projectContract: project.projectContract,
               balanceMinted: balanceminted.toString(),
+              tokenId: project.tokenId,
+              certificateId: project.certificateId,
+              projectID: project.projectID,
               metadata: metadata,
               tokenURI: tokenURI
             });
@@ -292,6 +295,9 @@ const getUserApproveProjectBalance = async (address, page = 1, limit = 10) => {
             nfts.push({
               projectContract: project.projectContract,
               balanceMinted: balanceminted.toString(),
+              tokenId: project.tokenId,
+              certificateId: project.certificateId,
+              projectID: project.projectID,
               metadata: { name: 'Unknown Project', description: 'Metadata unavailable' },
               tokenURI: tokenURI
             });

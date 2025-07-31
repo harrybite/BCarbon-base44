@@ -331,7 +331,7 @@ const ProjectApproval = () => {
                         onClick={() => {
                           setApproveProjectAddress(projectAddress.projectContract);
                           setShowApproveModal(true);
-                          setCreditAmount('');
+                          setCreditAmount(projectAddress.emissionReductions);
                         }}
                         className={`${projectAddress.isValidated && projectAddress.isVerified
                           ? "bg-green-500 hover:bg-green-600"

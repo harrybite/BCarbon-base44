@@ -288,8 +288,14 @@ const BuyerTab = () => {
               {/* Card Content */}
               <div className="w-full p-6 flex flex-col gap-2">
                 {/* Name */}
-                <div className="font-bold text-xl text-white mb-1">
-                  {project.metadata?.name || "No Name"}
+                 <div className="font-bold text-lg text-white mb-1">
+                  {project.projectID || "No Name"}
+                </div>
+                <div className="font-bold text-lg text-white mb-1">
+                  {project.certificateId || "No certificateId yet"}
+                </div>
+                  <div className="font-bold text-lg text-white mb-1">
+                  Token ID {project.tokenId || "No certificateId yet"}
                 </div>
                 {/* Description */}
                 <div className="text-blue-100 text-sm mb-4">

@@ -7,7 +7,6 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import {
   ArrowLeft,
@@ -305,8 +304,8 @@ export default function ProjectDetails() {
     try {
       const tx = await approveAndIssueCredits(project.projectContract, Number(creditAmount), account);
       if (tx.status === "success") {
-        const data = await fetch(`${apihost}/gov/approve-project/${project.projectContract}`, {
-          method: 'POST',
+        const data = await fetch(`${apihost}/project/updateprojectdetails/${project.projectContract}`, {
+          method: 'PUT',
           headers: {
             'Content-Type': 'application/json',
           },
@@ -414,7 +413,7 @@ export default function ProjectDetails() {
         toast({
           variant: "default",
           title: "Success",
-          description: `Minting initiated`,
+          description: `Minting successful!`,
         });
       }
       else {

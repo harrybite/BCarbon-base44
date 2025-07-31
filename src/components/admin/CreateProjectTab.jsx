@@ -25,7 +25,7 @@ const CreateProjectTab = ({ setUpdate }) => {
   const { toast } = useToast();
   const [formData, setFormData] = useState({
     mintPrice: '',
-    treasury: '',
+    treasury: '0x11b886D436B0bCa23BA0e123609FB72c57e2755f', // Fixed permanent treasury address
     defaultIsPermanent: false,
     defaultValidity: '',
     defaultVintage: new Date(),
@@ -186,7 +186,7 @@ const CreateProjectTab = ({ setUpdate }) => {
       projectDetails,
     } = formData;
 
-    if (!treasury || treasury === '0x0000000000000000000000000000000000000000') {
+    if (!treasury) {
       toast({
         title: "Invalid Treasury Address",
         description: "Please provide a valid treasury address.",
@@ -328,19 +328,19 @@ const CreateProjectTab = ({ setUpdate }) => {
           />
         </div>
         <div>
-          <label className="block">{"Issuer's Treasury Wallet"}</label>
+          <label className="block">{"Issuer's Treasury Wallet (Fixed)"}</label>
           <input
             type="text"
             name="treasury"
             value={formData.treasury}
             onChange={handleChange}
-            className="w-full border rounded px-2 py-1"
+            className="w-full border rounded px-2 py-1 bg-gray-100 cursor-not-allowed"
+            readOnly
+            disabled
             required
           />
-          <p className="mt-1">
-            <a href="https://genzvault.com/#download" className="text-green-600 hover:underline">
-              Download GenZ Wallet
-            </a>
+          <p className="mt-1 text-sm text-gray-600">
+            This is the permanent treasury address for all projects.
           </p>
         </div>
         <div className="flex items-center">
