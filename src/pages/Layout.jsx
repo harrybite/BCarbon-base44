@@ -112,8 +112,8 @@ export default function Layout({ children }) {
         items.push(myAccountItem);
       } else if (userInfo.role === "gov" || userInfo.role === "vvb") {
         // Show both Create Project and My Account for Gov/VVB (as before)
-        items.push(createProjectItem);
-        items.push(myAccountItem);
+        // items.push(createProjectItem);
+        // items.push(myAccountItem);
       }
     }
     

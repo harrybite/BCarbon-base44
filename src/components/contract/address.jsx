@@ -1,9 +1,9 @@
 export const RUSD = "0x604756016db44ad0a38d2787B8e2E3563b03Ab4e"; // Replace with actual RUSD contract address
-export const GOVERNANCE_ADDRESS = '0x1De9c6257224BA71691E7cb6Cc73000F20a5cAE6';
+export const GOVERNANCE_ADDRESS = '0xc84c3e85778b3A5ECEF69319615988F780A47488';
 export const MARKETPLACE_ADDRESS = '0x1387d0eAF557f852E48C1e4C66C9D4972Fe82a48';
-export const projectData = "0xcEE0BF039fe512877C97D886Fe3906fC9439BfF8"
-export const projectManager = "0xa8169B16Acb8AC8171CbE776E3176D58276bB3de";
-export const projectFactory = "0x1d574a9a20CA72Fd493e9a7812b9fE2084f4b4a0";
+export const projectData = "0x1204058F5EC282aC273C4Ac6ca854ebe3510ae58"
+export const projectManager = "0xa74965d242028Af3d15bb43007e2dBAd75B7b7b8";
+export const projectFactory = "0xB5608BdBceE578AA743Ae421c5CB91c34Ed6B1B4";
 
 export const apihost = "http://localhost:4000"
 

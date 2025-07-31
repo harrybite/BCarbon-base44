@@ -91,14 +91,14 @@ const MyProjects = () => {
   };
 
   const handleUriSave = async () => {
-    if (!selectedProject || !uriForm.setUri.trim() || !uriForm.setKnownUri.trim()) {
-      toast({
-        title: "Validation Error",
-        description: "Please fill in both URI fields",
-        variant: "destructive",
-      });
-      return;
-    }
+    // if (!selectedProject || !uriForm.setUri.trim() || !uriForm.setKnownUri.trim()) {
+    //   toast({
+    //     title: "Validation Error",
+    //     description: "Please fill in both URI fields",
+    //     variant: "destructive",
+    //   });
+    //   return;
+    // }
 
     setSubmittingUri(true);
     try {
@@ -258,7 +258,7 @@ const MyProjects = () => {
               <button
                 className="bg-green-600 hover:bg-green-700 text-white px-4 py-2 rounded-md transition-colors duration-200 flex items-center space-x-2 disabled:opacity-50 disabled:cursor-not-allowed"
                 onClick={handleUriSave}
-                disabled={submittingUri || !uriForm.setUri.trim() || !uriForm.setKnownUri.trim()}
+                disabled={submittingUri}
               >
                 {submittingUri && <Loader2 className="w-4 h-4 animate-spin" />}
                 <span>{submittingUri ? 'Submitting...' : 'Submit URI'}</span>
