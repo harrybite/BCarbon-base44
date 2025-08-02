@@ -180,9 +180,7 @@ contract ProjectData is Ownable {
         uint8 _methodologyIndex,
         uint256 _emissionReductions,
         string memory _projectDetails,
-        address _proposer,
-        uint256 _vintageTimestamp,
-        uint256 _commentPeriod
+        address _proposer
     ) external onlyFactory {
         if (_projectContract == address(0)) revert("Invalid project contract");
         if (_methodologyIndex > uint8(type(MethodologyUtils.Methodology).max))
@@ -200,8 +198,6 @@ contract ProjectData is Ownable {
         project.projectDetails = _projectDetails;
         project.proposer = _proposer;
         project.listingTimestamp = block.timestamp;
-        project.vintageTimestamp = _vintageTimestamp;
-        project.commentPeriodEnd = block.timestamp + _commentPeriod;
 
         isListedForPresale[_projectContract] = _isPresale;
 
@@ -217,6 +213,16 @@ contract ProjectData is Ownable {
             project.methodology,
             _emissionReductions
         );
+    }
+
+    function _setCommentDeadline(address _projectContract, uint256 _commentPeriod) external onlyFactory {
+        Project storage project = projects[_projectContract];
+        project.commentPeriodEnd = block.timestamp + _commentPeriod;
+    }
+
+    function _setDefaultVintage(address _projectContract, uint256 _defaultVintage) external onlyFactory {
+        Project storage project = projects[_projectContract];
+        project.vintageTimestamp = _defaultVintage;
     }
 
     function _addComment(

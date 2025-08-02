@@ -139,10 +139,12 @@ contract ProjectFactory is Ownable, Pausable, ReentrancyGuard {
             methodologyIndex,
             emissionReductions,
             projectDetails,
-            msg.sender,
-            defaultVintage,
-            currentCommentPeriod
+            msg.sender
         );
+
+        projectData._setDefaultVintage(projectContract, defaultVintage);
+
+        projectData._setCommentDeadline(projectContract, currentCommentPeriod);
 
         IBCO2Config(projectContract).configParameters(
             mintPrice,

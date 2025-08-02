@@ -27,10 +27,12 @@ interface IProjectData {
         uint8 _methodologyIndex,
         uint256 _emissionReductions,
         string memory _projectDetails,
-        address _proposer,
-        uint256 _vintageTimestamp,
-        uint256 _commentPeriod
+        address _proposer
     ) external;
+
+    function _setCommentDeadline(address _projectContract, uint256 _commentPeriod) external;
+
+    function _setDefaultVintage(address _projectContract, uint256 _defaultVintage) external;
 
     function _addComment(
         address projectContract,
