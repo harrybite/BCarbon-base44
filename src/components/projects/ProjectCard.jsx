@@ -1,6 +1,7 @@
 /* eslint-disable no-unused-vars */
 /* eslint-disable no-constant-binary-expression */
 import { useState, useEffect } from 'react';
+import PropTypes from 'prop-types';
 import { useContractInteraction } from '../contract/ContractInteraction';
 import { useParams } from 'react-router-dom';
 import { Link } from 'react-router-dom';
@@ -8,8 +9,19 @@ import { apihost, methodology } from '../contract/address';
 import { useToast } from '../ui/use-toast';
 import { useConnectWallet } from '@/context/walletcontext';
 import { useActiveAccount } from 'thirdweb/react';
+import { 
+  MapPin, 
+  Calendar, 
+  User, 
+  FileText, 
+  TrendingUp, 
+  CheckCircle2, 
+  Clock, 
+  AlertCircle,
+  DollarSign,
+  TreePine
+} from 'lucide-react';
 
-// eslint-disable-next-line react/prop-types
 const ProjectCard = ({ project }) => {
   const { 
     checkAuthorizedVVB,
@@ -32,53 +44,60 @@ const ProjectCard = ({ project }) => {
     proposer: '',
     location: '',
     defaultVintage: '',
-    defaultValidity: ''
+    defaultValidity: '',
+    credits: 0,
+    emissionReductions: 0,
+    totalSupply: 0,
+    projectMintPrice: 0,
+    isValidated: false,
+    isVerified: false,
+    defaultIsPermanent: false,
+    commentPeriodEnd: 0,
+    projectDetails: ''
   });
+  
   const { walletAddress } = useConnectWallet();
   const [canComment, setCanComment] = useState(false);
   const [comment, setComment] = useState('');
   const [isOwner, setIsOwner] = useState(false);
   const [reloadData, setReloadData] = useState(0);
-  const account = useActiveAccount()
-  const { toster } = useToast();
+  const [isLoading, setIsLoading] = useState(true);
+  const account = useActiveAccount();
+  const { toast } = useToast();
 
   useEffect(() => {
     const fetchDetails = async () => {
       if (project) {
+        setIsLoading(true);
         try {
-          // const data = await getListedProjectDetails(project);
-          // fetch project details from the backend
-          // if (!data) {
-          //   console.error('No project data found');
-          //   return;
-          // }
-          const projectdetails =await fetch(`${apihost}/project/getproject/${project}`);
+          const projectdetails = await fetch(`${apihost}/project/getproject/${project}`);
           if (!projectdetails.ok) {
             console.error('Failed to fetch project details');
             return;
           }
           const projectData = await projectdetails.json();
-          console.log("Project detials:", projectData);
+          console.log("Project details:", projectData);
           setDetails(projectData.projectDetails);
         
           setCanComment((await checkAuthorizedVVB()) || (await checkIsProjectOwner(project)));
           setIsOwner(await checkIsOwner());
         } catch (error) {
           console.error('Error fetching project details:', error);
+        } finally {
+          setIsLoading(false);
         }
       }
     };
-    if (walletAddress ) {
+    if (walletAddress) {
       fetchDetails();
     }
-  }, [walletAddress, reloadData]);
+  }, [walletAddress, reloadData, project]);
 
   const handleComment = async () => {
     if (!comment) return;
     try {
       const receipt = await submitComment(details.projectContract, comment, account);
       if (receipt.status === 'success') {
-        // update comment in backend
         const response = await fetch(`${apihost}/vvb/make-comments`, {
           method: 'POST',
           headers: {
@@ -90,29 +109,27 @@ const ProjectCard = ({ project }) => {
             user: walletAddress,
           }),
         });
-        if (response.ok) {
-          // const updatedComments = await response.json();
-          // setDetails((prevDetails) => ({
-          //   ...prevDetails,
-          //   comments: updatedComments.comments,
-          // }));
-        }
-        toster({
+        
+        toast({
           title: "Comment Submitted",
           description: `Transaction successful!`,
-          variant: "success",
+          variant: "default",
         });
-        setComment(''); // Clear the textarea
-        setReloadData(reloadData + 1); // Trigger a reload to fetch new comments
+        setComment('');
+        setReloadData(reloadData + 1);
       } else {
-        toster({
+        toast({
           title: "Comment Failed",
           description: `Transaction failed!`,
-          variant: "error",
+          variant: "destructive",
         });
       }
     } catch (error) {
-      // Handle error silently as per original code
+      toast({
+        title: "Error",
+        description: `Failed to submit comment: ${error.message}`,
+        variant: "destructive",
+      });
     }
   };
 
@@ -135,15 +152,28 @@ const ProjectCard = ({ project }) => {
   const getStatusBadgeColor = (status) => {
     switch (status) {
       case 'Approved':
-        return 'bg-green-100 text-green-800';
+        return 'bg-green-100 text-green-800 border-green-200';
       case 'Pending Validation':
-        return 'bg-yellow-100 text-yellow-800';
+        return 'bg-yellow-100 text-yellow-800 border-yellow-200';
       case 'Pending Verification':
-        return 'bg-orange-100 text-orange-800';
+        return 'bg-orange-100 text-orange-800 border-orange-200';
       case 'Pending Approval':
-        return 'bg-blue-100 text-blue-800';
+        return 'bg-blue-100 text-blue-800 border-blue-200';
       default:
-        return 'bg-gray-100 text-gray-800';
+        return 'bg-gray-100 text-gray-800 border-gray-200';
+    }
+  };
+
+  const getStatusIcon = (status) => {
+    switch (status) {
+      case 'Approved':
+        return <CheckCircle2 className="w-4 h-4" />;
+      case 'Pending Validation':
+      case 'Pending Verification':
+      case 'Pending Approval':
+        return <Clock className="w-4 h-4" />;
+      default:
+        return <AlertCircle className="w-4 h-4" />;
     }
   };
 
@@ -154,8 +184,8 @@ const ProjectCard = ({ project }) => {
   };
 
   // Parse and format location string into multiple lines
-    const formatLocations = (locationString) => {
-    if (!locationString) return ['N/A']; // Always return an array
+  const formatLocations = (locationString) => {
+    if (!locationString) return ['N/A'];
     const locations = locationString.split(', ').map(loc => {
       const match = loc.match(/Location (\d+) - \(([^,]+), ([^)]+)\)/);
       if (match) {
@@ -163,142 +193,229 @@ const ProjectCard = ({ project }) => {
       }
       return loc;
     });
-    return locations.length > 0 ? locations : ['N/A']; // Ensure the return value is always an array
-    };
+    return locations.length > 0 ? locations : ['N/A'];
+  };
+
+  // Calculate approval progress percentage
+  const getApprovalProgress = () => {
+    if (Number(details.credits) === 0) return 0;
+    const percentage = (Number(details.totalSupply) / Number(details.credits)) * 100;
+    return Math.min(percentage, 100); // Cap at 100%
+  };
+
+  // Calculate funds raised percentage (assuming max funding goal)
+  const getFundsRaisedAmount = () => {
+    return Number(details.totalSupply) * Number(details.projectMintPrice);
+  };
+
+  if (isLoading) {
+    return (
+      <div className="border rounded-xl p-6 w-full md:min-w-[450px] animate-pulse">
+        <div className="flex items-center justify-between mb-4">
+          <div className="h-6 bg-gray-200 rounded w-32"></div>
+          <div className="h-6 bg-gray-200 rounded w-24"></div>
+        </div>
+        <div className="h-4 bg-gray-200 rounded w-full mb-4"></div>
+        <div className="space-y-3">
+          {[...Array(6)].map((_, i) => (
+            <div key={i} className="flex justify-between">
+              <div className="h-4 bg-gray-200 rounded w-32"></div>
+              <div className="h-4 bg-gray-200 rounded w-20"></div>
+            </div>
+          ))}
+        </div>
+        <div className="h-10 bg-gray-200 rounded w-full mt-6"></div>
+      </div>
+    );
+  }
+
+  const status = getStatusText(details);
+  const approvalProgress = getApprovalProgress();
+  const fundsRaised = getFundsRaisedAmount();
 
   return (
-    <div className="border rounded p-4 w-full md:min-w-[450px]">
-      <div className="flex items-center justify-between mb-2">
-        <h3 className="text-lg font-bold">{details.projectId}</h3>
-        <span className={`inline-block px-3 py-1 text-sm font-semibold rounded-full ${getStatusBadgeColor(getStatusText(details))}`}>
-          {getStatusText(details)}
+    <div className="border border-gray-200 rounded-xl p-6 w-full md:min-w-[450px] bg-white shadow-sm hover:shadow-md transition-shadow duration-200">
+      {/* Header */}
+      <div className="flex items-center justify-between mb-4">
+        <div className="flex items-center space-x-3">
+          <div className="w-10 h-10 bg-gradient-to-br from-green-500 to-green-600 rounded-lg flex items-center justify-center">
+            <TreePine className="w-5 h-5 text-white" />
+          </div>
+          <h3 className="text-xl font-bold text-gray-900">{details.projectId}</h3>
+        </div>
+        <span className={`inline-flex items-center space-x-1 px-3 py-1 text-sm font-semibold rounded-full border ${getStatusBadgeColor(status)}`}>
+          {getStatusIcon(status)}
+          <span>{status}</span>
         </span>
       </div>
-      <p className="font-semibold mb-4">{details.projectDetails}</p>
+
+      {/* Project Description */}
+      <p className="text-gray-600 mb-6 line-clamp-2">{details.projectDetails}</p>
       
-      <div className="space-y-3">
-        {/* Key-value pairs with labels on left, values on right */}
-        <div className="flex items-center">
-          <span className="font-medium text-gray-700 w-[180px]">Approved tCO<sub>2</sub> Credits:</span>
-          <span
-          className="font-semibold flex-grow text-right"
-          dangerouslySetInnerHTML={{
-            __html: details.isApproved
-              ? `${Number(details.credits)} tCO<sub>2</sub>`
-              : 'Pending Approval',
-          }}
-        ></span>
+      {/* Key Metrics Cards */}
+      <div className="grid grid-cols-2 gap-4 mb-6">
+        <div className="bg-green-50 border border-green-200 rounded-lg p-3">
+          <div className="text-2xl font-bold text-green-700">
+            {details.isApproved ? Number(details.credits).toLocaleString() : '0'}
+          </div>
+          <div className="text-sm text-green-600">Approved Credits (tCO₂)</div>
         </div>
-        <div className="flex items-center">
-          <span className="font-medium text-gray-700 w-[180px]">Emission Reductions Goal:</span>
-          <span className="font-semibold flex-grow text-right">{Number(details.emissionReductions)} tCO<sub>2</sub></span>
+        <div className="bg-blue-50 border border-blue-200 rounded-lg p-3">
+          <div className="text-2xl font-bold text-blue-700">
+            {Number(details.emissionReductions).toLocaleString()}
+          </div>
+          <div className="text-sm text-blue-600">Target Credits (tCO₂)</div>
         </div>
-        
-        <div className="flex items-center">
-          <span className="font-medium text-gray-700 w-[180px]">Methodology:</span>
+      </div>
+
+      {/* Progress Bars */}
+      <div className="space-y-4 mb-6">
+        {/* Credits Approval Progress */}
+        <div className="space-y-2">
+          <div className="flex justify-between items-center">
+            <span className="text-sm font-medium text-gray-700">Credits Approval Progress</span>
+            <span className="text-sm font-semibold text-gray-900">{approvalProgress.toFixed(1)}%</span>
+          </div>
+          <div className="w-full bg-gray-200 rounded-full h-2">
+            <div 
+              className={`h-2 rounded-full transition-all duration-300 ${
+                approvalProgress === 100 ? 'bg-green-500' : 
+                approvalProgress > 0 ? 'bg-blue-500' : 'bg-gray-300'
+              }`}
+              style={{ width: `${approvalProgress}%` }}
+            ></div>
+          </div>
+          <div className="text-xs text-gray-500">
+            {details.isApproved 
+              ? `${Number(details.credits).toLocaleString()} of ${Number(details.emissionReductions).toLocaleString()} tCO₂ approved`
+              : 'Awaiting approval'
+            }
+          </div>
+        </div>
+
+        {/* Funds Raised */}
+        { (
+          <div className="space-y-2">
+            <div className="flex justify-between items-center">
+              <span className="text-sm font-medium text-gray-700">Total RUSD Raised</span>
+              <span className="text-sm font-semibold text-gray-900">{fundsRaised.toLocaleString()} RUSD</span>
+            </div>
+
+          </div>
+        )}
+      </div>
+
+      {/* Project Details */}
+      <div className="space-y-3 mb-6">
+        <div className="flex items-center justify-between">
+          <span className="text-sm font-medium text-gray-600 flex items-center">
+            <FileText className="w-4 h-4 mr-2" />
+            Methodology:
+          </span>
           <span 
-            className="font-semibold flex-grow text-right truncate cursor-help"
+            className="text-sm font-semibold text-gray-900 text-right max-w-[200px] truncate cursor-help"
             title={methodology[Number(details.methodology)] || "Unknown"}
           >
-            {methodology[Number(details.methodology)]?.length > 30 
-              ? `${methodology[Number(details.methodology)].substring(0, 30)}...` 
+            {methodology[Number(details.methodology)]?.length > 25 
+              ? `${methodology[Number(details.methodology)].substring(0, 25)}...` 
               : methodology[Number(details.methodology)] || "Unknown"}
           </span>
         </div>
         
-        <div className="flex items-start">
-          <span className="font-medium text-gray-700 w-[180px]">Locations:</span>
-          <div className="font-semibold flex-grow text-right">
+        <div className="flex items-start justify-between">
+          <span className="text-sm font-medium text-gray-600 flex items-center">
+            <MapPin className="w-4 h-4 mr-2" />
+            Locations:
+          </span>
+          <div className="text-sm font-semibold text-gray-900 text-right max-w-[200px]">
             {formatLocations(details.location).map((loc, index) => (
               <p 
                 key={index} 
                 className="truncate cursor-help" 
                 title={loc}
               >
-                {loc.length > 30 ? `${loc.substring(0, 30)}...` : loc}
+                {loc.length > 25 ? `${loc.substring(0, 25)}...` : loc}
               </p>
             ))}
           </div>
         </div>
         
-        <div className="flex items-center">
-          <span className="font-medium text-gray-700 w-[180px]">Proposer:</span>
-          <span className="font-semibold flex-grow text-right truncate cursor-help" title={details.proposer || "N/A"}>
+        <div className="flex items-center justify-between">
+          <span className="text-sm font-medium text-gray-600 flex items-center">
+            <User className="w-4 h-4 mr-2" />
+            Proposer:
+          </span>
+          <a
+            href={`https://testnet.bscscan.com/address/${details.proposer}`}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="text-sm font-semibold text-blue-600 hover:underline cursor-pointer"
+            title={details.proposer || "N/A"}
+          >
             {details.proposer ? `${details.proposer.slice(0, 6)}...${details.proposer.slice(-4)}` : "N/A"}
+          </a>
+        </div>
+        
+        <div className="flex items-center justify-between">
+          <span className="text-sm font-medium text-gray-600 flex items-center">
+            <Calendar className="w-4 h-4 mr-2" />
+            Vintage:
           </span>
+          <span className="text-sm font-semibold text-gray-900">{formatVintageDate(details.defaultVintage)}</span>
         </div>
         
-        <div className="flex items-center">
-          <span className="font-medium text-gray-700 w-[180px]">Project Contract:</span>
-          <span className="font-semibold flex-grow text-right truncate cursor-help" title={details.projectContract || "N/A"}>
-            {details.projectContract ? `${details.projectContract.slice(0, 6)}...${details.projectContract.slice(-4)}` : "N/A"}
+        <div className="flex items-center justify-between">
+          <span className="text-sm font-medium text-gray-600 flex items-center">
+            <TrendingUp className="w-4 h-4 mr-2" />
+            Validity:
           </span>
-        </div>
-        
-        <div className="flex items-center">
-          <span className="font-medium text-gray-700 w-[180px]">Vintage:</span>
-          <span className="font-semibold flex-grow text-right">{formatVintageDate(details.defaultVintage)}</span>
-        </div>
-        
-        <div className="flex items-center">
-          <span className="font-medium text-gray-700 w-[180px]">Validity:</span>
-          <span className="font-semibold flex-grow text-right">
+          <span className="text-sm font-semibold text-gray-900">
             {details.defaultIsPermanent ? 'Permanent' : `${details.defaultValidity} years`}
           </span>
         </div>
-        
-        {/* <div className="flex items-center">
-          <span className="font-medium text-gray-700 w-[180px]">Credits Issued:</span>
-          <span
-          className="font-semibold flex-grow text-right"
-          dangerouslySetInnerHTML={{
-            __html: details.isApproved
-              ? `${Number(details.credits)} tCO<sub>2</sub>`
-              : 'Pending Approval',
-          }}
-        ></span>
-        </div> */}
       </div>
-      <div className="mt-6">
+
+      {/* Action Button */}
+      <div className="mb-4">
         <Link to={`/ProjectDetails/${details.projectContract}`}>
-          <button className="w-full bg-transparent border border-blue-600 text-blue-600 py-2 px-4 rounded-2xl font-semibold transition hover:bg-blue-50">
-            View Project Details
+          <button className="w-full bg-gradient-to-r from-blue-600 to-blue-700 hover:from-blue-700 hover:to-blue-800 text-white py-3 px-4 rounded-lg font-semibold transition-all duration-200 transform hover:scale-[1.02] flex items-center justify-center space-x-2">
+            <span>View Project Details</span>
+            <TrendingUp className="w-4 h-4" />
           </button>
         </Link>
       </div>
 
-      {/* Buttons */}
-      <div className="flex mt-4 space-x-2">
-      </div>
-
-      {/* Improved comment section */}
+      {/* Comments Section */}
       {canComment && (
-        <div className="mt-6 border-t pt-4">
-          <h4 className="text-lg font-semibold mb-3">Comments</h4>
+        <div className="border-t border-gray-200 pt-6">
+          <h4 className="text-lg font-semibold mb-4 flex items-center">
+            <FileText className="w-5 h-5 mr-2 text-gray-600" />
+            Comments
+          </h4>
           
           {details.comments && details.comments.length > 0 ? (
-            <div className="space-y-3 mb-4">
+            <div className="space-y-3 mb-4 max-h-40 overflow-y-auto">
               {details.comments.map((c, i) => (
-                <div key={i} className="bg-gray-50 p-3 rounded">
-                  <div className="flex justify-between text-sm text-gray-500 mb-1">
-                    <span className="font-medium">
+                <div key={i} className="bg-gray-50 border border-gray-200 p-3 rounded-lg">
+                  <div className="flex justify-between text-xs text-gray-500 mb-2">
+                    <span className="font-medium flex items-center">
+                      <User className="w-3 h-3 mr-1" />
                       {c.author && `${c.author.slice(0, 6)}...${c.author.slice(-4)}`}
                     </span>
-                    {/* <span>{c.timestamp && new Date(Number(c.timestamp) * 1000).toLocaleString()}</span> */}
                   </div>
-                  <p className="text-gray-800">{c.comment}</p>
+                  <p className="text-sm text-gray-800">{c.comment}</p>
                 </div>
               ))}
             </div>
           ) : (
-            <p className="text-gray-500 italic mb-4">No comments yet</p>
+            <p className="text-gray-500 italic mb-4 text-sm">No comments yet</p>
           )}
           
-          <div className="border rounded overflow-hidden">
+          <div className="border border-gray-200 rounded-lg overflow-hidden">
             <textarea
               value={comment}
               onChange={(e) => setComment(e.target.value)}
-              className="w-full px-3 py-2 border-b"
+              className="w-full px-3 py-3 border-0 resize-none focus:ring-0 focus:outline-none"
               rows="3"
               placeholder={
                 Date.now() / 1000 > Number(details.commentPeriodEnd)
@@ -307,14 +424,14 @@ const ProjectCard = ({ project }) => {
               }
               disabled={Date.now() / 1000 > Number(details.commentPeriodEnd)}
             />
-            <div className="bg-gray-50 px-3 py-2 text-center">
+            <div className="bg-gray-50 border-t border-gray-200 px-3 py-2 flex justify-end">
               <button
                 onClick={handleComment}
                 disabled={!comment || Date.now() / 1000 > Number(details.commentPeriodEnd)}
-                className={`px-4 py-1 rounded text-white ${
+                className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors ${
                   !comment || Date.now() / 1000 > Number(details.commentPeriodEnd)
-                    ? "bg-blue-300 cursor-not-allowed" 
-                    : "bg-blue-500 hover:bg-blue-600"
+                    ? "bg-gray-300 text-gray-500 cursor-not-allowed" 
+                    : "bg-blue-600 text-white hover:bg-blue-700"
                 }`}
               >
                 Submit Comment
@@ -325,6 +442,10 @@ const ProjectCard = ({ project }) => {
       )}
     </div>
   );
+};
+
+ProjectCard.propTypes = {
+  project: PropTypes.string.isRequired,
 };
 
 export default ProjectCard;

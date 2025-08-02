@@ -4,7 +4,7 @@ import Layout from "./Layout.jsx";
 
 import Home from "./Home";
 import Projects from "./Projects";
-import ProjectDetails from "./ProjectDetails";
+import ProjectDetails from "./ProjectDetails/ProjectDetails.jsx";
 import Trade from "./Trade";
 import Administration from "./Administration";
 import MyAccount from "./MyAccount";

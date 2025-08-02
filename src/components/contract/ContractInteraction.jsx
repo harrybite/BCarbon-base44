@@ -975,12 +975,24 @@ const getUserApproveProjectBalance = async (address, page = 1, limit = 10) => {
     }
   };
 
+  const getPesaleStatus = async (projectAddress) => {
+    try {
+      const projectDataContract = await getProjectDataContract(false);
+      const detail = await projectDataContract.getPresaleStatus(projectAddress);
+      return detail;
+    } catch (error) {
+      console.log('Error fetching presale status:', error);
+      throw new Error(`Failed to fetch presale status: ${error.message}`);
+    }
+  };
+
 
 
   const getListedProjectDetails = async (address) => {
     try {
       const projectDataContract = await getProjectDataContract(false);
       const detail = await projectDataContract.getProjectDetails(address);
+      const presaleStatus = await getPesaleStatus(address);
       const projectMintPrice = await getMintPrice(address);
       const projectTotalSupply = await getTotalSupply(address);
       const projectTotalRetired = await getTotalRetired(address);
@@ -993,6 +1005,8 @@ const getUserApproveProjectBalance = async (address, page = 1, limit = 10) => {
       return {
         projectContract: detail.projectContract,
         projectId: detail.projectId,
+        isPresale: presaleStatus.listed,
+        presaleAmount: presaleStatus.amount,
         certificateId: detail.certificateId,
         methodology: detail.methodology,
         emissionReductions: Number(detail.emissionReductions),
