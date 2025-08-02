@@ -104,7 +104,7 @@ contract BCO2 is ERC1155, Ownable, IERC7496, ReentrancyGuard {
     error InvalidValidity();
     error InvalidTreasury();
     error MintingClosed();
-    error ProjectNotApproved();
+    error NotValidRegistry();
     error ExceedsCreditsIssued();
     error InvalidQuantity();
     error ExceedsMaxPerWallet();
@@ -319,19 +319,21 @@ contract BCO2 is ERC1155, Ownable, IERC7496, ReentrancyGuard {
     /// @param quantity The number of credits to mint
     function mintWithRUSD(uint256 quantity) external nonReentrant {
         if (!mintingActive) revert MintingClosed();
-        if (address(registry) == address(0) && !registry.isProjectApproved(address(this)))
-            revert ProjectNotApproved();
+        if (address(registry) == address(0)) revert NotValidRegistry();
+
         uint256 creditsIssued = registry.creditAmountIssued(address(this));
         if (creditsIssued == 0 || totalSupply + quantity > creditsIssued)
             revert ExceedsCreditsIssued();
         if (quantity == 0) revert InvalidQuantity();
         if (walletMinted[msg.sender] + quantity > maxPerWallet)
             revert ExceedsMaxPerWallet();
+
         uint256 payableAmount = mintPrice * quantity;
         if (RUSD.balanceOf(msg.sender) < payableAmount)
             revert InsufficientPayment();
         if (RUSD.allowance(msg.sender, address(this)) < payableAmount)
             revert InsufficientPayment();
+
         if (
             bytes(uri(unit_tCO2_TOKEN_ID)).length == 0 ||
             bytes(uri(unit_tCO2_RETIRED_TOKEN_ID)).length == 0

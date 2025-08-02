@@ -25,7 +25,7 @@ contract Deploy is Script {
         // Read flag to determine whether to deploy new contracts or use existing ones
         bool useExisting = vm.envBool("USE_EXISTING_CONTRACTS");
 
-        vm.startBroadcast(deployerPrivateKey);
+        vm.startBroadcast{gas: 8_000_000}(deployerPrivateKey);
 
         // Declare variables
         BCO2Governance governance;
@@ -112,6 +112,7 @@ contract Deploy is Script {
         console.log("ProjectManager:", address(projectManager));
         console.log("BCO2Factory:", address(bco2Factory));
         console.log("ProjectFactory:", address(projectFactory));
+        console.log("Marketplace:", address(marketplace));
         console.log("Using RUSD:", rusd);
 
         vm.stopBroadcast();

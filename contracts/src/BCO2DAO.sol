@@ -36,6 +36,7 @@ contract BCO2DAO is ReentrancyGuard {
     mapping(uint256 => WithdrawalRequest) public withdrawalRequests;
     mapping(address => mapping(address => uint256[])) public withdrawalRequestIDsOfProposerForProject;
     mapping(address => uint256[]) public withdrawalRequestIDsOfProposer;
+    mapping(address => uint256[]) public withdrawalRequestIDsPerProject;
     mapping(address => uint256) public projectBalances;
     mapping(address => uint256) public totalWithdrawnFromProject;
     uint256 public requestCounter;
@@ -123,6 +124,7 @@ contract BCO2DAO is ReentrancyGuard {
 
         withdrawalRequestIDsOfProposerForProject[msg.sender][projectContract].push(requestCounter);
         withdrawalRequestIDsOfProposer[msg.sender].push(requestCounter);
+        withdrawalRequestIDsPerProject[projectContract].push(requestCounter);
 
         emit WithdrawalRequested(requestCounter, projectContract, msg.sender, amount);
 

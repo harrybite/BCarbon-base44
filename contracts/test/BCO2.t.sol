@@ -81,6 +81,7 @@ contract BCO2Test is Test {
             projectFactory.createAndListProject{gas: 50000000}(
                 1 ether,
                 true,
+                true,
                 0,
                 validVintage,
                 0,
@@ -95,21 +96,32 @@ contract BCO2Test is Test {
         console.log("Retired URI:", bco2.uri(bco2.unit_tCO2_RETIRED_TOKEN_ID()));
 
         vm.warp(block.timestamp + 1800);
+        
+        vm.startPrank(owner);
+        console.log("approving Presale and issuing presale credits");
+        governance.approvePresaleAndIssuePresaleCredits(address(bco2), 500000);
+        vm.stopPrank();
+
+        vm.startPrank(user);
+        console.log("Minting BCO2 token....");
+        rusd.approve(address(bco2), type(uint256).max);
+        bco2.mintWithRUSD(10);
+        console.log("User BCO2 Balance:", bco2.balanceOf(user, 1));
+        vm.stopPrank();
 
         vm.startPrank(vvb);
         governance.validateProject(address(bco2));
         governance.verifyProject(address(bco2));
         vm.stopPrank();
 
-        
         vm.startPrank(owner);
         console.log("approving and issuing credits");
-        governance.approveAndIssueCredits{gas: 50000000}(address(bco2), 1000000);
+        governance.approveAndIssueCredits{gas: 50000000}(address(bco2), 500000);
         vm.stopPrank();
 
         ProjectData.Project memory project = projectData.getProjectDetails(address(bco2));
         console.log("validation status:", project.isValidated, project.isVerified);
-        console.log("credits issued:", project.credits);
+        console.log("Total credits issued:", project.credits);
         console.log("CertificateId issued:", project.certificateId);
 
         // User minting
@@ -199,7 +211,7 @@ contract BCO2Test is Test {
         vm.startPrank(user); // ← Switch sender to user
 
         // Assert initial balances
-        assertEq(bco2.balanceOf(user, 1), 10);
+        assertEq(bco2.balanceOf(user, 1), 20);
 
         console.log("Approving bCO2 for listing");
         bco2.setApprovalForAll(address(marketplace), true);

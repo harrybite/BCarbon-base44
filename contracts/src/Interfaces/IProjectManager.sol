@@ -22,6 +22,7 @@ interface IProjectManager {
     function submitComment(address projectContract, string calldata comment) external;
     function setValidationStatus(address projectContract) external;
     function setVerificationStatus(address projectContract) external;
-    function issueCredits(address projectContract, uint256 amount, string calldata certificateId) external;
+    function approvePresale(address projectContract, uint256 amount) external;
+    function issueFinalApproval(address projectContract, uint256 amount, string memory certificateId) external;
     function removeProject(address projectContract) external;
 }

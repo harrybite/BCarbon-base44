@@ -74,9 +74,14 @@ contract ProjectManager is Ownable, Pausable, ReentrancyGuard {
         projectData._setVerificationStatus(projectContract, true);
     }
 
-    function issueCredits(address projectContract, uint256 amount, string memory certificateId) external {
+    function approvePresale(address projectContract, uint256 amount) external {
         if (msg.sender != address(governance)) revert("Only governance");
-        projectData._issueCredits(projectContract, amount, certificateId);
+        projectData._approvePresale(projectContract, amount);
+    }
+
+    function issueFinalApproval(address projectContract, uint256 amount, string memory certificateId) external {
+        if (msg.sender != address(governance)) revert("Only governance");
+        projectData._finalApproval(projectContract, amount, certificateId);
     }
 
     function removeProject(address projectContract) external {

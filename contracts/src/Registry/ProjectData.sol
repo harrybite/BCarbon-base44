@@ -36,6 +36,8 @@ contract ProjectData is Ownable {
     mapping(address => Project) public projects;
     mapping(address => bool) public isListed;
     mapping(address => bool) public isApproved;
+    mapping(address => bool) private isListedForPresale;
+    mapping(address => uint256) private approvedPresaleAmount;
     mapping(address => mapping(address => bool)) public authorizedProjectOwners;
     mapping(address => address[]) public userListedProjects;
     address[] public listedProjects;
@@ -66,6 +68,7 @@ contract ProjectData is Ownable {
 
     // Events
     event ProjectListed(
+        bool isPresale,
         address indexed projectContract,
         address proposer,
         MethodologyUtils.Methodology methodology,
@@ -78,11 +81,9 @@ contract ProjectData is Ownable {
     );
     event ProjectValidated(address indexed projectContract);
     event ProjectVerified(address indexed projectContract);
-    event CreditsIssued(
-        address indexed projectContract,
-        uint256 amount,
-        string certificateId
-    );
+    event ProjectApproved(address indexed projectContract, uint256 amount, string certificateId);
+    event CreditsIssued(address indexed projectContract, uint256 amount);
+    event PresaleApproved(address indexed projectContract, uint256 amount);
     event ProjectRemoved(address indexed projectContract);
     event ManagerUpdated(address indexed manager);
     event FactoryUpdated(address indexed factory);
@@ -173,6 +174,7 @@ contract ProjectData is Ownable {
     }
 
     function _registerProject(
+        bool _isPresale,
         string memory _projectId,
         address _projectContract,
         uint8 _methodologyIndex,
@@ -201,12 +203,15 @@ contract ProjectData is Ownable {
         project.vintageTimestamp = _vintageTimestamp;
         project.commentPeriodEnd = block.timestamp + _commentPeriod;
 
+        isListedForPresale[_projectContract] = _isPresale;
+
         listedProjects.push(_projectContract);
         isListed[_projectContract] = true;
         authorizedProjectOwners[_projectContract][_proposer] = true;
         userListedProjects[_proposer].push(_projectContract);
 
         emit ProjectListed(
+            _isPresale,
             _projectContract,
             _proposer,
             project.methodology,
@@ -256,22 +261,48 @@ contract ProjectData is Ownable {
 
     function _issueCredits(
         address projectContract,
+        uint256 amount
+    ) private {
+        Project storage project = projects[projectContract];
+
+        project.credits += amount;
+        emit CreditsIssued(projectContract, amount);
+    }
+
+    function _finalApproval(
+        address projectContract,
         uint256 amount,
         string memory certificateId
     ) external onlyManager {
         Project storage project = projects[projectContract];
         if (project.projectContract == address(0)) revert("Project not listed");
         if (!project.isVerified) revert("Project not verified");
-        if (project.credits != 0 || isApproved[projectContract])
-            revert("Credits already issued");
+        if (isApproved[projectContract]) revert("Project already approved");
         if (bytes(certificateId).length == 0) revert("Empty certificate ID");
-        if (amount == 0) revert("Invalid amount");
+        if (amount == 0 && project.emissionReductions < (approvedPresaleAmount[projectContract]+amount)) revert("Invalid amount");
 
-        project.credits = amount;
+        _issueCredits(projectContract, amount);
+
         project.certificateId = certificateId;
         isApproved[projectContract] = true;
         approvedProjects.push(projectContract);
-        emit CreditsIssued(projectContract, amount, certificateId);
+        emit ProjectApproved(projectContract, amount, certificateId);
+    }
+
+    function _approvePresale(
+        address projectContract,
+        uint256 presaleAmount
+    ) external onlyManager {
+        Project storage project = projects[projectContract];
+        if (project.projectContract == address(0)) revert("Project not listed");
+        if (!isListedForPresale[projectContract]) revert ("Project is not eligible for a presale");
+        if (approvedPresaleAmount[projectContract] != 0) revert("Presale already approved");
+        if (presaleAmount == 0 && presaleAmount > (project.emissionReductions * 50 / 100)) revert("Invalid amount, can only approve max 50% of Emission Reduction goal as presale credits");
+
+        approvedPresaleAmount[projectContract] = presaleAmount;
+
+        _issueCredits(projectContract, presaleAmount);
+        emit PresaleApproved(projectContract, presaleAmount);
     }
 
     function _removeProject(address projectContract) external onlyManager {
@@ -320,6 +351,12 @@ contract ProjectData is Ownable {
         if (project.projectContract == address(0)) revert("Project not listed");
         return project.comments;
     }
+
+    function getPresaleStatus(address projectContract) external view returns (bool listed, uint256 amount) {
+        listed = isListedForPresale[projectContract];
+        amount = approvedPresaleAmount[projectContract];
+    }
+
 
     function isProjectApproved(address projectContract)
         external

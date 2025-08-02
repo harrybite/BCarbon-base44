@@ -21,6 +21,7 @@ interface IProjectData {
     }
 
     function _registerProject(
+        bool _isPresale,
         string memory _projectId,
         address _projectContract,
         uint8 _methodologyIndex,
@@ -41,7 +42,12 @@ interface IProjectData {
 
     function _setVerificationStatus(address projectContract, bool status) external;
 
-    function _issueCredits(
+     function _approvePresale(
+        address projectContract,
+        uint256 presaleAmount
+    ) external;
+
+    function _finalApproval(
         address projectContract,
         uint256 amount,
         string memory certificateId
@@ -54,6 +60,8 @@ interface IProjectData {
     function getProjectDetails(address projectContract) external view returns (Project memory);
 
     function getListedProjects() external view returns (address[] memory);
+
+    function getPresaleStatus(address projectContract) external view returns (bool listed, uint256 amount);
 
     function getNextBaseProjectId() external returns (string memory, uint256);
 

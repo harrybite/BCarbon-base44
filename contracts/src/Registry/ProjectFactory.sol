@@ -99,6 +99,7 @@ contract ProjectFactory is Ownable, Pausable, ReentrancyGuard {
 
     function createAndListProject(
         uint256 mintPrice,
+        bool isPresale,
         bool defaultIsPermanent,
         uint256 defaultValidity,
         uint256 defaultVintage,
@@ -132,6 +133,7 @@ contract ProjectFactory is Ownable, Pausable, ReentrancyGuard {
         uint256 currentCommentPeriod = projectManager.commentPeriod();
 
         projectData._registerProject(
+            isPresale,
             baseId,
             projectContract,
             methodologyIndex,

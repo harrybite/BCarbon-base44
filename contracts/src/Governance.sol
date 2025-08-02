@@ -54,6 +54,7 @@ contract BCO2Governance is Ownable, Pausable {
     event VVBRemoved(address vvb);
     event ProjectValidated(address indexed projectContract, address vvb);
     event ProjectVerified(address indexed projectContract, address vvb);
+    event PresaleCreditsIssued(address indexed projectContract, uint256 amount);
     event CreditsIssued(address indexed projectContract, uint256 amount);
     event ProjectRemoved(address indexed projectContract);
 
@@ -138,13 +139,28 @@ contract BCO2Governance is Ownable, Pausable {
         emit ProjectVerified(projectContract, msg.sender);
     }
 
+    function approvePresaleAndIssuePresaleCredits(
+        address projectContract,
+        uint256 amount
+    ) external onlyOwner whenNotPaused returns (bool) {
+        ProjectData.Project memory project = projectData.getProjectDetails(projectContract);
+        if (amount == 0 || amount > (project.emissionReductions / 2)) revert InvalidCreditAmount();
+
+        projectManager.approvePresale(projectContract, amount);
+
+        totalCreditsIssued[projectContract] += amount;
+
+        emit PresaleCreditsIssued(projectContract, amount);
+
+        return true;
+    }
+
     function approveAndIssueCredits(
         address projectContract,
         uint256 amount
     ) external onlyOwner whenNotPaused returns (bool) {
         ProjectData.Project memory project = projectData.getProjectDetails(projectContract);
-        if (!project.isVerified && !project.isValidated) revert ProjectNotValidated();
-        if (project.credits != 0) revert CreditsAlreadyIssued();
+        if (!project.isVerified || !project.isValidated) revert ProjectNotValidated();
         if (amount == 0 || amount > project.emissionReductions) revert InvalidCreditAmount();
 
         (string memory baseCertificateId, ) = projectData.getNextBaseCertificateId(projectContract);
@@ -152,10 +168,10 @@ contract BCO2Governance is Ownable, Pausable {
         if (bytes(baseCertificateId).length == 0) revert EmptyCertificateId();
         if (_usedCertificateIds[baseCertificateId]) revert CertificateIdAlreadyUsed();
         IBCO2Certificate(projectContract)._setCertificateId(baseCertificateId);
-        projectManager.issueCredits(projectContract, amount, baseCertificateId);
+        projectManager.issueFinalApproval(projectContract, amount, baseCertificateId);
 
         _usedCertificateIds[baseCertificateId] = true;
-        totalCreditsIssued[projectContract] = amount;
+        totalCreditsIssued[projectContract] += amount;
 
         emit CreditsIssued(projectContract, amount);
 
