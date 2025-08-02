@@ -1,12 +1,31 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.20;
 
-import "./ProjectManager.sol";
+import "@openzeppelin/contracts/access/Ownable.sol";
+import "@openzeppelin/contracts/utils/Pausable.sol";
+import "@openzeppelin/contracts/utils/ReentrancyGuard.sol";
+import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
+import "../Interfaces/IProjectData.sol";
+import "../Interfaces/IProjectManager.sol";
+import "../Interfaces/IBCO2Factory.sol";
+
+interface IBCO2Config {
+    function configParameters(
+        uint256 _mintPrice,
+        bool _defaultIsPermanent,
+        uint256 _defaultValidity,
+        uint256 _defaultVintage,
+        string memory _nonRetiredURI,
+        string memory _retiredURI
+    ) external;
+}
 
 contract ProjectFactory is Ownable, Pausable, ReentrancyGuard {
-    ProjectData public projectData;
-    ProjectManager public projectManager;
+    IProjectData public projectData;
+    IProjectManager public projectManager;
+    IBCO2Factory public bco2Factory;
     address public governance;
+    address public bco2DAO;
     IERC20 public RUSD;
 
     // Events
@@ -15,22 +34,28 @@ contract ProjectFactory is Ownable, Pausable, ReentrancyGuard {
     event ProjectDataUpdated(address indexed newProjectData);
     event ProjectManagerUpdated(address indexed newProjectManager);
     event GovernanceUpdated(address indexed newGovernance);
+    event BCO2FactoryUpdated(address indexed newBCO2Factory);
 
     constructor(
         address _projectData,
         address _projectManager,
+        address _bco2Factory,
         address _governance,
-        address _RUSD,
-        address initialOwner
-    ) Ownable(initialOwner) {
+        address _bco2DAO,
+        address _RUSD
+    ) Ownable(msg.sender) {
         if (_projectData == address(0)) revert("Invalid ProjectData address");
         if (_projectManager == address(0)) revert("Invalid ProjectManager address");
-        if (_governance == address(0)) revert ("Invalid Governance address");
+        if (_bco2Factory == address(0)) revert("Invalid BCO2Factory address");
+        if (_governance == address(0)) revert("Invalid Governance address");
+        if (_bco2DAO == address(0)) revert("Invalid DAO address");
         if (_RUSD == address(0)) revert("Invalid RUSD address");
-        if (initialOwner == address(0)) revert("Invalid owner address");
-        projectData = ProjectData(_projectData);
-        projectManager = ProjectManager(_projectManager);
+        // if (initialOwner == address(0)) revert("Invalid owner address");
+        projectData = IProjectData(_projectData);
+        projectManager = IProjectManager(_projectManager);
+        bco2Factory = IBCO2Factory(_bco2Factory);
         governance = _governance;
+        bco2DAO = _bco2DAO;
         RUSD = IERC20(_RUSD);
     }
 
@@ -50,19 +75,31 @@ contract ProjectFactory is Ownable, Pausable, ReentrancyGuard {
 
     function updateProjectData(address _newProjectData) external onlyOwner {
         if (_newProjectData == address(0)) revert("Invalid ProjectData address");
-        projectData = ProjectData(_newProjectData);
+        projectData = IProjectData(_newProjectData);
         emit ProjectDataUpdated(_newProjectData);
     }
 
+    function updateProjectManager(address _newProjectManager) external onlyOwner {
+        if (_newProjectManager == address(0)) revert("Invalid ProjectManager address");
+        projectManager = IProjectManager(_newProjectManager);
+        emit ProjectManagerUpdated(_newProjectManager);
+    }
+
     function updateGovernance(address _newGovernance) external onlyOwner {
-        if (_newGovernance == address(0)) revert("Invalid ProjectData address");
-        projectData = ProjectData(_newGovernance);
+        if (_newGovernance == address(0)) revert("Invalid Governance address");
+        governance = _newGovernance;
         emit GovernanceUpdated(_newGovernance);
+    }
+
+    function updateBCO2Factory(address _newBCO2Factory) external onlyOwner {
+        if (_newBCO2Factory == address(0)) revert("Invalid BCO2Factory address");
+        bco2Factory = IBCO2Factory(_newBCO2Factory);
+        emit BCO2FactoryUpdated(_newBCO2Factory);
     }
 
     function createAndListProject(
         uint256 mintPrice,
-        address treasury,
+        bool isPresale,
         bool defaultIsPermanent,
         uint256 defaultValidity,
         uint256 defaultVintage,
@@ -71,13 +108,9 @@ contract ProjectFactory is Ownable, Pausable, ReentrancyGuard {
         uint256 emissionReductions,
         string memory projectDetails
     ) external whenNotPaused nonReentrant returns (address projectContract) {
-        if (treasury == address(0)) revert("Invalid treasury address");
         if ((defaultIsPermanent && defaultValidity != 0) || (!defaultIsPermanent && defaultValidity == 0)) {
             revert("Invalid validity");
         }
-        // if (defaultVintage == 0 || defaultVintage < block.timestamp + 90 days) {
-        //     revert("Invalid vintage");
-        // }
         if (emissionReductions == 0 || emissionReductions > 1_000_000_000) {
             revert("Invalid emission reductions");
         }
@@ -86,35 +119,40 @@ contract ProjectFactory is Ownable, Pausable, ReentrancyGuard {
 
         (string memory baseId, ) = projectData.getNextBaseProjectId();
 
-        try new BCO2(
+        projectContract = bco2Factory.createBCO2(
             baseId,
             msg.sender,
-            mintPrice,
-            defaultIsPermanent,
-            defaultValidity,
-            defaultVintage,
             governance,
             address(projectData),
-            RUSD,
+            bco2DAO,
+            address(RUSD),
             methodologyIndex,
             location
-        ) returns (BCO2 deployed) {
-            projectContract = address(deployed);
-        } catch {
-            revert("Failed to create BCO2 contract");
-        }
+        );
 
-        uint256 currentCommentPeriod = ProjectManager(projectManager).commentPeriod();
+        uint256 currentCommentPeriod = projectManager.commentPeriod();
 
         projectData._registerProject(
+            isPresale,
             baseId,
             projectContract,
             methodologyIndex,
             emissionReductions,
             projectDetails,
-            msg.sender,
+            msg.sender
+        );
+
+        projectData._setDefaultVintage(projectContract, defaultVintage);
+
+        projectData._setCommentDeadline(projectContract, currentCommentPeriod);
+
+        IBCO2Config(projectContract).configParameters(
+            mintPrice,
+            defaultIsPermanent,
+            defaultValidity,
             defaultVintage,
-            currentCommentPeriod
+            "https://ipfs.io/ipfs/bafkreighdb436wagnvm7nnesxqcag72hkjgh62bwvc5r5tigctssn3tbw4?filename=1.json",
+            "https://ipfs.io/ipfs/bafkreih7bu4stqoh76fb2unhzdj6ck5vm4vozmjgkox5q7lvftyknpsudi?filename=2.json"
         );
 
         emit ProjectCreated(projectContract, msg.sender);
