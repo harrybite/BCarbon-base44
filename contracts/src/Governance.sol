@@ -1,18 +1,28 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.20;
 
-import "./Registry/ProjectManager.sol";
+import "@openzeppelin/contracts/access/Ownable.sol";
+import "@openzeppelin/contracts/utils/Pausable.sol";
+import "./Registry/ProjectData.sol";
+import "./Interfaces/IProjectManager.sol";
+import "./Interfaces/IBCO2DAO.sol";
 
-interface IBCO2 {
-    function _setCertificateId(string memory certificateId) external;
+interface IBCO2Certificate {
+    function _setCertificateId(string memory _certificateId)
+        external;
 }
 
 contract BCO2Governance is Ownable, Pausable {
     // State variables for split contracts
     ProjectData public projectData;
-    ProjectManager public projectManager;
+    IProjectManager public projectManager;
+    IBCO2DAO public bco2DAO;
 
     bool public initialized;
+
+    uint8 public authorizedVVBCounter;
+
+    address[] public listOfAuthorizeVVBs;
 
     // Mappings
     mapping(address => bool) public authorizedVVBs;
@@ -39,77 +49,82 @@ contract BCO2Governance is Ownable, Pausable {
     event Initialized();
     event ProjectDataUpdated(address indexed newProjectData);
     event ProjectManagerUpdated(address indexed newProjectManager);
+    event BCO2DAOUpdated(address indexed newBCO2DAO);
     event VVBAdded(address vvb);
     event VVBRemoved(address vvb);
     event ProjectValidated(address indexed projectContract, address vvb);
     event ProjectVerified(address indexed projectContract, address vvb);
+    event PresaleCreditsIssued(address indexed projectContract, uint256 amount);
     event CreditsIssued(address indexed projectContract, uint256 amount);
     event ProjectRemoved(address indexed projectContract);
 
-    /// @notice Constructor to initialize the contract with the owner
-    /// @param initialOwner The address of the initial owner
-    constructor(address initialOwner) Ownable(initialOwner) {}
+    constructor() Ownable(msg.sender) {}
 
-    /// @notice Pauses the contract, disabling governance actions
     function pause() external onlyOwner {
         _pause();
     }
 
-    /// @notice Unpauses the contract, enabling governance actions
     function unpause() external onlyOwner {
         _unpause();
     }
 
-    /// @notice Initializes the contract with ProjectData and ProjectManager addresses
-    /// @param _projectData The address of the ProjectData contract
-    /// @param _projectManager The address of the ProjectManager contract
-    function initialize(address _projectData, address _projectManager) external onlyOwner {
+    function initialize(address _projectData, address _projectManager, address _bco2DAO) external onlyOwner {
         require(!initialized, "Already initialized");
         require(_projectData != address(0), "Invalid ProjectData address");
         require(_projectManager != address(0), "Invalid ProjectManager address");
         projectData = ProjectData(_projectData);
-        projectManager = ProjectManager(_projectManager);
+        projectManager = IProjectManager(_projectManager);
+        bco2DAO = IBCO2DAO(_bco2DAO);
         initialized = true;
         emit Initialized();
     }
 
-    /// @notice Updates the ProjectData address
-    /// @param _newProjectData The new address of the ProjectData contract
     function updateProjectData(address _newProjectData) external onlyOwner {
         require(_newProjectData != address(0), "Invalid ProjectData address");
         projectData = ProjectData(_newProjectData);
         emit ProjectDataUpdated(_newProjectData);
     }
 
-    /// @notice Updates the ProjectManager address
-    /// @param _newProjectManager The new address of the ProjectManager contract
     function updateProjectManager(address _newProjectManager) external onlyOwner {
         require(_newProjectManager != address(0), "Invalid ProjectManager address");
-        projectManager = ProjectManager(_newProjectManager);
+        projectManager = IProjectManager(_newProjectManager);
         emit ProjectManagerUpdated(_newProjectManager);
     }
 
-    /// @notice Adds an authorized VVB
-    /// @param vvb The address of the VVB to add
+    function updateBCO2DAO(address _newBCO2DAO) external onlyOwner {
+        require(_newBCO2DAO != address(0), "Invalid BCO2DAO address");
+        bco2DAO = IBCO2DAO(_newBCO2DAO);
+        emit BCO2DAOUpdated(_newBCO2DAO);
+    }
+
     function addVVB(address vvb) external onlyOwner {
         if (!initialized) revert notInitialized();
         if (vvb == address(0)) revert InvalidVVBAddress();
         if (authorizedVVBs[vvb]) revert VVBAlreadyAuthorized();
         authorizedVVBs[vvb] = true;
+        listOfAuthorizeVVBs.push(vvb);
+        authorizedVVBCounter++;
         emit VVBAdded(vvb);
     }
 
-    /// @notice Removes an authorized VVB
-    /// @param vvb The address of the VVB to remove
     function removeVVB(address vvb) external onlyOwner {
         if (!initialized) revert notInitialized();
         if (!authorizedVVBs[vvb]) revert VVBNotAuthorized();
+        
         authorizedVVBs[vvb] = false;
+        authorizedVVBCounter--;
+
+        for (uint256 i = 0; i < listOfAuthorizeVVBs.length; i++) {
+            if (listOfAuthorizeVVBs[i] == vvb) {
+                listOfAuthorizeVVBs[i] = listOfAuthorizeVVBs[listOfAuthorizeVVBs.length - 1];
+                listOfAuthorizeVVBs.pop();
+                break;
+            }
+        }
+
         emit VVBRemoved(vvb);
     }
 
-    /// @notice Validates a project's design
-    /// @param projectContract The address of the project contract
     function validateProject(address projectContract) external whenNotPaused {
         if (!initialized) revert notInitialized();
         if (!authorizedVVBs[msg.sender]) revert VVBNotAuthorized();
@@ -117,8 +132,6 @@ contract BCO2Governance is Ownable, Pausable {
         emit ProjectValidated(projectContract, msg.sender);
     }
 
-    /// @notice Verifies a project's emission reductions
-    /// @param projectContract The address of the project contract
     function verifyProject(address projectContract) external whenNotPaused {
         if (!initialized) revert notInitialized();
         if (!authorizedVVBs[msg.sender]) revert VVBNotAuthorized();
@@ -126,34 +139,57 @@ contract BCO2Governance is Ownable, Pausable {
         emit ProjectVerified(projectContract, msg.sender);
     }
 
-    /// @notice Approves a project and issues credits
-    /// @param projectContract The address of the project contract
-    /// @param amount The amount of credits to issue
+    function approvePresaleAndIssuePresaleCredits(
+        address projectContract,
+        uint256 amount
+    ) external onlyOwner whenNotPaused returns (bool) {
+        ProjectData.Project memory project = projectData.getProjectDetails(projectContract);
+        if (amount == 0 || amount > (project.emissionReductions / 2)) revert InvalidCreditAmount();
+
+        projectManager.approvePresale(projectContract, amount);
+
+        totalCreditsIssued[projectContract] += amount;
+
+        emit PresaleCreditsIssued(projectContract, amount);
+
+        return true;
+    }
+
     function approveAndIssueCredits(
         address projectContract,
         uint256 amount
-    ) external onlyOwner whenNotPaused {
+    ) external onlyOwner whenNotPaused returns (bool) {
         ProjectData.Project memory project = projectData.getProjectDetails(projectContract);
         if (!project.isVerified || !project.isValidated) revert ProjectNotValidated();
-        if (project.credits != 0) revert CreditsAlreadyIssued();
         if (amount == 0 || amount > project.emissionReductions) revert InvalidCreditAmount();
 
-        // Generate certificate ID from ProjectData
         (string memory baseCertificateId, ) = projectData.getNextBaseCertificateId(projectContract);
         
         if (bytes(baseCertificateId).length == 0) revert EmptyCertificateId();
         if (_usedCertificateIds[baseCertificateId]) revert CertificateIdAlreadyUsed();
+        IBCO2Certificate(projectContract)._setCertificateId(baseCertificateId);
+        projectManager.issueFinalApproval(projectContract, amount, baseCertificateId);
 
         _usedCertificateIds[baseCertificateId] = true;
-        IBCO2(projectContract)._setCertificateId(baseCertificateId);
-        projectManager.issueCredits(projectContract, amount, baseCertificateId);
-        totalCreditsIssued[projectContract] = amount;
+        totalCreditsIssued[projectContract] += amount;
 
         emit CreditsIssued(projectContract, amount);
+
+        return true;
     }
 
-    /// @notice Rejects and removes a project
-    /// @param projectContract The address of the project contract
+    function extendVotingPeriod(uint256 requestID) external onlyOwner {
+        bco2DAO.extendVotingPeriod(requestID);
+    }
+
+    function executeApprovalForWithdrawal(uint256 requestID, bool approve, uint256 approvedAmount) external onlyOwner {
+        bco2DAO.governanceDecision(requestID, approve, approvedAmount);
+    }
+
+    function setVotingDuration(uint256 newDuration) external onlyOwner {
+        bco2DAO.setVotingDuration(newDuration);
+    }
+
     function rejectAndRemoveProject(address projectContract) external onlyOwner {
         if (!initialized) revert notInitialized();
         ProjectData.Project memory project = projectData.getProjectDetails(projectContract);
@@ -162,17 +198,16 @@ contract BCO2Governance is Ownable, Pausable {
         emit ProjectRemoved(projectContract);
     }
 
-    /// @notice Gets all listed projects from ProjectData
-    /// @return An array of listed project addresses
     function getListedProjects() external view returns (address[] memory) {
         return projectData.getListedProjects();
     }
 
-    /// @notice Checks if an address is an authorized VVB
-    /// @param _vvb The address to check
-    /// @return True if the address is an authorized VVB
     function checkAuthorizedVVBs(address _vvb) external view returns (bool) {
         if (_vvb == address(0)) revert InvalidVVBAddress();
         return authorizedVVBs[_vvb];
+    }
+
+    function getAuthorizedVVBs() external view returns(address[] memory) {
+        return listOfAuthorizeVVBs;
     }
 }

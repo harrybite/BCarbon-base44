@@ -9,11 +9,13 @@ import "../src/Registry/ProjectFactory.sol";
 import "../src/Registry/ProjectData.sol";
 import "../src/Registry/ProjectManager.sol";
 import "../src/Marketplace.sol";
+import "../src/BCO2DAO.sol";
 
 contract BCO2Test is Test {
     BCO2 bco2;
     MockRUSD rusd;
     BCO2Governance governance;
+    BCO2DAO bco2DAO;
     ProjectData projectData;
     ProjectManager projectManager;
     ProjectFactory projectFactory;
@@ -24,6 +26,9 @@ contract BCO2Test is Test {
     address owner = address(this);
     bytes32 public constant VINTAGE = keccak256("Vintage");
 
+    
+    uint256 validVintage = 1752282049;
+
     function setUp() public {
         rusd = new MockRUSD();
         governance = new BCO2Governance(owner);
@@ -33,10 +38,12 @@ contract BCO2Test is Test {
             address(governance),
             owner
         );
+        bco2DAO = new BCO2DAO(address(rusd), address(projectData), address(projectManager), address(governance));
         projectFactory = new ProjectFactory(
             address(projectData),
             address(projectManager),
             address(governance),
+            address(bco2DAO),
             address(rusd),
             owner
         );
@@ -46,28 +53,30 @@ contract BCO2Test is Test {
             owner
         );
 
-        // bco2 = new BCO2(
-        //     "MAAL-0001", // projectId
-        //     owner, // initialOwner
-        //     1 ether, // mintPrice
-        //     true, // isPermanent
-        //     100, // validity
-        //     validVintage, // vintage
-        //     address(governance), // governance
-        //     address(projectData), // registry
-        //     IERC20(address(rusd)), // RUSD token
-        //     0, // methodologyId
-        //     "Kenya" // location
-        // );
+        
+        vm.warp(validVintage + 1);
 
-        governance.initialize(address(projectData), address(projectManager));
+        bco2 = new BCO2(
+            "MAAL-0001", // projectId
+            owner, // initialOwner
+            1 ether, // mintPrice
+            true, // isPermanent
+            100, // validity
+            validVintage, // vintage
+            address(governance), // governance
+            address(projectData), // registry
+            address(bco2DAO), // BCO2 DAO
+            IERC20(address(rusd)), // RUSD token
+            0, // methodologyId
+            "Kenya" // location
+        );
+
+        governance.initialize(address(projectData), address(projectManager), address(bco2DAO));
         projectData.setManager(address(projectManager));
         projectData.setFactory(address(projectFactory));
         governance.addVVB(vvb);
 
         rusd.setBalance(user, 10000 ether);
-        uint256 validVintage = 1752282049;
-        vm.warp(validVintage + 1);
 
         vm.startPrank(user);
         bco2 = BCO2(
@@ -117,7 +126,7 @@ contract BCO2Test is Test {
         bco2.setApprovalForAll(address(marketplace), true);
 
         // Check listing details
-        marketplace.createListing(0x677f34F9968d4Be4933A108C15497584AD755626, 1, 5, 10000000000000000000);
+        marketplace.createListing(address(bco2), 1, 5, 10000000000000000000);
         (address seller, , , , , bool active) = marketplace.listings(0);
         console.log("Listing Details:", seller, active);
 

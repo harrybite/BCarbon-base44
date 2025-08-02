@@ -1,34 +1,31 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.20;
 
+import "@openzeppelin/contracts/access/Ownable.sol";
 import "@openzeppelin/contracts/utils/Pausable.sol";
-import "./ProjectData.sol";
-
-interface IBCO2Governance {
-    /// @notice Checks if an address is an authorized VVB
-    /// @param _vvb The address to check
-    /// @return True if the address is an authorized VVB
-    function checkAuthorizedVVBs(address _vvb) external view returns (bool);
-}
+import "@openzeppelin/contracts/utils/ReentrancyGuard.sol";
+import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
+import "../Interfaces/IProjectData.sol";
+import "../Interfaces/IBCO2Governance.sol";
 
 contract ProjectManager is Ownable, Pausable, ReentrancyGuard {
-    ProjectData public projectData;
+    IProjectData public projectData;
     IBCO2Governance public governance;
 
     uint256 private constant MIN_COMMENT_PERIOD = 1 days;
     uint256 private constant MAX_COMMENT_PERIOD = 90 days;
-    uint256 public commentPeriod = 900; // Default for testing
+    uint256 public commentPeriod = 90 days; // Default for testing
 
     // Events
     event CommentPeriodUpdated(uint256 newPeriod);
     event GovernanceUpdated(address indexed newGovernance);
     event ProjectDataUpdated(address indexed newProjectData);
 
-    constructor(address _projectData, address _governance, address initialOwner) Ownable(initialOwner) {
+    constructor(address _projectData, address _governance) Ownable(msg.sender) {
         if (_projectData == address(0)) revert("Invalid ProjectData address");
         if (_governance == address(0)) revert("Invalid governance address");
-        if (initialOwner == address(0)) revert("Invalid owner address");
-        projectData = ProjectData(_projectData);
+        // if (initialOwner == address(0)) revert("Invalid owner address");
+        projectData = IProjectData(_projectData);
         governance = IBCO2Governance(_governance);
     }
 
@@ -56,7 +53,7 @@ contract ProjectManager is Ownable, Pausable, ReentrancyGuard {
 
     function updateProjectData(address _newProjectData) external onlyOwner {
         if (_newProjectData == address(0)) revert("Invalid ProjectData address");
-        projectData = ProjectData(_newProjectData);
+        projectData = IProjectData(_newProjectData);
         emit ProjectDataUpdated(_newProjectData);
     }
 
@@ -77,9 +74,14 @@ contract ProjectManager is Ownable, Pausable, ReentrancyGuard {
         projectData._setVerificationStatus(projectContract, true);
     }
 
-    function issueCredits(address projectContract, uint256 amount, string memory certificateId) external {
+    function approvePresale(address projectContract, uint256 amount) external {
         if (msg.sender != address(governance)) revert("Only governance");
-        projectData._issueCredits(projectContract, amount, certificateId);
+        projectData._approvePresale(projectContract, amount);
+    }
+
+    function issueFinalApproval(address projectContract, uint256 amount, string memory certificateId) external {
+        if (msg.sender != address(governance)) revert("Only governance");
+        projectData._finalApproval(projectContract, amount, certificateId);
     }
 
     function removeProject(address projectContract) external {

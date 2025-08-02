@@ -2,7 +2,8 @@
 pragma solidity ^0.8.20;
 
 import "@openzeppelin/contracts/utils/Strings.sol";
-import "../BCO2.sol";
+import "@openzeppelin/contracts/access/Ownable.sol";
+import "../MethodologyUtils.sol";
 import "./BokkyPooBahsDateTimeLibrary.sol";
 
 contract ProjectData is Ownable {
@@ -35,6 +36,8 @@ contract ProjectData is Ownable {
     mapping(address => Project) public projects;
     mapping(address => bool) public isListed;
     mapping(address => bool) public isApproved;
+    mapping(address => bool) private isListedForPresale;
+    mapping(address => uint256) private approvedPresaleAmount;
     mapping(address => mapping(address => bool)) public authorizedProjectOwners;
     mapping(address => address[]) public userListedProjects;
     address[] public listedProjects;
@@ -65,6 +68,7 @@ contract ProjectData is Ownable {
 
     // Events
     event ProjectListed(
+        bool isPresale,
         address indexed projectContract,
         address proposer,
         MethodologyUtils.Methodology methodology,
@@ -77,20 +81,18 @@ contract ProjectData is Ownable {
     );
     event ProjectValidated(address indexed projectContract);
     event ProjectVerified(address indexed projectContract);
-    event CreditsIssued(
-        address indexed projectContract,
-        uint256 amount,
-        string certificateId
-    );
+    event ProjectApproved(address indexed projectContract, uint256 amount, string certificateId);
+    event CreditsIssued(address indexed projectContract, uint256 amount);
+    event PresaleApproved(address indexed projectContract, uint256 amount);
     event ProjectRemoved(address indexed projectContract);
     event ManagerUpdated(address indexed manager);
     event FactoryUpdated(address indexed factory);
     event GovernanceUpdated(address indexed governance);
 
-    constructor(address initialOwner, address _governance)
-        Ownable(initialOwner)
+    constructor(address _governance)
+        Ownable(msg.sender)
     {
-        if (initialOwner == address(0)) revert("Invalid address");
+        // if (initialOwner == address(0)) revert("Invalid address");
         if (_governance == address(0)) revert("Invalid address");
         governance = _governance;
     }
@@ -107,7 +109,7 @@ contract ProjectData is Ownable {
         emit FactoryUpdated(_factory);
     }
 
-    function setGovernance(address _governance) external onlyOwner {
+    function updateGovernance(address _governance) external onlyOwner {
         if (_governance == address(0) || _governance == governance) revert("Invalid address");
         governance = _governance;
         emit GovernanceUpdated(_governance);
@@ -162,7 +164,7 @@ contract ProjectData is Ownable {
         string memory baseCertificateId = string.concat(
             project.projectId,
             "-",
-            MethodologyUtils.getSymbol(project.methodology),
+            MethodologyUtils.getVersion(project.methodology),
             "-",
             Strings.toString(vintageYear),
             "-",
@@ -172,14 +174,13 @@ contract ProjectData is Ownable {
     }
 
     function _registerProject(
+        bool _isPresale,
         string memory _projectId,
         address _projectContract,
         uint8 _methodologyIndex,
         uint256 _emissionReductions,
         string memory _projectDetails,
-        address _proposer,
-        uint256 _vintageTimestamp,
-        uint256 _commentPeriod
+        address _proposer
     ) external onlyFactory {
         if (_projectContract == address(0)) revert("Invalid project contract");
         if (_methodologyIndex > uint8(type(MethodologyUtils.Methodology).max))
@@ -189,13 +190,6 @@ contract ProjectData is Ownable {
         if (bytes(_projectDetails).length == 0) revert("Empty project details");
         if (isListed[_projectContract]) revert("Project already listed");
 
-        // string memory fullProjectId = string.concat(
-        //     "MAAL-",
-        //     Strings.toString(counter),
-        //     "-",
-        //     Strings.toString(_methodologyIndex)
-        // );
-
         Project storage project = projects[_projectContract];
         project.projectContract = _projectContract;
         project.projectId = _projectId;
@@ -204,8 +198,8 @@ contract ProjectData is Ownable {
         project.projectDetails = _projectDetails;
         project.proposer = _proposer;
         project.listingTimestamp = block.timestamp;
-        project.vintageTimestamp = _vintageTimestamp;
-        project.commentPeriodEnd = block.timestamp + _commentPeriod;
+
+        isListedForPresale[_projectContract] = _isPresale;
 
         listedProjects.push(_projectContract);
         isListed[_projectContract] = true;
@@ -213,11 +207,22 @@ contract ProjectData is Ownable {
         userListedProjects[_proposer].push(_projectContract);
 
         emit ProjectListed(
+            _isPresale,
             _projectContract,
             _proposer,
             project.methodology,
             _emissionReductions
         );
+    }
+
+    function _setCommentDeadline(address _projectContract, uint256 _commentPeriod) external onlyFactory {
+        Project storage project = projects[_projectContract];
+        project.commentPeriodEnd = block.timestamp + _commentPeriod;
+    }
+
+    function _setDefaultVintage(address _projectContract, uint256 _defaultVintage) external onlyFactory {
+        Project storage project = projects[_projectContract];
+        project.vintageTimestamp = _defaultVintage;
     }
 
     function _addComment(
@@ -262,22 +267,48 @@ contract ProjectData is Ownable {
 
     function _issueCredits(
         address projectContract,
+        uint256 amount
+    ) private {
+        Project storage project = projects[projectContract];
+
+        project.credits += amount;
+        emit CreditsIssued(projectContract, amount);
+    }
+
+    function _finalApproval(
+        address projectContract,
         uint256 amount,
         string memory certificateId
     ) external onlyManager {
         Project storage project = projects[projectContract];
         if (project.projectContract == address(0)) revert("Project not listed");
         if (!project.isVerified) revert("Project not verified");
-        if (project.credits != 0 || isApproved[projectContract])
-            revert("Credits already issued");
+        if (isApproved[projectContract]) revert("Project already approved");
         if (bytes(certificateId).length == 0) revert("Empty certificate ID");
-        if (amount == 0) revert("Invalid amount");
+        if (amount == 0 && project.emissionReductions < (approvedPresaleAmount[projectContract]+amount)) revert("Invalid amount");
 
-        project.credits = amount;
+        _issueCredits(projectContract, amount);
+
         project.certificateId = certificateId;
         isApproved[projectContract] = true;
         approvedProjects.push(projectContract);
-        emit CreditsIssued(projectContract, amount, certificateId);
+        emit ProjectApproved(projectContract, amount, certificateId);
+    }
+
+    function _approvePresale(
+        address projectContract,
+        uint256 presaleAmount
+    ) external onlyManager {
+        Project storage project = projects[projectContract];
+        if (project.projectContract == address(0)) revert("Project not listed");
+        if (!isListedForPresale[projectContract]) revert ("Project is not eligible for a presale");
+        if (approvedPresaleAmount[projectContract] != 0) revert("Presale already approved");
+        if (presaleAmount == 0 && presaleAmount > (project.emissionReductions * 50 / 100)) revert("Invalid amount, can only approve max 50% of Emission Reduction goal as presale credits");
+
+        approvedPresaleAmount[projectContract] = presaleAmount;
+
+        _issueCredits(projectContract, presaleAmount);
+        emit PresaleApproved(projectContract, presaleAmount);
     }
 
     function _removeProject(address projectContract) external onlyManager {
@@ -326,6 +357,12 @@ contract ProjectData is Ownable {
         if (project.projectContract == address(0)) revert("Project not listed");
         return project.comments;
     }
+
+    function getPresaleStatus(address projectContract) external view returns (bool listed, uint256 amount) {
+        listed = isListedForPresale[projectContract];
+        amount = approvedPresaleAmount[projectContract];
+    }
+
 
     function isProjectApproved(address projectContract)
         external
