@@ -2,7 +2,8 @@
 pragma solidity ^0.8.20;
 
 import "@openzeppelin/contracts/utils/Strings.sol";
-import "../BCO2.sol";
+import "@openzeppelin/contracts/access/Ownable.sol";
+import "../MethodologyUtils.sol";
 import "./BokkyPooBahsDateTimeLibrary.sol";
 
 contract ProjectData is Ownable {
@@ -87,10 +88,10 @@ contract ProjectData is Ownable {
     event FactoryUpdated(address indexed factory);
     event GovernanceUpdated(address indexed governance);
 
-    constructor(address initialOwner, address _governance)
-        Ownable(initialOwner)
+    constructor(address _governance)
+        Ownable(msg.sender)
     {
-        if (initialOwner == address(0)) revert("Invalid address");
+        // if (initialOwner == address(0)) revert("Invalid address");
         if (_governance == address(0)) revert("Invalid address");
         governance = _governance;
     }
@@ -107,7 +108,7 @@ contract ProjectData is Ownable {
         emit FactoryUpdated(_factory);
     }
 
-    function setGovernance(address _governance) external onlyOwner {
+    function updateGovernance(address _governance) external onlyOwner {
         if (_governance == address(0) || _governance == governance) revert("Invalid address");
         governance = _governance;
         emit GovernanceUpdated(_governance);
@@ -162,7 +163,7 @@ contract ProjectData is Ownable {
         string memory baseCertificateId = string.concat(
             project.projectId,
             "-",
-            MethodologyUtils.getSymbol(project.methodology),
+            MethodologyUtils.getVersion(project.methodology),
             "-",
             Strings.toString(vintageYear),
             "-",

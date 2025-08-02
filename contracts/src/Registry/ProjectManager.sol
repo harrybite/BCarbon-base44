@@ -1,12 +1,15 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.20;
 
+import "@openzeppelin/contracts/access/Ownable.sol";
 import "@openzeppelin/contracts/utils/Pausable.sol";
-import "./ProjectData.sol";
-import "../IBCO2Governance.sol";
+import "@openzeppelin/contracts/utils/ReentrancyGuard.sol";
+import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
+import "../Interfaces/IProjectData.sol";
+import "../Interfaces/IBCO2Governance.sol";
 
 contract ProjectManager is Ownable, Pausable, ReentrancyGuard {
-    ProjectData public projectData;
+    IProjectData public projectData;
     IBCO2Governance public governance;
 
     uint256 private constant MIN_COMMENT_PERIOD = 1 days;
@@ -18,11 +21,11 @@ contract ProjectManager is Ownable, Pausable, ReentrancyGuard {
     event GovernanceUpdated(address indexed newGovernance);
     event ProjectDataUpdated(address indexed newProjectData);
 
-    constructor(address _projectData, address _governance, address initialOwner) Ownable(initialOwner) {
+    constructor(address _projectData, address _governance) Ownable(msg.sender) {
         if (_projectData == address(0)) revert("Invalid ProjectData address");
         if (_governance == address(0)) revert("Invalid governance address");
-        if (initialOwner == address(0)) revert("Invalid owner address");
-        projectData = ProjectData(_projectData);
+        // if (initialOwner == address(0)) revert("Invalid owner address");
+        projectData = IProjectData(_projectData);
         governance = IBCO2Governance(_governance);
     }
 
@@ -50,7 +53,7 @@ contract ProjectManager is Ownable, Pausable, ReentrancyGuard {
 
     function updateProjectData(address _newProjectData) external onlyOwner {
         if (_newProjectData == address(0)) revert("Invalid ProjectData address");
-        projectData = ProjectData(_newProjectData);
+        projectData = IProjectData(_newProjectData);
         emit ProjectDataUpdated(_newProjectData);
     }
 

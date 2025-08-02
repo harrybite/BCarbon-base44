@@ -1,13 +1,16 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.20;
 
-import "./Governance.sol";
-
+import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
+import "@openzeppelin/contracts/utils/ReentrancyGuard.sol";
+import "./Registry/ProjectData.sol";
+import "./Interfaces/IBCO2Governance.sol";
+import "./Interfaces/IBCO2.sol";
 
 contract BCO2DAO is ReentrancyGuard {
     IERC20 public RUSD;
     ProjectData public projectData;
-    BCO2Governance public governance;
+    IBCO2Governance public governance;
 
     uint256 public totalLiquidity;
 
@@ -33,8 +36,8 @@ contract BCO2DAO is ReentrancyGuard {
     mapping(uint256 => WithdrawalRequest) public withdrawalRequests;
     mapping(address => mapping(address => uint256[])) public withdrawalRequestIDsOfProposerForProject;
     mapping(address => uint256[]) public withdrawalRequestIDsOfProposer;
-    mapping(address => uint256) public projectBalances; // RUSD balance per project
-    mapping(address => uint256) public totalWithdrawnFromProject; // RUSD withdrawn from project
+    mapping(address => uint256) public projectBalances;
+    mapping(address => uint256) public totalWithdrawnFromProject;
     uint256 public requestCounter;
     uint256 public votingDuration = 7 days;
     uint256 public constant EXTENSION_DURATION = 1 days;
@@ -69,16 +72,14 @@ contract BCO2DAO is ReentrancyGuard {
     constructor(address _RUSD, address _projectData, address _governance) {
         RUSD = IERC20(_RUSD);
         projectData = ProjectData(_projectData);
-        governance = BCO2Governance(_governance);
+        governance = IBCO2Governance(_governance);
     }
 
-    // Modifier to restrict access to governance contract
     modifier onlyGovernance() {
         if (msg.sender != address(governance)) revert OnlyGovernance(address(governance));
         _;
     }
 
-    // Called by BCO2.sol during mintWithRUSD to deposit RUSD for a project
     function depositRUSD(address projectContract, uint256 amount) external returns(bool) {
         if (!projectData.isListed(projectContract)) revert InvalidProject();
         bool success = RUSD.transferFrom(msg.sender, address(this), amount);
@@ -90,19 +91,16 @@ contract BCO2DAO is ReentrancyGuard {
         return true;
     }
 
-    // Submit a withdrawal request
     function requestWithdrawal(address projectContract, uint256 amount, string calldata proofOfWork) external nonReentrant returns(uint256 _requestId){
         ProjectData.Project memory project = projectData.getProjectDetails(projectContract);
         if (!projectData.isApproved(projectContract)) revert ProjectNotApproved();
-        if (msg.sender != project.proposer) revert NotProjectOwner(); // problematic when testing
+        if (msg.sender != project.proposer) revert NotProjectOwner();
         if (amount == 0 || amount > projectBalances[projectContract]) revert InvalidAmount();
 
-        // Check total requests limit
         if (withdrawalRequestIDsOfProposerForProject[msg.sender][projectContract].length >= 25) {
             revert ExceedingTotalAllowedRequests(withdrawalRequestIDsOfProposerForProject[msg.sender][projectContract].length);
         }
 
-        // Check active requests limit
         uint256 activeCount = 0;
         uint256[] memory requestIds = withdrawalRequestIDsOfProposerForProject[msg.sender][projectContract];
         for (uint256 i = 0; i < requestIds.length; i++) {
@@ -131,7 +129,6 @@ contract BCO2DAO is ReentrancyGuard {
         return(requestCounter);
     }
 
-    // Holders vote on a withdrawal request
     function voteOnWithdrawal(uint256 requestId, bool support) external nonReentrant {
         WithdrawalRequest storage request = withdrawalRequests[requestId];
         if (!request.isActive) revert RequestNotActive();
@@ -139,7 +136,7 @@ contract BCO2DAO is ReentrancyGuard {
             revert VotingPeriodEnded();
         if (request.hasVoted[msg.sender]) revert AlreadyVoted();
 
-        BCO2 bco2 = BCO2(request.projectContract);
+        IBCO2 bco2 = IBCO2(request.projectContract);
         uint256 balance = bco2.balanceOf(msg.sender, bco2.unit_tCO2_TOKEN_ID());
         require(balance > 0, "No tokens held");
 
@@ -153,7 +150,6 @@ contract BCO2DAO is ReentrancyGuard {
         emit Voted(requestId, msg.sender, support, balance);
     }
 
-    // VVBs approve a withdrawal request
     function vvbApproveWithdrawal(uint256 requestId) external nonReentrant {
         if (!governance.checkAuthorizedVVBs(msg.sender)) revert NotVVB();
 
@@ -167,8 +163,6 @@ contract BCO2DAO is ReentrancyGuard {
         emit VVBApproved(requestId, msg.sender);
     }
 
-
-    // Governance extends voting period once
     function extendVotingPeriod(uint256 requestId) external onlyGovernance {
         WithdrawalRequest storage request = withdrawalRequests[requestId];
         if (!request.isActive) revert RequestNotActive();
@@ -180,14 +174,12 @@ contract BCO2DAO is ReentrancyGuard {
         emit VotingExtended(requestId, request.extendedVotingEnd);
     }
 
-    // Governance approves or rejects a withdrawal request
     function governanceDecision(uint256 requestId, bool approve, uint256 approvedAmount) external onlyGovernance nonReentrant {
         WithdrawalRequest storage request = withdrawalRequests[requestId];
         if (!request.isActive) revert RequestNotActive();
         if (approve && approvedAmount == 0) revert InvalidAmount();
         if (approve && approvedAmount > request.amount) revert InvalidAmount();
 
-        // Check if holders and VVBs have approved
         bool holderApproved = isHolderApproved(requestId);
         bool vvbApproved = isApprovedByVVB(requestId);
         if (holderApproved && vvbApproved && !approve) revert GovernanceVetoRestricted();
@@ -202,7 +194,6 @@ contract BCO2DAO is ReentrancyGuard {
         emit GovernanceDecision(requestId, approve, approvedAmount);
     }
 
-    // Internal function to process withdrawal
     function _processWithdrawal(uint256 requestId, uint256 amount) internal {
         WithdrawalRequest storage request = withdrawalRequests[requestId];
         projectBalances[request.projectContract] -= amount;
@@ -213,10 +204,9 @@ contract BCO2DAO is ReentrancyGuard {
         emit WithdrawalProcessed(requestId, request.projectContract, amount);
     }
 
-    // Check if holders have approved (50% weight based on token balance)
     function isHolderApproved(uint256 requestId) public view returns (bool) {
         WithdrawalRequest storage request = withdrawalRequests[requestId];
-        BCO2 bco2 = BCO2(request.projectContract);
+        IBCO2 bco2 = IBCO2(request.projectContract);
         uint256 totalSupply = bco2.getTotalSupplyByTokenId(bco2.unit_tCO2_TOKEN_ID());
         if (totalSupply == 0) return false;
         uint256 totalVotes = request.holderVotesFor + request.holderVotesAgainst;
@@ -224,7 +214,6 @@ contract BCO2DAO is ReentrancyGuard {
         return (request.holderVotesFor * 100) / totalVotes >= 50;
     }
 
-    // Check if VVBs have approved (at least one VVB approval required)
     function isApprovedByVVB(uint256 requestId) public view returns (bool) {
         address[] memory authorizedVVBs = governance.getAuthorizedVVBs();
         for (uint256 i = 0; i < authorizedVVBs.length; i++) {
@@ -235,31 +224,60 @@ contract BCO2DAO is ReentrancyGuard {
         return false;
     }
 
-    // Set voting duration
     function setVotingDuration(uint256 newDuration) external onlyGovernance {
         if (newDuration < 1 days || newDuration > 30 days) revert InvalidVotingDuration();
         votingDuration = newDuration;
         emit VotingDurationUpdated(newDuration);
     }
 
-    // Getter functions
     function getProjectBalance(address projectContract) external view returns (uint256) {
         return projectBalances[projectContract];
     }
 
-    function getWithdrawalRequest(uint256 requestId)
+    function getWithdrawalRequestBasic(uint256 requestId)
         external
         view
         returns (
             address projectContract,
             address requester,
             uint256 amount,
-            string memory proofOfWork,
+            string memory proofOfWork
+        )
+    {
+        WithdrawalRequest storage request = withdrawalRequests[requestId];
+        return (
+            request.projectContract,
+            request.requester,
+            request.amount,
+            request.proofOfWork
+        );
+    }
+
+    function getWithdrawalRequestStatus(uint256 requestId)
+        external
+        view
+        returns (
             uint256 timestamp,
             uint256 votingEnd,
             bool isActive,
             uint256 holderVotesFor,
-            uint256 holderVotesAgainst,
+            uint256 holderVotesAgainst
+        )
+    {
+        WithdrawalRequest storage request = withdrawalRequests[requestId];
+        return (
+            request.timestamp,
+            request.votingEnd,
+            request.isActive,
+            request.holderVotesFor,
+            request.holderVotesAgainst
+        );
+    }
+
+    function getWithdrawalRequestGovernance(uint256 requestId)
+        external
+        view
+        returns (
             bool governanceApproved,
             uint256 governanceApprovedAmount,
             bool governanceExtended,
@@ -268,22 +286,13 @@ contract BCO2DAO is ReentrancyGuard {
     {
         WithdrawalRequest storage request = withdrawalRequests[requestId];
         return (
-            request.projectContract,
-            request.requester,
-            request.amount,
-            request.proofOfWork,
-            request.timestamp,
-            request.votingEnd,
-            request.isActive,
-            request.holderVotesFor,
-            request.holderVotesAgainst,
             request.governanceApproved,
             request.governanceApprovedAmount,
             request.governanceExtended,
             request.extendedVotingEnd
         );
     }
-
+    
     function hasVoted(uint256 requestId, address voter) external view returns (bool) {
         return withdrawalRequests[requestId].hasVoted[voter];
     }
@@ -291,7 +300,6 @@ contract BCO2DAO is ReentrancyGuard {
     function getVVBApproval(uint256 requestId, address vvb) external view returns (bool) {
         return withdrawalRequests[requestId].vvbApprovals[vvb];
     }
-
 
     function getTotalLiquidity() external view returns (uint256) {
         return totalLiquidity;

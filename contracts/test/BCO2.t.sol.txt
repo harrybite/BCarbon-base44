@@ -1,0 +1,221 @@
+// SPDX-License-Identifier: UNLICENSED
+pragma solidity ^0.8.20;
+
+import "forge-std/Test.sol";
+import "../src/BCO2.sol";
+import "../src/mocks/MockRUSD.sol";
+import "../src/Registry/ProjectFactory.sol";
+import "../src/Registry/ProjectData.sol";
+import "../src/Registry/ProjectManager.sol";
+import "../src/Registry/BCO2Factory.sol";
+import "../src/Governance.sol";
+import "../src/BCO2DAO.sol";
+
+contract BCO2Test is Test {
+    BCO2 bco2;
+    MockRUSD rusd;
+    BCO2Governance governance;
+    BCO2DAO bco2DAO;
+    ProjectData projectData;
+    ProjectManager projectManager;
+    BCO2Factory bco2Factory;
+    ProjectFactory projectFactory;
+
+    address user = address(1);
+    address vvb = address(2);
+    address issuer = address(3);
+    address owner = address(this);
+    bytes32 public constant VINTAGE = keccak256("Vintage");
+    
+    uint256 validVintage = 1752282049;
+
+    function setUp() public {
+        rusd = new MockRUSD();
+        governance = new BCO2Governance(owner);
+        projectData = new ProjectData(owner, address(governance));
+        projectManager = new ProjectManager(
+            address(projectData),
+            address(governance),
+            owner
+        );
+        bco2DAO = new BCO2DAO(address(rusd), address(projectData), address(governance));
+        bco2Factory = new BCO2Factory();
+        projectFactory = new ProjectFactory(
+            address(projectData),
+            address(projectManager),
+            address(bco2Factory),
+            address(governance),
+            address(bco2DAO),
+            address(rusd),
+            owner
+        );
+
+        vm.warp(validVintage + 1);
+
+        // bco2 = new BCO2(
+        //     "MAAL-0001", // projectId
+        //     owner, // initialOwner
+        //     1 ether, // mintPrice
+        //     true, // isPermanent
+        //     100, // validity
+        //     validVintage, // vintage
+        //     address(governance), // governance
+        //     address(projectData), // registry
+        //     address(bco2DAO), // BCO2 DAO
+        //     IERC20(address(rusd)), // RUSD token
+        //     0, // methodologyId
+        //     "Kenya" // location
+        // );
+
+        governance.initialize(address(projectData), address(projectManager),address(bco2DAO));
+        projectData.setManager(address(projectManager));
+        projectData.setFactory(address(projectFactory));
+        governance.addVVB(vvb);
+
+        console.log("Governance Contract:", address(governance));
+        console.log("Project Data Contract:", address(projectData));
+        console.log("Project Manager Contract:", address(projectManager));
+        console.log("BCO2DAO Contract:", address(bco2DAO));
+        console.log("BCO2Factory Contract:", address(bco2Factory));
+        console.log("Project Factory Contract:", address(projectFactory));
+
+        rusd.setBalance(user, 10000 ether);
+        console.log("Creating and listing:");
+        vm.startPrank(issuer);
+        bco2 = BCO2(
+            projectFactory.createAndListProject(
+                10000000000000000000,
+                true,
+                0,
+                validVintage,
+                0,
+                "India",
+                3000000,
+                "Link to details"
+            )
+        );
+
+        vm.warp(block.timestamp + 1800);
+        vm.startPrank(vvb);
+        governance.validateProject(address(bco2));
+        governance.verifyProject(address(bco2));
+
+        vm.startPrank(owner);
+        governance.approveAndIssueCredits(address(bco2), 3000000);
+
+        ProjectData.Project memory project = projectData.getProjectDetails(
+            address(bco2)
+        );
+
+        ICarbonCreditDAO bco2DAOAdd = bco2.bCO2DAO();
+
+        console.log("Project ID:", project.projectId);
+        console.log("Certificate ID:", project.certificateId);
+        console.log("BCO2 DAO:", address(bco2DAOAdd));
+
+        // vm.startPrank(bco2);
+        // rusd.approve(address(bco2DAO), 10000 ether);
+
+        vm.startPrank(user);
+        rusd.approve(address(bco2), 10000 ether);
+        bco2.mintWithRUSD(10); // Mint 10 tCO2 tokens
+        uint256 DAOBal = rusd.balanceOf(address(bco2DAO));
+        console.log("BCO2 DAO Bal:", DAOBal);
+        vm.stopPrank();
+    }
+
+    function testRetireCredits_WithFullTraitAndCertificateChecks() public {
+        // Step 1: Check traits
+        bytes32 rawVintage = bco2.getTraitValue(1, VINTAGE);
+        bytes32 rawPermanent = bco2.getTraitValue(1, keccak256("IsPermanent"));
+        bytes32 rawValidity = bco2.getTraitValue(1, keccak256("validity"));
+
+        uint256 storedVintage = uint256(rawVintage);
+        string memory isPermanent = string(abi.encodePacked(rawPermanent));
+        uint256 validity = uint256(rawValidity);
+
+        console.log("Stored Vintage (epoch):", storedVintage);
+        console.log("Current block.timestamp:", block.timestamp);
+        console.log("IsPermanent:", isPermanent);
+        console.log("Validity (years):", validity);
+
+        assertLt(storedVintage, block.timestamp, "Vintage should have passed");
+        bytes32 expectedTrue = bytes32("true");
+        assertEq(rawPermanent, expectedTrue, "Token must be permanent");
+        assertEq(validity, 0, "Validity must be 0 for permanent token");
+
+        // Step 2: Retire tokens
+        vm.prank(user);
+        bco2.retire(5);
+
+        assertEq(bco2.balanceOf(user, 1), 5, "Remaining credits incorrect");
+        assertEq(bco2.balanceOf(user, 2), 5, "Retired credits incorrect");
+
+        // Step 3: Check RetirementCertificate storage
+        bytes32 certHash = bco2.getRetirementCertificate(user, 0);
+        assertTrue(
+            certHash != bytes32(0),
+            "Certificate hash should not be empty"
+        );
+
+        // Step 4: Validate certificate hash
+        (bool isValid, uint256 retiredTonnes) = bco2
+            .validateRetirementCertificate(user, 0, certHash);
+
+        assertTrue(isValid, "Certificate hash should match");
+        assertEq(
+            retiredTonnes,
+            5 * bco2.tonnesPerToken(),
+            "Retired tonnes mismatch"
+        );
+
+        console.logBytes32(certHash);
+        console.log("Retired Tonnes:", retiredTonnes);
+    }
+
+    function testWithdrawalRequestCreationAndApproval() public {
+        // Check initial DAO balance (should already have RUSD from mintWithRUSD)
+        console.log("DAO RUSD Balance before:", rusd.balanceOf(address(bco2DAO)));
+
+        // address projectOwner = bco2.owner();
+
+        // (,,,,,,address proposer,,,,,,,,) = projectData.getProjectDetails(address(bco2));
+        // console.log("Proposer in Registry:", proposer);
+
+        ProjectData.Project memory project = projectData.getProjectDetails(address(bco2));
+        console.log("Project Owner:", project.proposer);
+        console.log("Expected Issuer:", issuer);
+
+        // assertEq(projectOwner == issuer, "Issuer and project owner are not the same");
+        // Step 1: Issuer creates withdrawal request
+        vm.prank(project.proposer);
+        console.log("Issuer RUSD Balance before approval:", rusd.balanceOf(project.proposer));
+        uint256 withdrawalRequestID = bco2DAO.requestWithdrawal(
+            address(bco2),
+            50000000000000000000,
+            "link to proof of work"
+        );
+        console.log("Withdrawal Request ID:", withdrawalRequestID);
+
+        // Step 2: VVB approves request
+        vm.prank(vvb);
+        console.log("VVB is valid in Governance:", governance.checkAuthorizedVVBs(vvb));
+        // bco2DAO.vvbApproveWithdrawal(withdrawalRequestID);
+        console.log("VVB Approval status:", bco2DAO.getVVBApproval(withdrawalRequestID, vvb));
+        console.log("Is VVB Approved:", bco2DAO.isApprovedByVVB(withdrawalRequestID));
+
+        // Step 3: Holder votes on request
+        vm.prank(user);
+        bco2DAO.voteOnWithdrawal(withdrawalRequestID, true);
+        console.log("Holder Approved:", bco2DAO.isHolderApproved(withdrawalRequestID));
+
+        // Step 4: Governance makes final decision
+        vm.prank(owner);
+        // governance.executeApprovalForWithdrawal(withdrawalRequestID, true, 50000000000000000000);
+
+        // Final balance check
+        console.log("Issuer RUSD Balance after approval:", rusd.balanceOf(project.proposer));
+        console.log("DAO RUSD Balance after:", rusd.balanceOf(address(bco2DAO)));
+    }
+
+}

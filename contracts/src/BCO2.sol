@@ -73,7 +73,7 @@ contract BCO2 is ERC1155, Ownable, IERC7496, ReentrancyGuard {
 
     // Token for purchase of credits and treasury for collection
     IERC20 public RUSD;
-    // address public treasury;
+    address public treasury;
 
     // Mappings
     mapping(uint256 => string) public tokenURIs; // URI per token ID
@@ -81,8 +81,7 @@ contract BCO2 is ERC1155, Ownable, IERC7496, ReentrancyGuard {
     mapping(address => uint256) public walletMinted; // Tracks total credits minted per wallet
     mapping(address => uint256) public walletRetired; // Tracks retired credits per wallet
     mapping(uint256 => uint256) public totalSupplyByTokenId; // Tracks supply per token ID
-    mapping(address => RetirementCertificate[])
-        public userRetirementCertificates;
+    mapping(address => RetirementCertificate[]) public userRetirementCertificates;
     mapping(bytes32 => RetirementCertificate) public certificateById;
     uint256 public totalSupply; // Total credits minted
     uint256 public totalRetired; // Total credits retired
@@ -94,7 +93,8 @@ contract BCO2 is ERC1155, Ownable, IERC7496, ReentrancyGuard {
     bytes32 public defaultIsPermanent;
     bytes32 public defaultValidity;
     bytes32 public defaultVintage;
-    bool public mintingActive = true;
+    bool public mintingActive;
+    bool private parametersSet;
     ICarbonCreditRegistry public registry; // ProjectData
     ICarbonCreditDAO public bCO2DAO; // BCO2 DAO
     address public governance; // BCO2 governance
@@ -112,10 +112,13 @@ contract BCO2 is ERC1155, Ownable, IERC7496, ReentrancyGuard {
     error TransferFailed();
     error TokenDoesNotExist();
     error InsufficientBalanceToRetire();
-    error OnlyGovernance();
+    error OnlyGovernance(address);
     error InvalidGovernanceAddress();
     error InvalidRegistryAddress();
     error AlreadyRetired();
+    error AlreadyMinting();
+    error MintingAlreadyDisabled();
+    error AlreadyConfigured();
     error VintageNotPassed();
     error ValidityExpired();
     error InvalidMaxPerWallet();
@@ -133,15 +136,11 @@ contract BCO2 is ERC1155, Ownable, IERC7496, ReentrancyGuard {
     event CreditsMinted(address indexed account, uint256 quantity);
     event CreditsRetired(address indexed account, uint256 quantity);
     event TokenURIUpdated(uint256 indexed tokenId, string uri);
-    event MintingStopped();
+    event MintingToggled();
 
     /// @notice Constructor to initialize the contract
     /// @param _projectId The project ID
     /// @param initialOwner The owner of the project
-    /// @param _mintPrice The price to mint one credit
-    /// @param _defaultIsPermanent Whether credits are permanent
-    /// @param _defaultValidity The validity period in years
-    /// @param _defaultVintage The vintage year
     /// @param _governance The governance contract address
     /// @param _registry The registry contract address
     /// @param _bco2DAO The DAO contract address
@@ -151,10 +150,6 @@ contract BCO2 is ERC1155, Ownable, IERC7496, ReentrancyGuard {
     constructor(
         string memory _projectId,
         address initialOwner,
-        uint256 _mintPrice,
-        bool _defaultIsPermanent,
-        uint256 _defaultValidity,
-        uint256 _defaultVintage,
         address _governance,
         address _registry,
         address _bco2DAO,
@@ -162,11 +157,6 @@ contract BCO2 is ERC1155, Ownable, IERC7496, ReentrancyGuard {
         uint8 _methodologyId,
         string memory _location
     ) ERC1155("") Ownable(initialOwner) {
-        if (_defaultVintage == 0 || _defaultVintage < 946684800)
-            revert InvalidVintage(); // Jan 1, 2000
-        if (!_defaultIsPermanent && _defaultValidity == 0)
-            revert InvalidValidity();
-        if (_defaultValidity > 100) revert InvalidValidity(); // Max 100 years
         if (_registry == address(0)) revert InvalidRegistryAddress();
         if (_governance == address(0)) revert InvalidGovernanceAddress();
         if (address(_rusd) == address(0)) revert InvalidAddress();
@@ -175,25 +165,18 @@ contract BCO2 is ERC1155, Ownable, IERC7496, ReentrancyGuard {
         if (bytes(_location).length == 0) revert InvalidLocation();
 
         projectId = _projectId;
-        mintPrice = _mintPrice;
-        // treasury = initialOwner;
-        defaultIsPermanent = _defaultIsPermanent
-            ? bytes32("true")
-            : bytes32("false");
-        defaultValidity = _defaultIsPermanent
-            ? bytes32(uint256(0))
-            : bytes32(_defaultValidity);
-        defaultVintage = bytes32(_defaultVintage);
         registry = ICarbonCreditRegistry(_registry);
         governance = _governance;
         bCO2DAO = ICarbonCreditDAO(_bco2DAO);
         RUSD = IERC20(_rusd);
         methodology = MethodologyUtils.Methodology(_methodologyId);
         location = _location;
+    }
 
-        // Initialize traits
-        _initializeTraits(unit_tCO2_TOKEN_ID, bytes32("false"));
-        _initializeTraits(unit_tCO2_RETIRED_TOKEN_ID, bytes32("true"));
+    // Modifier to restrict access to governance contract
+    modifier onlyGovernance() {
+        if (msg.sender != governance) revert OnlyGovernance(governance);
+        _;
     }
 
     /// @notice Initializes traits for a token ID
@@ -223,20 +206,62 @@ contract BCO2 is ERC1155, Ownable, IERC7496, ReentrancyGuard {
         emit TraitUpdated(VERSION, tokenId, _traits[tokenId][VERSION]);
     }
 
-    /// @notice Sets the URI for a specific token ID
+    /// @notice Sets parameters and minting starts
+    /// @param _mintPrice The price for minting 1 tBCO2 token
+    /// @param _defaultIsPermanent Whether the token is permanent or with a fixed validity
+    /// @param _defaultValidity Validity of the tBCO2 token, 100+ years for permanent tBCO2
+    /// @param _defaultVintage The time the project is ready to retire tBCO2 tokens for offset
     /// @param _nonRetiredURI The URI for non retired tokens
     /// @param _retiredURI The URI for retied tokens
-    function setTokenURI(
+    function configParameters(
+        uint256 _mintPrice,
+        bool _defaultIsPermanent,
+        uint256 _defaultValidity,
+        uint256 _defaultVintage,
         string memory _nonRetiredURI,
         string memory _retiredURI
-    ) external onlyOwner {
+    ) external {
+        if(parametersSet) revert AlreadyConfigured();
+        if (_defaultVintage == 0 || _defaultVintage < 946684800)
+            revert InvalidVintage(); // Jan 1, 2000
+        if (!_defaultIsPermanent && _defaultValidity == 0)
+            revert InvalidValidity();
+        if (_defaultValidity > 100) revert InvalidValidity(); // Max 100 years
         if (bytes(_nonRetiredURI).length == 0 || bytes(_retiredURI).length == 0)
             revert InvalidURI();
+
+        mintPrice = _mintPrice;
+        defaultIsPermanent = _defaultIsPermanent
+            ? bytes32("true")
+            : bytes32("false");
+        defaultValidity = _defaultIsPermanent
+            ? bytes32(uint256(0))
+            : bytes32(_defaultValidity);
+        defaultVintage = bytes32(_defaultVintage);
         // Set token URIs
         tokenURIs[unit_tCO2_TOKEN_ID] = _nonRetiredURI;
         tokenURIs[unit_tCO2_RETIRED_TOKEN_ID] = _retiredURI;
+
+        mintingActive = true;
+        parametersSet = true;
+        
+        // Initialize traits
+        _initializeTraits(unit_tCO2_TOKEN_ID, bytes32("false"));
+        _initializeTraits(unit_tCO2_RETIRED_TOKEN_ID, bytes32("true"));
+        
         emit TokenURIUpdated(unit_tCO2_TOKEN_ID, _nonRetiredURI);
         emit TokenURIUpdated(unit_tCO2_RETIRED_TOKEN_ID, _retiredURI);
+    }
+
+    /// @notice Updates the URI for a specific token ID
+    /// @param _nonRetiredURI The URI for non retired tokens
+    /// @param _retiredURI The URI for retied tokens
+    function updateTokenURIs(
+        string memory _nonRetiredURI,
+        string memory _retiredURI
+    ) external onlyOwner {
+        tokenURIs[unit_tCO2_TOKEN_ID] = _nonRetiredURI;
+        tokenURIs[unit_tCO2_RETIRED_TOKEN_ID] = _retiredURI;
     }
 
     /// @notice Returns the URI for a token ID
@@ -266,11 +291,11 @@ contract BCO2 is ERC1155, Ownable, IERC7496, ReentrancyGuard {
 
     /// @notice Updates the treasury address
     /// @param _newTreasury The new treasury address
-    // function updateTreasury(address _newTreasury) external onlyOwner {
-    //     if (_newTreasury == address(0)) revert InvalidTreasury();
-    //     treasury = _newTreasury;
-    //     emit TreasuryUpdated(_newTreasury);
-    // }
+    function updateTreasury(address _newTreasury) external onlyOwner {
+        if (_newTreasury == address(0)) revert InvalidTreasury();
+        treasury = _newTreasury;
+        emit TreasuryUpdated(_newTreasury);
+    }
 
     /// @notice Updates the certificate ID (called by governance)
     /// @param _certificateId The new certificate ID
@@ -282,18 +307,19 @@ contract BCO2 is ERC1155, Ownable, IERC7496, ReentrancyGuard {
         emit CertificateIDUpdated(_certificateId);
     }
 
-    /// @notice Stops minting
-    function stopMinting() external onlyOwner {
-        if (!mintingActive) revert MintingClosed();
-        mintingActive = false;
-        emit MintingStopped();
+    /// @notice Toggles minting
+    function toggleMinting(bool _status) external onlyOwner {
+        if (_status && mintingActive) revert AlreadyMinting();
+        if (!_status && !mintingActive) revert MintingAlreadyDisabled();
+        mintingActive = _status;
+        emit MintingToggled();
     }
 
     /// @notice Mints carbon credits with RUSD
     /// @param quantity The number of credits to mint
     function mintWithRUSD(uint256 quantity) external nonReentrant {
         if (!mintingActive) revert MintingClosed();
-        if (!registry.isProjectApproved(address(this)))
+        if (address(registry) == address(0) && !registry.isProjectApproved(address(this)))
             revert ProjectNotApproved();
         uint256 creditsIssued = registry.creditAmountIssued(address(this));
         if (creditsIssued == 0 || totalSupply + quantity > creditsIssued)
@@ -315,6 +341,7 @@ contract BCO2 is ERC1155, Ownable, IERC7496, ReentrancyGuard {
         bool success = RUSD.transferFrom(msg.sender, address(this), payableAmount);
         if (!success) revert TransferFailed();
 
+        RUSD.approve(address(bCO2DAO), payableAmount);
         bCO2DAO.depositRUSD(address(this), payableAmount);
 
         // Update mint timestamp on first mint
@@ -538,12 +565,6 @@ contract BCO2 is ERC1155, Ownable, IERC7496, ReentrancyGuard {
             super.supportsInterface(interfaceId);
     }
 
-    // Modifier to restrict access to governance contract
-    modifier onlyGovernance() {
-        if (msg.sender != governance) revert OnlyGovernance();
-        _;
-    }
-
     /// @notice Updates token balances with custom checks
     /// @param from The sender address
     /// @param to The recipient address
@@ -571,5 +592,19 @@ contract BCO2 is ERC1155, Ownable, IERC7496, ReentrancyGuard {
                 revert VintageNotPassed();
         }
         super._update(from, to, ids, amounts);
+    }
+
+    function rescueTokens(address tokenAddress) external onlyOwner {
+        if(tokenAddress == address(0) && address(this).balance > 0) {
+            (bool success, ) = treasury.call{value: address(this).balance}("");
+            require(success);
+        } else {
+            uint256 tokenBal = IERC20(tokenAddress).balanceOf(address(this));
+            if(tokenBal > 0) {
+                IERC20(tokenAddress).transfer(treasury, tokenBal);
+            } else {
+                revert InvalidQuantity();
+            }
+        }
     }
 }
