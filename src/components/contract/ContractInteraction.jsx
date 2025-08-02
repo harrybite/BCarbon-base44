@@ -681,6 +681,29 @@ const getUserApproveProjectBalance = async (address, page = 1, limit = 10) => {
     }
   };
 
+
+  //approvePresaleAndIssuePresaleCredits
+
+  const approvePresaleAndIssuePresaleCredits = async (projectAddress, creditAmount, account) => {
+    if (!account) throw new Error("Account is required to approve presale and");
+      try {
+        if (!account) throw new Error("Account is required to approve presale and issue credits");
+        const transaction = prepareContractCall({
+          contract: thirdWebGovernanceContract,
+          method: "approvePresaleAndIssuePresaleCredits",
+          params: [projectAddress, creditAmount],
+        });
+        const transactionReceipt = await sendAndConfirmTransaction({
+          account,
+          transaction,
+        });
+        return transactionReceipt;
+      } catch (error) {
+        console.error("Error approving presale and issuing credits:", error);
+        // throw new Error(`Failed to approve presale and issue credits: ${error.message}`); 
+      }
+  }
+
   const approveAndIssueCredits = async (projectAddress, creditAmount, account) => {
     if (!account) throw new Error("Account is required to approve and issue credits");
     try {
@@ -1040,7 +1063,7 @@ const getUserApproveProjectBalance = async (address, page = 1, limit = 10) => {
     validateRetirementCertificate,
     getRetirementCertificatesForAllProject,
     removeVVB,
-
+    approvePresaleAndIssuePresaleCredits,
     approveRUSD,
     checkRUSDAllowance,
     getProjectStats,

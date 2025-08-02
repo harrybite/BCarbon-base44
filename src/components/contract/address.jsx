@@ -5,7 +5,7 @@ export const projectData = "0x36A7B555afe9AfA680a1dF54C7D61085De1322be"
 export const projectManager = "0x32E818a31C20Bb3435F4DaA739C0FFE3c85fe4D6";
 export const projectFactory = "0xEB2Cd3244C02209419E7A570CbF0058521F4E905";
 export const BCO2DAO = "0x8d0da7e9b843cE61E09D934d4043A6820226CC6d"
-export const BCO2Factory = "0xB2b9113E500D603c008154d496D1bCC9F3a3874c"
+export const BCO2Factory = "0x3aacc8277128d800E5F0b81F172470431c80E6dC"
 
 //http://localhost:4000
 //https://bico2-backend-api.aigb.io
