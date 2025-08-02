@@ -1,0 +1,56 @@
+[
+        {
+            "type": "function",
+            "name": "createBCO2",
+            "inputs": [
+                {
+                    "name": "projectId",
+                    "type": "string",
+                    "internalType": "string"
+                },
+                {
+                    "name": "proposer",
+                    "type": "address",
+                    "internalType": "address"
+                },
+                {
+                    "name": "governance",
+                    "type": "address",
+                    "internalType": "address"
+                },
+                {
+                    "name": "projectData",
+                    "type": "address",
+                    "internalType": "address"
+                },
+                {
+                    "name": "bco2DAO",
+                    "type": "address",
+                    "internalType": "address"
+                },
+                {
+                    "name": "RUSD",
+                    "type": "address",
+                    "internalType": "address"
+                },
+                {
+                    "name": "methodologyIndex",
+                    "type": "uint8",
+                    "internalType": "uint8"
+                },
+                {
+                    "name": "location",
+                    "type": "string",
+                    "internalType": "string"
+                }
+            ],
+            "outputs": [
+                {
+                    "name": "",
+                    "type": "address",
+                    "internalType": "address"
+                }
+            ],
+            "stateMutability": "nonpayable"
+        }
+    ]

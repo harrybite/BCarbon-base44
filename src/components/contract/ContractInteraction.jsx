@@ -149,7 +149,7 @@ export const useContractInteraction = () => {
 
     const requiredFields = [
       "mintPrice",
-      "treasury",
+      "isPresale",
       "defaultIsPermanent",
       "defaultValidity",
       "defaultVintage",
@@ -173,7 +173,7 @@ export const useContractInteraction = () => {
     try {
       const {
         mintPrice,
-        treasury,
+        isPresale,
         defaultIsPermanent,
         defaultValidity,
         defaultVintage,
@@ -192,7 +192,7 @@ export const useContractInteraction = () => {
         method: "createAndListProject",
         params: [
           mintPriceWei,
-          treasury,
+          isPresale,
           defaultIsPermanent,
           defaultValidity,
           defaultVintage,
