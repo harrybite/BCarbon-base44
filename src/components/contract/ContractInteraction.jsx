@@ -8,10 +8,11 @@ import ERC20Abi from './ERC20.json';
 import projectFactoryabi from './ProjectFactory.json';
 import projectManagerabi from './ProjectManager.json';
 import projectDataabi from './ProjectData.json';
+import BCO2DAOabi from './BCO2DAO.json';
 import bco2Abi from './BCO2.json';
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { AlertCircle } from "lucide-react";
-import { apihost, chainInfo, GOVERNANCE_ADDRESS, MARKETPLACE_ADDRESS, projectData, projectFactory, projectManager, RUSD } from './address';
+import { apihost, BCO2DAO, chainInfo, GOVERNANCE_ADDRESS, MARKETPLACE_ADDRESS, projectData, projectFactory, projectManager, RUSD } from './address';
 import { useConnectWallet } from '@/context/walletcontext';
 import { bscTestnet } from 'thirdweb/chains';
 import { thirdwebclient } from '@/thirwebClient';
@@ -71,6 +72,14 @@ export const useContractInteraction = () => {
     abi: projectDataabi,
   });
 
+  // BCO2 DAO contract instance
+  const thirdWebBCO2DAOContract = getContract({
+    client: thirdwebclient,
+    chain: bscTestnet,
+    address: BCO2DAO,
+    abi: BCO2DAOabi,
+  });
+
 
   const getProvider = () => {
     return new JsonRpcProvider(chainInfo.rpc);
@@ -107,6 +116,12 @@ export const useContractInteraction = () => {
     }
     // reading operations can use the provider directly
     return new Contract(projectData, projectDataabi, provider);
+  };
+
+  const getBCO2DAOContract = async (withSigner = false) => {
+    const provider = getProvider();
+    // reading operations can use the provider directly
+    return new Contract(BCO2DAO, BCO2DAOabi, provider);
   };
 
   const getProjectFactoryContract = async (withSigner = false) => {
@@ -318,7 +333,10 @@ const getUserApproveProjectBalance = async (address, page = 1, limit = 10) => {
               projectContract: project.projectContract,
               balanceRetired: balanceRetired.toString(),
               metadata: metadata,
-              tokenURI: tokenURI
+              tokenURI: tokenURI,
+              tokenId: project.tokenId,
+              certificateId: project.certificateId,
+              projectID: project.projectID,
             });
           } catch (metadataError) {
             console.error('Error fetching metadata:', metadataError);
@@ -327,7 +345,10 @@ const getUserApproveProjectBalance = async (address, page = 1, limit = 10) => {
               projectContract: project.projectContract,
               balanceRetired: balanceRetired.toString(),
               metadata: { name: 'Unknown Project', description: 'Metadata unavailable' },
-              tokenURI: tokenURI
+              tokenURI: tokenURI,
+              tokenId: project.tokenId,
+              certificateId: project.certificateId,
+              projectID: project.projectID,
             });
           }
         }
@@ -886,7 +907,6 @@ const getUserApproveProjectBalance = async (address, page = 1, limit = 10) => {
   const checkIsProjectOwner = async (projectAddress) => {
     try {
       const projectDataContract = await getProjectDataContract(false);
-      console.log("Project address:", projectAddress);
       const owners = await projectDataContract.getAuthorizedProjectOwners(projectAddress);
       return owners.map(addr => addr.toLowerCase()).includes(userAddress.toLowerCase());
     } catch (error) {
@@ -1019,7 +1039,7 @@ const getUserApproveProjectBalance = async (address, page = 1, limit = 10) => {
         isValidated: detail.isValidated,
         isVerified: detail.isVerified,
         isApproved: Number(detail.credits) ? true : false,
-        prokectMintPrice: projectMintPrice,
+        projectMintPrice: projectMintPrice,
         totalSupply: projectTotalSupply,
         totalRetired: projectTotalRetired,
         defaultIsPermanent: defaultIsPermanent,
@@ -1055,11 +1075,46 @@ const getUserApproveProjectBalance = async (address, page = 1, limit = 10) => {
     }
   };
 
+
+  const requestWithdrawal = async (projectAddress, amount, proof,  account) => {
+    if (!account) throw new Error("Account is required to request withdrawal");
+    try {
+      const bco2Contract = thirdWebBCO2Contract(projectAddress);
+      const transaction = prepareContractCall({
+        contract: bco2Contract,
+        method: "requestWithdrawal",
+        params: [projectAddress, amount, proof],
+      });
+      const transactionReceipt = await sendAndConfirmTransaction({
+        account, // thirdweb account object
+        transaction,
+      });
+      return transactionReceipt;
+    } catch (error) { 
+      console.error("Error requesting withdrawal:", error);
+    }
+  };
+
+
+  const getProjectBalances = async (projectAddress) => {
+    try {
+      const bco2Contract = await getBCO2DAOContract(projectAddress, false);
+      const balances = await bco2Contract.getProjectBalances();
+      const convertBalance = formatEther(balances);
+      return convertBalance;
+    } catch (error) {
+      console.error("Error fetching project balances:", error);
+      // throw new Error(`Failed to fetch project balances: ${error.message}`);
+    }
+  };
+
   return {
     userAddress,
     setUserAddress,
     isContractsInitised,
     createAndListProject,
+    requestWithdrawal,
+    getProjectBalances,
     isApproveForAll,
     setApprovalForAll,
     mintWithRUSD,

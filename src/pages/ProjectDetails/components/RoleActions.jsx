@@ -3,14 +3,14 @@ import React from 'react';
 import PropTypes from 'prop-types';
 import { Button } from '@/components/ui/button';
 
-const RoleActions = ({ 
-  isOwner, 
-  isVVB, 
-  project, 
-  onOpenApproveModal, 
+const RoleActions = ({
+  isOwner,
+  isVVB,
+  project,
+  onOpenApproveModal,
   onOpenPresaleApproveModal,
-  onValidate, 
-  onVerify 
+  onValidate,
+  onVerify
 }) => {
   return (
     <div className="mb-6 mt-3">
@@ -19,9 +19,9 @@ const RoleActions = ({
           <Button
             className="w-full bg-green-700 hover:bg-green-800 mb-4"
             onClick={onOpenPresaleApproveModal}
-            disabled={ project.presaleAmount > 0}
+            disabled={project.isPresaleApproved}
           >
-            {project.presaleAmount > 0 ? 'Presale Approved' : 'Approve Presale Credits'}
+            {project.isPresaleApproved ? 'Presale Approved' : 'Approve Presale Credits'}
           </Button>
           <Button
             className="w-full bg-blue-700 hover:bg-blue-800 mb-4 mt-3"
@@ -30,9 +30,9 @@ const RoleActions = ({
           >
             {project.isApproved ? 'Approved ' : 'Approve and Issue Credits'}
           </Button>
-          
-        
-          
+
+
+
           {!(project.isValidated && project.isVerified) && (
             <div className="text-sm text-gray-500 mb-2">
               {!project.isValidated
@@ -93,6 +93,7 @@ RoleActions.propTypes = {
     isVerified: PropTypes.bool,
     isApproved: PropTypes.bool,
     presaleAmount: PropTypes.oneOfType([PropTypes.string, PropTypes.number]),
+    isPresaleApproved: PropTypes.bool,
   }).isRequired,
   onOpenApproveModal: PropTypes.func.isRequired,
   onOpenPresaleApproveModal: PropTypes.func.isRequired,

@@ -100,7 +100,7 @@ const ProjectInfo = ({ project, methodology }) => {
               Approved Credits tCO<sub>2</sub>
             </span>
             <span className="font-semibold flex-grow text-right">
-              {project.isValidated ? Number(project.credits) : "To be issued after approval from governance"}
+              {Number(project.credits) > 0 ? Number(project.credits) : "To be issued after approval from governance"}
             </span>
           </div>
           
