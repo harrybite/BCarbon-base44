@@ -376,10 +376,9 @@ const ProjectCard = ({ project }) => {
 
         {/* Progress Bars */}
         <div className="space-y-4 mb-6">
-          {/* Credits Approval Progress */}
           <div className="space-y-2">
             <div className="flex justify-between items-center">
-              <span className="text-sm font-medium text-gray-700">Credits Approval Progress</span>
+              <span className="text-sm font-medium text-gray-700">Minting Progress</span>
               <span className="text-sm font-semibold text-gray-900">{approvalProgress.toFixed(1)}%</span>
             </div>
             <div className="w-full bg-gray-200 rounded-full h-2">
@@ -391,12 +390,12 @@ const ProjectCard = ({ project }) => {
                 style={{ width: `${approvalProgress}%` }}
               ></div>
             </div>
-            <div className="text-xs text-gray-500">
+            {/* <div className="text-xs text-gray-500">
               {details.isApproved 
                 ? `${Number(details.credits).toLocaleString()} of ${Number(details.emissionReductions).toLocaleString()} tCO₂ approved`
                 : 'Awaiting approval'
               }
-            </div>
+            </div> */}
           </div>
 
           {/* Funds Raised */}

@@ -22,6 +22,7 @@ import HoldersModal from './components/HoldersModal';
 import ApproveModal from './components/ApproveModal';
 import PresaleApproveModal from './components/PresaleApproveModal';
 import CommentsSection from './components/CommentsSection';
+import WithdrawalRequests from './components/WithdrawlRequest';
 
 export default function ProjectDetails() {
   const { projectContract } = useParams();
@@ -94,6 +95,10 @@ export default function ProjectDetails() {
   const [holdersHasPrevPage, setHoldersHasPrevPage] = useState(false);
   const [selectedTokenId, setSelectedTokenId] = useState("all");
 
+  // Withdrawal requests state
+  const [withdrawalRequests, setWithdrawalRequests] = useState([]);
+  const [withdrawalRequestsLoading, setWithdrawalRequestsLoading] = useState(false);
+
   const fallbackImage = "https://ibb.co/CpZ8x06y";
 
   // Get user info from token
@@ -120,6 +125,21 @@ export default function ProjectDetails() {
     try {
       const data = await getListedProjectDetails(projectAddress);
       setProject(data);
+
+      // Fetch withdrawal requests
+      try {
+        setWithdrawalRequestsLoading(true);
+        const withdrawalResponse = await fetch(`${apihost}/project/getprojectwithdrawalrequests/${projectAddress}?activeOnly=false`);
+        if (withdrawalResponse.ok) {
+          const withdrawalData = await withdrawalResponse.json();
+          setWithdrawalRequests(withdrawalData.withdrawalRequests || []);
+        }
+      } catch (error) {
+        console.error("Error fetching withdrawal requests:", error);
+        setWithdrawalRequests([]);
+      } finally {
+        setWithdrawalRequestsLoading(false);
+      }
 
       // Load NFT images
       try {
@@ -651,6 +671,16 @@ export default function ProjectDetails() {
         <ProjectOverview project={project} />
         
         <ProjectInfo project={project} methodology={methodology} />
+
+        {project && walletAddress && project.proposer && 
+         walletAddress.toLowerCase() === project.proposer.toLowerCase() && (
+          <WithdrawalRequests 
+            withdrawalRequests={withdrawalRequests}
+            isLoading={withdrawalRequestsLoading}
+            projectContract={projectContract}
+            project={project}
+          />
+        )}
         
         <RoleActions 
           isOwner={isOwner}
@@ -707,6 +737,9 @@ export default function ProjectDetails() {
             handleSubmitComment={handleSubmitComment}
           />
         )}
+
+        {/* Withdrawal Requests Section - Show for project owner */}
+        
 
         {/* Modals */}
         {showHoldersModal && (
