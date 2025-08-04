@@ -506,14 +506,14 @@ const ProjectCard = ({ project }) => {
           )}
 
           {/* View Withdrawal Details Button - When there are active requests */}
-          {isProjectOwner && hasActiveWithdrawals && (
+          {/* {isProjectOwner && hasActiveWithdrawals && (
             <Link to={`/ProjectDetails/${details.projectContract}?tab=withdrawals`}>
               <button className="w-full bg-gradient-to-r from-amber-600 to-amber-700 hover:from-amber-700 hover:to-amber-800 text-white py-3 px-4 rounded-lg font-semibold transition-all duration-200 transform hover:scale-[1.02] flex items-center justify-center space-x-2 mt-3">
                 <span>View Withdrawal Details</span>
                 <Eye className="w-4 h-4" />
               </button>
             </Link>
-          )}
+          )} */}
         </div>
 
         {/* Comments Section */}

@@ -673,14 +673,14 @@ export default function ProjectDetails() {
         <ProjectInfo project={project} methodology={methodology} />
 
         {project && walletAddress && project.proposer && 
-         walletAddress.toLowerCase() === project.proposer.toLowerCase() && (
-          <WithdrawalRequests 
-            withdrawalRequests={withdrawalRequests}
-            isLoading={withdrawalRequestsLoading}
-            projectContract={projectContract}
-            project={project}
-          />
-        )}
+          (walletAddress.toLowerCase() === project.proposer.toLowerCase() || isOwner || isVVB) && (
+            <WithdrawalRequests 
+              withdrawalRequests={withdrawalRequests}
+              isLoading={withdrawalRequestsLoading}
+              projectContract={projectContract}
+              project={project}
+            />
+          )}
         
         <RoleActions 
           isOwner={isOwner}

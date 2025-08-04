@@ -349,7 +349,7 @@ const MyRequest = () => {
                       <div className="bg-green-50 border border-green-200 rounded-lg p-3">
                         <div className="flex items-center space-x-2 text-green-700 mb-1">
                           <DollarSign className="w-4 h-4" />
-                          <span className="text-sm font-medium">Amount</span>
+                          <span className="text-sm font-medium">Requested Amount</span>
                         </div>
                         <div className="text-lg font-bold text-green-800">
                           {Number(request.amount).toLocaleString()} RUSD
@@ -369,7 +369,7 @@ const MyRequest = () => {
                       <div className="bg-orange-50 border border-orange-200 rounded-lg p-3">
                         <div className="flex items-center space-x-2 text-orange-700 mb-1">
                           <Timer className="w-4 h-4" />
-                          <span className="text-sm font-medium">Voting Ends</span>
+                          <span className="text-sm font-medium">Total RUSD Collected</span>
                         </div>
                         <div className="text-sm font-semibold text-orange-800">
                           {timeLeft > 0 ? `${Math.ceil(timeLeft / 86400)} days left` : 'Ended'}
@@ -379,7 +379,7 @@ const MyRequest = () => {
                       <div className="bg-purple-50 border border-purple-200 rounded-lg p-3">
                         <div className="flex items-center space-x-2 text-purple-700 mb-1">
                           <Vote className="w-4 h-4" />
-                          <span className="text-sm font-medium">Total Votes</span>
+                          <span className="text-sm font-medium">Total Withdrawl</span>
                         </div>
                         <div className="text-lg font-bold text-purple-800">
                           {request.holderVotesFor + request.holderVotesAgainst}
@@ -387,7 +387,7 @@ const MyRequest = () => {
                       </div>
                     </div>
 
-                    {/* Voting Progress */}
+                   
                     {(request.holderVotesFor > 0 || request.holderVotesAgainst > 0) && (
                       <div className="space-y-3">
                         <h4 className="text-sm font-medium text-gray-700">Voting Progress</h4>
