@@ -1080,10 +1080,11 @@ const getUserApproveProjectBalance = async (address, page = 1, limit = 10) => {
   const requestWithdrawal = async (projectAddress, amount, proof,  account) => {
     if (!account) throw new Error("Account is required to request withdrawal");
     try {
+      const toWei = parseEther(amount.toString()); // Convert amount to wei
       const transaction = prepareContractCall({
         contract: thirdWebBCO2DAOContract,
         method: "requestWithdrawal",
-        params: [projectAddress, amount, proof],
+        params: [projectAddress, toWei, proof],
       });
       const transactionReceipt = await sendAndConfirmTransaction({
         account, // thirdweb account object

@@ -20,7 +20,9 @@ import {
   Clock, 
   AlertCircle,
   DollarSign,
-  TreePine
+  TreePine,
+  Eye,
+  CreditCard
 } from 'lucide-react';
 
 const ProjectCard = ({ project }) => {
@@ -55,7 +57,11 @@ const ProjectCard = ({ project }) => {
     isVerified: false,
     defaultIsPermanent: false,
     commentPeriodEnd: 0,
-    projectDetails: ''
+    projectDetails: '',
+    // Withdrawal request related fields
+    activeWithdrawalRequests: [],
+    activeWithdrawalRequestsCount: 0,
+    hasActiveWithdrawalRequests: false
   });
   
   const { walletAddress } = useConnectWallet();
@@ -67,8 +73,6 @@ const ProjectCard = ({ project }) => {
   const [isLoading, setIsLoading] = useState(true);
   const [projectBalance, setProjectBalance] = useState('0');
 
-
-  
   // Withdrawal modal states
   const [showWithdrawalModal, setShowWithdrawalModal] = useState(false);
   const [isRequesting, setIsRequesting] = useState(false);
@@ -88,11 +92,14 @@ const ProjectCard = ({ project }) => {
           }
           const projectData = await projectdetails.json();
           console.log("Project details:", projectData);
-          setDetails(projectData.projectDetails);
-
+          setDetails({
+            ...projectData.projectDetails,
+            hasActiveWithdrawalRequests: projectData.hasActiveWithdrawalRequests || false,
+            activeWithdrawalRequestsCount: projectData.activeWithdrawalRequestsCount || 0
+          });
 
           setCanComment((await checkAuthorizedVVB()) || (await checkIsProjectOwner(project)));
-          setIsOwner(await checkIsOwner());
+          setIsOwner(await checkIsOwner()); // this is the gov contract owner
           setIsProjectOwner(projectData.projectDetails.proposer.toLowerCase() === walletAddress?.toLowerCase());
           
           // Fetch project balance if user is project owner
@@ -163,16 +170,28 @@ const ProjectCard = ({ project }) => {
       console.log("Requesting withdrawal for project:", projectAddress, "Amount:", amount, "Proof:", proof);
       const receipt = await requestWithdrawal(projectAddress, amount, proof, account);
       if (receipt?.status === 'success') {
+        const data = fetch(`${apihost}/withdrawal/store-withdrawal-request`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            txhash: receipt.transactionHash,
+          }),
+        });
+        if (data.ok) {
+          console.log("Withdrawal request stored successfully");
+        }
         toast({
           title: "Withdrawal Requested",
           description: `Successfully requested withdrawal of ${amount} RUSD`,
           variant: "default",
         });
         setShowWithdrawalModal(false);
-        // Refresh project balance
-        const newBalance = await getProjectBalances(projectAddress);
-        setProjectBalance(newBalance || '0');
+        // Refresh project data to show the new withdrawal request status
+        setReloadData(reloadData + 1);
       } else {
+        console.error('Withdrawal request failed:', receipt);
         toast({
           title: "Withdrawal Failed",
           description: "Transaction failed. Please try again.",
@@ -291,10 +310,37 @@ const ProjectCard = ({ project }) => {
   const status = getStatusText(details);
   const approvalProgress = getApprovalProgress();
   const fundsRaised = getFundsRaisedAmount();
+  const hasActiveWithdrawals = details.hasActiveWithdrawalRequests && details.activeWithdrawalRequestsCount > 0;
 
   return (
     <>
       <div className="border border-gray-200 rounded-xl p-6 w-full md:min-w-[450px] bg-white shadow-sm hover:shadow-md transition-shadow duration-200">
+        {/* Withdrawal Request Status Alert - Only show for project owner */}
+        {isProjectOwner && hasActiveWithdrawals && (
+          <div className="mb-4 p-3 bg-amber-50 border border-amber-200 rounded-lg">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center space-x-2">
+                <CreditCard className="w-5 h-5 text-amber-600" />
+                <div>
+                  <p className="text-sm font-semibold text-amber-800">
+                    Withdrawal Request Pending
+                  </p>
+                  <p className="text-xs text-amber-700">
+                    {details.activeWithdrawalRequestsCount} active request{details.activeWithdrawalRequestsCount > 1 ? 's' : ''} awaiting approval
+                  </p>
+                </div>
+              </div>
+              <Link 
+                to={`/ProjectDetails/${details.projectContract}?tab=withdrawals`}
+                className="text-xs bg-amber-100 hover:bg-amber-200 text-amber-800 px-3 py-1 rounded-full font-medium transition-colors duration-200 flex items-center space-x-1"
+              >
+                <Eye className="w-3 h-3" />
+                <span>View Details</span>
+              </Link>
+            </div>
+          </div>
+        )}
+
         {/* Header */}
         <div className="flex items-center justify-between mb-4">
           <div className="flex items-center space-x-3">
@@ -357,15 +403,15 @@ const ProjectCard = ({ project }) => {
           <div className="space-y-2">
             <div className="flex justify-between items-center">
               <span className="text-sm font-medium text-gray-700">Total RUSD Raised</span>
-              <span className="text-sm font-semibold text-gray-900">{fundsRaised.toLocaleString()} RUSD</span>
+              <span className="text-sm font-semibold text-gray-900">{fundsRaised} RUSD</span>
             </div>
             {/* Project Balance for Owner */}
-            {isProjectOwner && (
+            {/* {isProjectOwner && (
               <div className="flex justify-between items-center">
                 <span className="text-sm font-medium text-gray-700">Available Balance</span>
                 <span className="text-sm font-semibold text-green-700">{Number(projectBalance).toLocaleString()} RUSD</span>
               </div>
-            )}
+            )} */}
           </div>
         </div>
 
@@ -449,8 +495,8 @@ const ProjectCard = ({ project }) => {
             </button>
           </Link>
 
-          {/* Request Withdrawal Button - Only for Project Owner */}
-          {isProjectOwner && details.isApproved && (
+          {/* Request Withdrawal Button - Only for Project Owner and when no active requests */}
+          {isProjectOwner && details.isApproved && !hasActiveWithdrawals && (
             <button 
               className="w-full bg-gradient-to-r from-green-600 to-green-700 hover:from-green-700 hover:to-green-800 text-white py-3 px-4 rounded-lg font-semibold transition-all duration-200 transform hover:scale-[1.02] flex items-center justify-center space-x-2"
               onClick={() => setShowWithdrawalModal(true)}
@@ -458,6 +504,16 @@ const ProjectCard = ({ project }) => {
               <span>Request Withdrawal</span>
               <DollarSign className="w-4 h-4" />
             </button>
+          )}
+
+          {/* View Withdrawal Details Button - When there are active requests */}
+          {isProjectOwner && hasActiveWithdrawals && (
+            <Link to={`/ProjectDetails/${details.projectContract}?tab=withdrawals`}>
+              <button className="w-full bg-gradient-to-r from-amber-600 to-amber-700 hover:from-amber-700 hover:to-amber-800 text-white py-3 px-4 rounded-lg font-semibold transition-all duration-200 transform hover:scale-[1.02] flex items-center justify-center space-x-2 mt-3">
+                <span>View Withdrawal Details</span>
+                <Eye className="w-4 h-4" />
+              </button>
+            </Link>
           )}
         </div>
 

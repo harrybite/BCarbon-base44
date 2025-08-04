@@ -12,6 +12,7 @@ import { useNavigate } from 'react-router-dom';
 import { useContractInteraction } from "@/components/contract/ContractInteraction";
 import {  useToast } from "@/components/ui/use-toast";
 import { jwtDecode } from "jwt-decode";
+import MyRequest from "@/components/account/MyRequest";
 
 
 export default function MyAccount() {
@@ -157,11 +158,18 @@ export default function MyAccount() {
               <ShoppingBag className="w-4 h-4" />
               <span>My tCO<sub>2</sub> Holdings</span>
             </TabsTrigger>
+
+            {/* Uncomment if you want to enable Certificates tab */}
+
+            <TabsTrigger value="requests" className="flex items-center space-x-2">
+              <ShoppingBag className="w-4 h-4" />
+              <span>My Withdrawl Requests</span>
+            </TabsTrigger>
             
-            <TabsTrigger value="certificate" className="flex items-center space-x-2">
+            {/* <TabsTrigger value="certificate" className="flex items-center space-x-2">
               <BadgeCheck className="w-4 h-4" />
               <span> Certificates</span>
-            </TabsTrigger>
+            </TabsTrigger> */}
           </TabsList>
 
           {showCreateProject && (
@@ -180,8 +188,12 @@ export default function MyAccount() {
             <BuyerTab walletAddress={walletAddress} />
           </TabsContent>
           
-          <TabsContent value="certificate">
+          {/* <TabsContent value="certificate">
             <CertificatesTab  />
+          </TabsContent> */}
+
+            <TabsContent value="requests">
+            <MyRequest/>
           </TabsContent>
         </Tabs>
       </div>
