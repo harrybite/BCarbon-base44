@@ -58,9 +58,9 @@ contract ProjectManager is Ownable, Pausable, ReentrancyGuard {
     }
 
     function submitComment(address projectContract, string memory comment) external whenNotPaused nonReentrant {
-        bool isVVB = governance.checkAuthorizedVVBs(msg.sender);
+        bool isVVB = projectData.checkAuthorizedVVBs(projectContract, msg.sender);
         bool isOwner = projectData.authorizedProjectOwners(projectContract, msg.sender);
-        if (!isVVB && !isOwner) revert("Not authorized");
+        if (!isVVB  && !isOwner && msg.sender != governance.owner()) revert("Not authorized");
         projectData._addComment(projectContract, comment, msg.sender);
     }
 

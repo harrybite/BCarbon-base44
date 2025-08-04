@@ -18,9 +18,11 @@ contract Deploy is Script {
 
         // Read RUSD token and VVB from .env
         address rusd = vm.envAddress("RUSD_BSC_TESTNET");
-        address vvb = vm.envAddress("vvb");
+        address validator = vm.envAddress("validator");
+        address verifier = vm.envAddress("verifier");
         require(rusd != address(0), "Invalid RUSD address");
-        require(vvb != address(0), "Invalid VVB address");
+        require(validator != address(0), "Invalid Validator address");
+        require(verifier != address(0), "Invalid Verifier address");
 
         // Read flag to determine whether to deploy new contracts or use existing ones
         bool useExisting = vm.envBool("USE_EXISTING_CONTRACTS");
@@ -103,7 +105,8 @@ contract Deploy is Script {
     
 
         // Add VVB
-        governance.addVVB(vvb);
+        governance.addValidator(validator);
+        governance.addVerifier(verifier);
 
         // Log deployed or used addresses
         console.log("Governance:", address(governance));
