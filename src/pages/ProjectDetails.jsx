@@ -1511,7 +1511,7 @@ export default function ProjectDetails() {
                     {console.log("Comment:", c)}
                     <div className="flex justify-between text-sm text-gray-500 mb-1">
                       <span className="font-medium">
-                        {c.commenter && `${c.commenter.slice(0, 6)}...${c.commenter.slice(-4)}`}
+                        {c.commenter && `${c.commenter.slice(0, 6)}...${c.commenter.slice(-4)}`} <span className="text-gray-400">({userInfo.role})</span>
                       </span>
                     </div>
                     <p className="text-gray-800">{c.comment}</p>
