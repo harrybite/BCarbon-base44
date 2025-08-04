@@ -7,9 +7,9 @@ export const projectFactory = "0xEB2Cd3244C02209419E7A570CbF0058521F4E905";
 export const BCO2DAO = "0x8d0da7e9b843cE61E09D934d4043A6820226CC6d"
 export const BCO2Factory = "0x3aacc8277128d800E5F0b81F172470431c80E6dC"
 
-//http://localhost:4000
+//http://localhost:4090
 //https://bico2-backend-api.aigb.io
-export const apihost = "http://localhost:4000"
+export const apihost = "http://localhost:4090"
 
 export const chainInfo = {
   id: 7862,
