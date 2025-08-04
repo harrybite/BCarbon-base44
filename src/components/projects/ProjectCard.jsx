@@ -160,6 +160,7 @@ const ProjectCard = ({ project }) => {
   const handleRequestWithdrawal = async (projectAddress, amount, proof) => {
     setIsRequesting(true);
     try {
+      console.log("Requesting withdrawal for project:", projectAddress, "Amount:", amount, "Proof:", proof);
       const receipt = await requestWithdrawal(projectAddress, amount, proof, account);
       if (receipt?.status === 'success') {
         toast({

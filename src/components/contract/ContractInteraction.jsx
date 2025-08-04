@@ -118,7 +118,7 @@ export const useContractInteraction = () => {
     return new Contract(projectData, projectDataabi, provider);
   };
 
-  const getBCO2DAOContract = async (withSigner = false) => {
+  const getBCO2DAOContract = async () => {
     const provider = getProvider();
     // reading operations can use the provider directly
     return new Contract(BCO2DAO, BCO2DAOabi, provider);
@@ -1080,9 +1080,8 @@ const getUserApproveProjectBalance = async (address, page = 1, limit = 10) => {
   const requestWithdrawal = async (projectAddress, amount, proof,  account) => {
     if (!account) throw new Error("Account is required to request withdrawal");
     try {
-      const bco2Contract = thirdWebBCO2Contract(projectAddress);
       const transaction = prepareContractCall({
-        contract: bco2Contract,
+        contract: thirdWebBCO2DAOContract,
         method: "requestWithdrawal",
         params: [projectAddress, amount, proof],
       });
@@ -1099,8 +1098,8 @@ const getUserApproveProjectBalance = async (address, page = 1, limit = 10) => {
 
   const getProjectBalances = async (projectAddress) => {
     try {
-      const bco2Contract = await getBCO2DAOContract(projectAddress, false);
-      const balances = await bco2Contract.getProjectBalances();
+      const bco2Contract = await getBCO2DAOContract();
+      const balances = await bco2Contract.getProjectBalance(projectAddress);
       const convertBalance = formatEther(balances);
       return convertBalance;
     } catch (error) {
