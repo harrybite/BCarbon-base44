@@ -415,7 +415,7 @@ const MyRequest = () => {
                             <div>
                               <p className="text-xs text-gray-600">Total RUSD Collected</p>
                               <p className="text-sm font-semibold">
-                                {Number(request.totalRUSDCollected || 0).toLocaleString()} RUSD
+                                {Number(request.project.projectRUSDBalance)} RUSD
                               </p>
                             </div>
                           </div>

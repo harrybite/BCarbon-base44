@@ -48,7 +48,7 @@ const ProjectHeader = ({ project, onOpenHoldersModal }) => {
 }
           <Badge className="px-3 py-1 text-sm font-semibold rounded-full bg-green-100 text-green-700 border-green-200">
             <DollarSign className="w-4 h-4 mr-1" />
-            Total RUSD Collected {Number(project.totalSupply) * Number(project.projectMintPrice)}
+            Total RUSD Collected: {project.projectRUSDBalance}
           </Badge>
 
           <Badge
@@ -74,6 +74,7 @@ ProjectHeader.propTypes = {
     isApproved: PropTypes.bool,
     totalSupply: PropTypes.oneOfType([PropTypes.string, PropTypes.number]),
     projectMintPrice: PropTypes.oneOfType([PropTypes.string, PropTypes.number]),
+    projectRUSDBalance: PropTypes.oneOfType([PropTypes.string, PropTypes.number]),
   }).isRequired,
   onOpenHoldersModal: PropTypes.func.isRequired,
 };

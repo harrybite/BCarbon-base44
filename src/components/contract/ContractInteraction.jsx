@@ -1,8 +1,7 @@
 /* eslint-disable react-refresh/only-export-components */
 /* eslint-disable no-unused-vars */
 import { useState, useEffect } from 'react';
-import Web3 from 'web3';
-import { BrowserProvider, Contract, decodeBytes32String, formatEther, JsonRpcProvider, parseEther, toBigInt } from 'ethers';
+import { Contract, decodeBytes32String, formatEther, JsonRpcProvider, parseEther, toBigInt } from 'ethers';
 import governanceAbi from './Governance.json';
 import ERC20Abi from './ERC20.json';
 import projectFactoryabi from './ProjectFactory.json';
@@ -248,6 +247,25 @@ export const useContractInteraction = () => {
     }
   };
 
+    const mintForIssuer = async (projectAddress, amount, account) => {
+    if (!account) throw new Error("Account is required to set token URI");
+    try {
+      const bco2Contract = thirdWebBCO2Contract(projectAddress);
+      const transaction = prepareContractCall({
+        contract: bco2Contract,
+        method: "mintForIssuer",
+        params: [amount],
+      });
+      const transactionReceipt = await sendAndConfirmTransaction({
+        account,
+        transaction,
+      });
+      return transactionReceipt;
+    } catch (error) {
+      throw new Error(`Failed to mint: ${error.message}`);
+    }
+  };
+
   const getMintPrice = async (projectAddress) => {
     try {
       const bco2Contract = await getBCO2Contract(projectAddress, false);
@@ -366,6 +384,25 @@ const getUserApproveProjectBalance = async (address, page = 1, limit = 10) => {
 };
 
 
+  const updateURI = async (projectAddress, nonRetiredURI,retiredURI, account) => {
+    if (!account) throw new Error("Account is required to set token URI");
+    try {
+      const bco2Contract = thirdWebBCO2Contract(projectAddress);
+      const transaction = prepareContractCall({
+        contract: bco2Contract,
+        method: "updateTokenURIs",
+        params: [nonRetiredURI, retiredURI],
+      });
+      const transactionReceipt = await sendAndConfirmTransaction({
+        account,
+        transaction,
+      });
+      return transactionReceipt;
+    } catch (error) {
+      throw new Error(`Failed to set token URI: ${error.message}`);
+    }
+  };
+
 
 
   const setTokenURI = async (projectAddress, nonRetiredURI, retiredURI, account) => {
@@ -374,7 +411,7 @@ const getUserApproveProjectBalance = async (address, page = 1, limit = 10) => {
       const bco2Contract = thirdWebBCO2Contract(projectAddress);
       const transaction = prepareContractCall({
         contract: bco2Contract,
-        method: "setTokenURI",
+        method: "updateTokenURIs",
         params: [nonRetiredURI, retiredURI],
       });
       const transactionReceipt = await sendAndConfirmTransaction({
@@ -705,14 +742,15 @@ const getUserApproveProjectBalance = async (address, page = 1, limit = 10) => {
 
   //approvePresaleAndIssuePresaleCredits
 
-  const approvePresaleAndIssuePresaleCredits = async (projectAddress, creditAmount, account) => {
+  const approvePresaleAndIssuePresaleCredits = async (projectAddress, creditAmount, mintPrice, account) => {
     if (!account) throw new Error("Account is required to approve presale and");
       try {
         if (!account) throw new Error("Account is required to approve presale and issue credits");
+        const mintPriceWei = parseEther(mintPrice.toString());
         const transaction = prepareContractCall({
           contract: thirdWebGovernanceContract,
           method: "approvePresaleAndIssuePresaleCredits",
-          params: [projectAddress, creditAmount],
+          params: [projectAddress, creditAmount, mintPriceWei],
         });
         const transactionReceipt = await sendAndConfirmTransaction({
           account,
@@ -725,13 +763,14 @@ const getUserApproveProjectBalance = async (address, page = 1, limit = 10) => {
       }
   }
 
-  const approveAndIssueCredits = async (projectAddress, creditAmount, account) => {
+  const approveAndIssueCredits = async (projectAddress, creditAmount,mintPrice, account) => {
     if (!account) throw new Error("Account is required to approve and issue credits");
     try {
+       const mintPriceWei = parseEther(mintPrice.toString());
       const transaction = prepareContractCall({
         contract: thirdWebGovernanceContract,
         method: "approveAndIssueCredits",
-        params: [projectAddress, creditAmount],
+        params: [projectAddress, creditAmount, mintPriceWei],
       });
       const transactionReceipt = await sendAndConfirmTransaction({
         account,
@@ -1081,6 +1120,7 @@ const getUserApproveProjectBalance = async (address, page = 1, limit = 10) => {
     if (!account) throw new Error("Account is required to request withdrawal");
     try {
       const toWei = parseEther(amount.toString()); // Convert amount to wei
+      console.log("Requesting withdrawal for project:", projectAddress, "Amount:", toWei, "Proof:", proof);
       const transaction = prepareContractCall({
         contract: thirdWebBCO2DAOContract,
         method: "requestWithdrawal",
@@ -1117,8 +1157,8 @@ const getUserApproveProjectBalance = async (address, page = 1, limit = 10) => {
     try {
       const amountInWei = parseEther(amount.toString()); // Convert amount to wei
       const transaction = prepareContractCall({
-        contract: thirdWebBCO2DAOContract,
-        method: "governanceDecision",
+        contract: thirdWebGovernanceContract,
+        method: "executeApprovalForWithdrawal",
         params: [requestID, decision, amountInWei],
       });
       const transactionReceipt = await sendAndConfirmTransaction({
@@ -1157,6 +1197,7 @@ const getUserApproveProjectBalance = async (address, page = 1, limit = 10) => {
     validateRetirementCertificate,
     getRetirementCertificatesForAllProject,
     removeVVB,
+    mintForIssuer,
     approvePresaleAndIssuePresaleCredits,
     approveRUSD,
     checkRUSDAllowance,

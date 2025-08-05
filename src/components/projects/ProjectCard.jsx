@@ -167,7 +167,6 @@ const ProjectCard = ({ project }) => {
   const handleRequestWithdrawal = async (projectAddress, amount, proof) => {
     setIsRequesting(true);
     try {
-      console.log("Requesting withdrawal for project:", projectAddress, "Amount:", amount, "Proof:", proof);
       const receipt = await requestWithdrawal(projectAddress, amount, proof, account);
       if (receipt?.status === 'success') {
         const data = fetch(`${apihost}/withdrawal/store-withdrawal-request`, {
@@ -283,7 +282,7 @@ const ProjectCard = ({ project }) => {
 
   // Calculate funds raised percentage (assuming max funding goal)
   const getFundsRaisedAmount = () => {
-    return Number(details.totalSupply) * Number(details.projectMintPrice);
+    return Number(details.projectRUSDBalance);
   };
 
   if (isLoading) {
@@ -495,7 +494,7 @@ const ProjectCard = ({ project }) => {
           </Link>
 
           {/* Request Withdrawal Button - Only for Project Owner and when no active requests */}
-          {isProjectOwner && details.isApproved && !hasActiveWithdrawals && (
+          {isProjectOwner && !hasActiveWithdrawals && Number(projectBalance) > 0 &&  details.isApproved &&  (
             <button 
               className="w-full bg-gradient-to-r from-green-600 to-green-700 hover:from-green-700 hover:to-green-800 text-white py-3 px-4 rounded-lg font-semibold transition-all duration-200 transform hover:scale-[1.02] flex items-center justify-center space-x-2"
               onClick={() => setShowWithdrawalModal(true)}
@@ -505,15 +504,7 @@ const ProjectCard = ({ project }) => {
             </button>
           )}
 
-          {/* View Withdrawal Details Button - When there are active requests */}
-          {/* {isProjectOwner && hasActiveWithdrawals && (
-            <Link to={`/ProjectDetails/${details.projectContract}?tab=withdrawals`}>
-              <button className="w-full bg-gradient-to-r from-amber-600 to-amber-700 hover:from-amber-700 hover:to-amber-800 text-white py-3 px-4 rounded-lg font-semibold transition-all duration-200 transform hover:scale-[1.02] flex items-center justify-center space-x-2 mt-3">
-                <span>View Withdrawal Details</span>
-                <Eye className="w-4 h-4" />
-              </button>
-            </Link>
-          )} */}
+
         </div>
 
         {/* Comments Section */}

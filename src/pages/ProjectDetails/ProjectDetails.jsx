@@ -33,6 +33,7 @@ export default function ProjectDetails() {
     getWalletMinted,
     getRUSDBalance,
     getWalletRetrides,
+    getProjectBalances,
     getCurrentBalance,
     checkRUSDAllowance,
     approveRUSD,
@@ -43,7 +44,8 @@ export default function ProjectDetails() {
     validateProject,
     verifyProject,
     submitComment,
-    setGovernanceDecision
+    setGovernanceDecision,
+    mintForIssuer,
   } = useContractInteraction();
   const { walletAddress } = useConnectWallet();
   const account = useActiveAccount();
@@ -61,6 +63,7 @@ export default function ProjectDetails() {
   const [retiredBalance, setRetiredBalance] = useState(0);
   const [mintNftImage, setMintNftImage] = useState("");
   const [retireNftImage, setRetireNftImage] = useState("");
+  const [projectBalances, setProjectBalances] = useState("0");
   
   // Mint/Retire states
   const [mintAmount, setMintAmount] = useState("");
@@ -80,6 +83,7 @@ export default function ProjectDetails() {
   const [presaleCreditAmount, setPresaleCreditAmount] = useState('');
   const [isApproving, setIsApproving] = useState(false);
   const [isPresaleApproving, setIsPresaleApproving] = useState(false);
+  const [governancePresaleMintPrice, setGovernancePresaleMintPrice] = useState(0);
   
   // Comments state
   const [comment, setComment] = useState("");
@@ -134,6 +138,9 @@ export default function ProjectDetails() {
         if (withdrawalResponse.ok) {
           const withdrawalData = await withdrawalResponse.json();
           setWithdrawalRequests(withdrawalData.withdrawalRequests || []);
+          data.projectRUSDBalance = withdrawalData.project.projectRUSDBalance || 0; 
+          data.isPresale = withdrawalData.project.isPresale// Update project RUSD balance
+          setProject(data);
         }
       } catch (error) {
         console.error("Error fetching withdrawal requests:", error);
@@ -169,6 +176,8 @@ export default function ProjectDetails() {
       // Load user balances
       const balance = await getRUSDBalance(walletAddress);
       setRUSDBalance(balance);
+      const proBalance = await getProjectBalances(projectAddress);
+      setProjectBalances(proBalance);
       const mintBalance = await getCurrentBalance(projectAddress, 1);
       const retiredBalance = await getCurrentBalance(projectAddress, 2);
       setMintBalance(mintBalance);
@@ -292,6 +301,57 @@ export default function ProjectDetails() {
     }
   };
 
+
+  const handleMintForIssuer = async () => {
+    if (!mintAmount || parseFloat(mintAmount) <= 0) {
+      toast({
+        variant: "destructive",
+        title: "Error",
+        description: "Please enter a valid amount to mint",
+      });
+      return;
+    }
+    setIsMinting(true);
+
+    try {
+      const tx = await mintForIssuer(project.projectContract, parseInt(mintAmount), account);
+      if (tx.status === "success") {
+        const nftData = {
+          projectContract: project.projectContract,
+          owner: account.address,
+          amount: mintAmount,
+          tokenId: 1,
+          image: mintNftImage || fallbackImage,
+        };
+        await fetch(`${apihost}/user/store-nft`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(nftData),
+        });
+        toast({
+          variant: "default",
+          title: "Success",
+          description: `Minting successful!`,
+        });
+        setMintAmount("");
+        setTimeout(() => loadProject(project.projectContract), 3000);
+      } else {
+        toast({
+          variant: "destructive",
+          title: "Error",
+          description: `Minting failed: ${tx.error}`,
+        });
+      }
+    } catch (error) {
+      toast({
+        variant: "destructive",
+        title: "Error",
+        description: `Failed to mint: ${error.message}`,
+      });
+    } finally {
+      setIsMinting(false);
+    }
+  };
   // Retire handler
   const handleRetire = async () => {
     if (!retireAmount || parseFloat(retireAmount) <= 0) {
@@ -370,7 +430,7 @@ export default function ProjectDetails() {
 
     setIsApproving(true);
     try {
-      const tx = await approveAndIssueCredits(project.projectContract, Number(creditAmount), account);
+      const tx = await approveAndIssueCredits(project.projectContract, Number(creditAmount), governancePresaleMintPrice, account);
       if (tx.status === "success") {
         await fetch(`${apihost}/project/updateprojectdetails/${project.projectContract}`, {
           method: 'PUT',
@@ -424,7 +484,8 @@ export default function ProjectDetails() {
 
     setIsPresaleApproving(true);
     try {
-      const tx = await approvePresaleAndIssuePresaleCredits(project.projectContract, Number(presaleCreditAmount), account);
+
+      const tx = await approvePresaleAndIssuePresaleCredits(project.projectContract, Number(presaleCreditAmount), governancePresaleMintPrice, account);
       if (tx.status === "success") {
         await fetch(`${apihost}/project/updateprojectdetails/${project.projectContract}`, {
           method: 'PUT',
@@ -694,6 +755,7 @@ export default function ProjectDetails() {
         {/* Components */}
         <ProjectHeader 
           project={project} 
+          projectBalances={projectBalances}
           onOpenHoldersModal={handleOpenHoldersModal} 
         />
         
@@ -703,7 +765,7 @@ export default function ProjectDetails() {
 
         {/* Withdrawal Requests Section - Show for project owner */}
         {project && walletAddress && project.proposer && 
-          (walletAddress.toLowerCase() === project.proposer.toLowerCase() || isOwner || isVVB) && (
+          (walletAddress.toLowerCase() === project.proposer.toLowerCase() || isOwner ) && (
             <WithdrawalRequests 
               withdrawalRequests={withdrawalRequests}
               isLoading={withdrawalRequestsLoading}
@@ -737,12 +799,14 @@ export default function ProjectDetails() {
               mintAmount={mintAmount}
               setMintAmount={setMintAmount}
               handleMintETH={handleMintETH}
+              handleMintForIssuer={handleMintForIssuer}
               isMinting={isMinting}
               mintNftImage={mintNftImage}
               fallbackImage={fallbackImage}
               mintedCredits={mintedCredits}
               mintBalance={mintBalance}
               rusdBalance={rusdBalance}
+           
             />
             
             <RetireCreditsCard 
@@ -764,6 +828,7 @@ export default function ProjectDetails() {
           <CommentsSection 
             comments={project.comments}
             comment={comment}
+            role={userInfo.role}
             setComment={setComment}
             isCommenting={isCommenting}
             handleSubmitComment={handleSubmitComment}
@@ -799,6 +864,9 @@ export default function ProjectDetails() {
               setShowApproveModal(false);
               setCreditAmount('');
             }}
+            project={project}
+            setGovernancePresaleMintPrice={setGovernancePresaleMintPrice}
+            governancePresaleMintPrice={governancePresaleMintPrice}
             onApprove={handleApprove}
             creditAmount={creditAmount}
             setCreditAmount={setCreditAmount}
@@ -814,6 +882,8 @@ export default function ProjectDetails() {
               setShowPresaleApproveModal(false);
               setPresaleCreditAmount('');
             }}
+            setGovernancePresaleMintPrice={setGovernancePresaleMintPrice}
+            governancePresaleMintPrice={governancePresaleMintPrice}
             onApprove={handlePresaleApprove}
             creditAmount={presaleCreditAmount}
             setCreditAmount={setPresaleCreditAmount}

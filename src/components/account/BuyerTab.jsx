@@ -361,12 +361,17 @@ const BuyerTab = () => {
                     />
                   </div>
                   {/* Badge overlay */}
-                  <div className="absolute top-3 right-3">
+                  {project.tokenId === 1 ? <div className="absolute top-3 right-3">
                     <Badge className="bg-green-500 hover:bg-green-600 text-white border-0">
                       <Coins className="w-3 h-3 mr-1" />
                       Active
                     </Badge>
-                  </div>
+                  </div> : <div className="absolute top-3 right-3">
+                    <Badge className="bg-red-500 hover:bg-red-600 text-white border-0">
+                      <Coins className="w-3 h-3 mr-1" />
+                      Retired
+                    </Badge>
+                  </div>}
                 </div>
 
                 <CardContent className="p-6">

@@ -7,6 +7,8 @@ const PresaleApproveModal = ({
   show, 
   onClose, 
   onApprove, 
+  setGovernancePresaleMintPrice, 
+  governancePresaleMintPrice,
   creditAmount, 
   setCreditAmount, 
   isApproving, 
@@ -56,6 +58,28 @@ const PresaleApproveModal = ({
               Remaining for main approval: {Number(project.emissionReductions) - Number(creditAmount || 0)} tCO₂
             </p>
           </div>
+        </div>
+
+
+        <div className="mb-6">
+          <label className="block text-sm font-medium text-gray-700 mb-2">
+            Presale Mint Price (Max: {project.projectMintPrice} RUSD)
+          </label>
+          <input
+            type="number"
+            min="1"
+            max={project.projectMintPrice}
+            className="w-full border rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-transparent appearance-none"
+            placeholder="Enter presale mint price"
+            value={governancePresaleMintPrice}
+            onChange={e => {
+              if(Number(e.target.value) > Number(project.projectMintPrice)) {
+                return
+              }
+              setGovernancePresaleMintPrice(e.target.value)
+            }}
+            disabled={isApproving}
+          />
         </div>
         
         <div className="bg-green-50 border border-green-200 rounded-lg p-3 mb-4">
@@ -112,6 +136,8 @@ const PresaleApproveModal = ({
 PresaleApproveModal.propTypes = {
   show: PropTypes.bool.isRequired,
   onClose: PropTypes.func.isRequired,
+  setGovernancePresaleMintPrice: PropTypes.func.isRequired,
+  governancePresaleMintPrice: PropTypes.number.isRequired,
   onApprove: PropTypes.func.isRequired,
   creditAmount: PropTypes.oneOfType([PropTypes.string, PropTypes.number]).isRequired,
   setCreditAmount: PropTypes.func.isRequired,
@@ -119,6 +145,7 @@ PresaleApproveModal.propTypes = {
   maxCreditAmount: PropTypes.number.isRequired,
   project: PropTypes.shape({
     emissionReductions: PropTypes.oneOfType([PropTypes.string, PropTypes.number]),
+    projectMintPrice: PropTypes.number,
   }).isRequired,
 };
 

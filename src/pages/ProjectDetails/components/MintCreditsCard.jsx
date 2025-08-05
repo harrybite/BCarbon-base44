@@ -6,12 +6,14 @@ import { Button } from '@/components/ui/button';
 import { Label } from '@/components/ui/label';
 import { Input } from '@/components/ui/input';
 import { Coins } from 'lucide-react';
+import { useConnectWallet } from '@/context/walletcontext';
 
 const MintCreditsCard = ({ 
   project, 
   mintAmount, 
   setMintAmount, 
   handleMintETH, 
+  handleMintForIssuer,
   isMinting, 
   mintNftImage, 
   fallbackImage,
@@ -19,6 +21,8 @@ const MintCreditsCard = ({
   mintBalance,
   rusdBalance
 }) => {
+  console.log(project.isApproved, project.isPresale, !project.isApproved && !project.isPresale)
+   const { walletAddress } = useConnectWallet();
   return (
     <Card>
       <CardHeader>
@@ -54,7 +58,7 @@ const MintCreditsCard = ({
                 className="appearance-none"
                 value={mintAmount}
                 onChange={(e) => setMintAmount(e.target.value)}
-                disabled={!project.isApproved}
+                disabled={!project.isApproved && !project.isPresale}
               />
             </div>
             <Label>Minted tCO<sub>2</sub>: {Number(mintedCredits).toLocaleString()}</Label>
@@ -62,14 +66,22 @@ const MintCreditsCard = ({
             <Label>Current Bal tCO<sub>2</sub>: {Number(mintBalance).toLocaleString()}</Label>
             <br />
             <Label>RUSD: {Number(rusdBalance).toLocaleString()}</Label>
-            <Button
+           {project.proposer.toLowerCase() !== walletAddress.toLowerCase() &&  <Button
               onClick={handleMintETH}
-              disabled={isMinting || !project.isApproved}
+              disabled={isMinting || (!project.isApproved && !project.isPresale) || (Number(project.totalSupply) === Number(project.credits))}
               className="w-full bg-blue-600 hover:bg-blue-700"
             >
               {isMinting ? "Minting..." : "Mint with RUSD"}
+            </Button>}
+             { project.proposer.toLowerCase() === walletAddress.toLowerCase() &&  <Button
+              onClick={handleMintForIssuer}
+              disabled={isMinting || (!project.isApproved && !project.isPresale)}
+              className="w-full bg-blue-600 hover:bg-blue-700"
+            >
+              {isMinting ? "Minting..." : "Mint as issuer"}
             </Button>
-            {!project.isApproved && (
+}
+            {!project.isApproved && !project.isPresale && (
               <p className="text-sm text-gray-500">
                 Minting is currently disabled for this project. Project is awaiting approval.
               </p>
@@ -85,10 +97,15 @@ MintCreditsCard.propTypes = {
   project: PropTypes.shape({
     tokenUri: PropTypes.string,
     isApproved: PropTypes.bool,
+    isPresale: PropTypes.bool,
+    proposer: PropTypes.string,
+    totalSupply: PropTypes.oneOfType([PropTypes.string, PropTypes.number]),
+    credits: PropTypes.oneOfType([PropTypes.string, PropTypes.number]),
   }).isRequired,
   mintAmount: PropTypes.oneOfType([PropTypes.string, PropTypes.number]).isRequired,
   setMintAmount: PropTypes.func.isRequired,
   handleMintETH: PropTypes.func.isRequired,
+  handleMintForIssuer: PropTypes.func.isRequired,
   isMinting: PropTypes.bool.isRequired,
   mintNftImage: PropTypes.string,
   fallbackImage: PropTypes.string.isRequired,
