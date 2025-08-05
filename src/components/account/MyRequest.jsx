@@ -26,7 +26,11 @@ import {
   Vote,
   Timer,
   Wallet,
-  RefreshCw
+  RefreshCw,
+  TrendingUp,
+  Coins,
+  Building,
+  RotateCcw
 } from 'lucide-react';
 
 const MyRequest = () => {
@@ -36,6 +40,7 @@ const MyRequest = () => {
   const [requests, setRequests] = useState([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
+  const [updatingRequests, setUpdatingRequests] = useState(new Set()); // Track which requests are being updated
   
   // Pagination state
   const [currentPage, setCurrentPage] = useState(1);
@@ -53,7 +58,7 @@ const MyRequest = () => {
 
     try {
       const response = await axios.get(
-        `${apihost}/withdrawal/withdrawal-requests-by-requester/${walletAddress}?page=${page}&limit=${limit}`
+        `${apihost}/withdrawal/withdrawal-requests-by-requester/${walletAddress}?page=${page}&limit=${limit}&includeProject=true`
       );
       
       const { requests: fetchedRequests, pagination } = response.data;
@@ -76,6 +81,45 @@ const MyRequest = () => {
     } finally {
       setLoading(false);
       setRefreshing(false);
+    }
+  };
+
+  // Update a specific withdrawal request
+  const updateWithdrawalRequest = async (requestId) => {
+    setUpdatingRequests(prev => new Set(prev).add(requestId));
+    
+    try {
+      const response = await axios.put(`${apihost}/withdrawal/update-withdrawal-request/${requestId}`);
+      
+      if (response.data) {
+        // Update the specific request in the state
+        setRequests(prevRequests => 
+          prevRequests.map(request => 
+            request.requestId === requestId 
+              ? { ...request, ...response.data }
+              : request
+          )
+        );
+        
+        toast({
+          title: "Updated Successfully",
+          description: `Request #${requestId} has been updated with latest data`,
+          variant: "default",
+        });
+      }
+    } catch (error) {
+      console.error('Error updating withdrawal request:', error);
+      toast({
+        title: "Update Failed",
+        description: `Failed to update request #${requestId}. Please try again.`,
+        variant: "destructive",
+      });
+    } finally {
+      setUpdatingRequests(prev => {
+        const newSet = new Set(prev);
+        newSet.delete(requestId);
+        return newSet;
+      });
     }
   };
 
@@ -112,7 +156,7 @@ const MyRequest = () => {
         status: 'Approved',
         color: 'bg-green-100 text-green-800 border-green-200',
         icon: <CheckCircle2 className="w-4 h-4" />,
-        description: `Approved: ${request.governanceApprovedAmount} RUSD`
+        description: `Approved: ${Number(request.governanceApprovedAmount).toLocaleString()} RUSD`
       };
     }
     
@@ -220,20 +264,6 @@ const MyRequest = () => {
                 <p className="text-gray-600 mt-1">Track and manage your withdrawal requests</p>
               </div>
             </div>
-            
-            {/* Quick Stats */}
-            {/* <div className="hidden md:flex space-x-4">
-              <div className="bg-white rounded-lg p-4 shadow-sm border">
-                <div className="text-2xl font-bold text-blue-600">{totalRequests}</div>
-                <div className="text-sm text-gray-600">Total Requests</div>
-              </div>
-              <div className="bg-white rounded-lg p-4 shadow-sm border">
-                <div className="text-2xl font-bold text-green-600">
-                  {requests.filter(r => r.governanceApproved).length}
-                </div>
-                <div className="text-sm text-gray-600">Approved</div>
-              </div>
-            </div> */}
           </div>
         </div>
 
@@ -260,7 +290,7 @@ const MyRequest = () => {
                   className="flex items-center space-x-2"
                 >
                   <RefreshCw className={`w-4 h-4 ${refreshing ? 'animate-spin' : ''}`} />
-                  <span>Refresh</span>
+                  <span>Refresh All</span>
                 </Button>
               </div>
               
@@ -319,6 +349,8 @@ const MyRequest = () => {
               const now = Math.floor(Date.now() / 1000);
               const votingEnd = request.governanceExtended ? request.extendedVotingEnd : request.votingEnd;
               const timeLeft = Math.max(0, votingEnd - now);
+              const project = request.project;
+              const isUpdating = updatingRequests.has(request.requestId);
               
               return (
                 <Card key={request.requestId} className="hover:shadow-lg transition-shadow duration-200">
@@ -330,20 +362,84 @@ const MyRequest = () => {
                         </div>
                         <div>
                           <CardTitle className="text-lg">Request #{request.requestId}</CardTitle>
-                          <p className="text-sm text-gray-600">
-                            Project: {formatAddress(request.projectContract)}
-                          </p>
+                          <div className="flex items-center space-x-2 text-sm text-gray-600">
+                            <Building className="w-3 h-3" />
+                            <span>
+                              {project?.projectId || formatAddress(request.projectContract)}
+                            </span>
+                          </div>
                         </div>
                       </div>
                       
-                      <Badge className={`${statusInfo.color} border`}>
-                        {statusInfo.icon}
-                        <span className="ml-1">{statusInfo.status}</span>
-                      </Badge>
+                      <div className="flex items-center space-x-2">
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={() => updateWithdrawalRequest(request.requestId)}
+                          disabled={isUpdating}
+                          className="flex items-center space-x-1"
+                        >
+                          <RotateCcw className={`w-3 h-3 ${isUpdating ? 'animate-spin' : ''}`} />
+                          <span>{isUpdating ? 'Updating...' : 'Update'}</span>
+                        </Button>
+                        
+                        <Badge className={`${statusInfo.color} border`}>
+                          {statusInfo.icon}
+                          <span className="ml-1">{statusInfo.status}</span>
+                        </Badge>
+                      </div>
                     </div>
                   </CardHeader>
                   
                   <CardContent className="space-y-6">
+                    {/* Project Information - New Section */}
+                    {project && (
+                      <div className="bg-gray-50 border border-gray-200 rounded-lg p-4">
+                        <h4 className="text-sm font-semibold text-gray-900 mb-3 flex items-center">
+                          <Building className="w-4 h-4 mr-2" />
+                          Project Details
+                        </h4>
+                        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
+                          <div className="flex items-center space-x-2">
+                            <TrendingUp className="w-4 h-4 text-blue-500" />
+                            <div>
+                              <p className="text-xs text-gray-600">Total Supply</p>
+                              <p className="text-sm font-semibold">
+                                {Number(project.totalSupply || 0).toLocaleString()} tCO₂
+                              </p>
+                            </div>
+                          </div>
+                          
+                          <div className="flex items-center space-x-2">
+                            <Coins className="w-4 h-4 text-green-500" />
+                            <div>
+                              <p className="text-xs text-gray-600">Total RUSD Collected</p>
+                              <p className="text-sm font-semibold">
+                                {Number(request.totalRUSDCollected || 0).toLocaleString()} RUSD
+                              </p>
+                            </div>
+                          </div>
+                          
+                          <div className="flex items-center space-x-2">
+                            <DollarSign className="w-4 h-4 text-purple-500" />
+                            <div>
+                              <p className="text-xs text-gray-600">Mint Price</p>
+                              <p className="text-sm font-semibold">
+                                {Number(project.projectMintPrice || 0).toLocaleString()} RUSD
+                              </p>
+                            </div>
+                          </div>
+                        </div>
+                        
+                        {project.certificateId && (
+                          <div className="mt-3 pt-3 border-t border-gray-200">
+                            <p className="text-xs text-gray-600">Certificate ID</p>
+                            <p className="text-sm font-semibold text-gray-900">{project.certificateId}</p>
+                          </div>
+                        )}
+                      </div>
+                    )}
+
                     {/* Request Details */}
                     <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
                       <div className="bg-green-50 border border-green-200 rounded-lg p-3">
@@ -368,26 +464,30 @@ const MyRequest = () => {
                       
                       <div className="bg-orange-50 border border-orange-200 rounded-lg p-3">
                         <div className="flex items-center space-x-2 text-orange-700 mb-1">
-                          <Timer className="w-4 h-4" />
-                          <span className="text-sm font-medium">Total RUSD Collected</span>
+                          <DollarSign className="w-4 h-4" />
+                          <span className="text-sm font-medium">Project Balance</span>
                         </div>
                         <div className="text-sm font-semibold text-orange-800">
-                          {timeLeft > 0 ? `${Math.ceil(timeLeft / 86400)} days left` : 'Ended'}
+                          {request.projectBalances ?
+                            `${Number(request.projectBalances).toLocaleString()} RUSD` :
+                            'N/A'}
                         </div>
                       </div>
                       
                       <div className="bg-purple-50 border border-purple-200 rounded-lg p-3">
                         <div className="flex items-center space-x-2 text-purple-700 mb-1">
                           <Vote className="w-4 h-4" />
-                          <span className="text-sm font-medium">Total Withdrawl</span>
+                          <span className="text-sm font-medium">Total withdrawal</span>
                         </div>
                         <div className="text-lg font-bold text-purple-800">
-                          {request.holderVotesFor + request.holderVotesAgainst}
+                          {request.totalWithdrawn ?
+                            `${Number(request.totalWithdrawn).toLocaleString()} RUSD` :
+                            'N/A'}
                         </div>
                       </div>
                     </div>
 
-                   
+                    {/* Voting Progress */}
                     {(request.holderVotesFor > 0 || request.holderVotesAgainst > 0) && (
                       <div className="space-y-3">
                         <h4 className="text-sm font-medium text-gray-700">Voting Progress</h4>
