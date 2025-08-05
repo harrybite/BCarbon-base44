@@ -43,6 +43,7 @@ export default function ProjectDetails() {
     validateProject,
     verifyProject,
     submitComment,
+    setGovernanceDecision
   } = useContractInteraction();
   const { walletAddress } = useConnectWallet();
   const account = useActiveAccount();
@@ -608,6 +609,34 @@ export default function ProjectDetails() {
     fetchHolders(1, holdersPerPage, newTokenId);
   };
 
+
+  const handleGovernanceDecision = async (requestId, decision, amount = null) => {
+    try {
+      // Call the blockchain function
+
+      console.log("Making governance decision:", { requestId, decision, amount, account });
+      const tx = await setGovernanceDecision(requestId, amount ? Number(amount) : 0, decision,  account);
+      if (tx.status === "success") {
+        toast({
+          variant: "default",
+          title: "Success",
+          description: `Request #${requestId} has been ${decision ? 'approved' : 'rejected'} successfully`,
+        });
+        return true;
+      } else {
+        throw new Error(tx.error || "Transaction failed");
+      }
+    } catch (error) {
+      console.error("Error making governance decision:", error);
+      toast({
+        variant: "destructive",
+        title: "Error",
+        description: `Failed to make governance decision: ${error.message}`,
+      });
+      return false;
+    }
+  };
+
   // Loading state
   if (isLoading) {
     return (
@@ -672,6 +701,7 @@ export default function ProjectDetails() {
         
         <ProjectInfo project={project} methodology={methodology} />
 
+        {/* Withdrawal Requests Section - Show for project owner */}
         {project && walletAddress && project.proposer && 
           (walletAddress.toLowerCase() === project.proposer.toLowerCase() || isOwner || isVVB) && (
             <WithdrawalRequests 
@@ -679,6 +709,8 @@ export default function ProjectDetails() {
               isLoading={withdrawalRequestsLoading}
               projectContract={projectContract}
               project={project}
+              isOwner={isOwner}
+              onGovernanceDecision={handleGovernanceDecision}
             />
           )}
         

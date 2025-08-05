@@ -1109,11 +1109,35 @@ const getUserApproveProjectBalance = async (address, page = 1, limit = 10) => {
     }
   };
 
+
+  // governanceDecision
+
+  const setGovernanceDecision = async (requestID, amount, decision, account) => {
+    if (!account) throw new Error("Account is required to set governance decision");
+    try {
+      const amountInWei = parseEther(amount.toString()); // Convert amount to wei
+      const transaction = prepareContractCall({
+        contract: thirdWebBCO2DAOContract,
+        method: "governanceDecision",
+        params: [requestID, decision, amountInWei],
+      });
+      const transactionReceipt = await sendAndConfirmTransaction({
+        account,
+        transaction,
+      });
+      return transactionReceipt;
+    } catch (error) {
+      console.error("Error setting governance decision:", error);
+      throw new Error(`Failed to set governance decision: ${error.message}`);
+    }
+  }
+
   return {
     userAddress,
     setUserAddress,
     isContractsInitised,
     createAndListProject,
+    setGovernanceDecision,
     requestWithdrawal,
     getProjectBalances,
     isApproveForAll,
