@@ -39,11 +39,11 @@ const MintCreditsCard = ({
         ) : (
           <>
             {mintNftImage && (
-              <div className="w-full bg-black flex items-center justify-center" style={{ height: "180px" }}>
+              <div className="w-full bg-black flex items-center justify-center" style={{ height: "380px" }}>
                 <img
                   src={mintNftImage || fallbackImage}
                   alt="Mint NFT"
-                  className="object-contain h-full w-full"
+                  className="object-fill h-full w-full"
                 />
               </div>
             )}

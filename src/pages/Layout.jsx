@@ -58,7 +58,7 @@ const myAccountItem = {
   title: "My Account",
   url: createPageUrl("MyAccount"),
   icon: User,
-  description: "Manage your account and BCO₂ assets"
+  description: "Manage your account and BiCO₂ assets"
 };
 
 // Admin/VVB only navigation item
@@ -241,13 +241,13 @@ export default function Layout({ children }) {
           <div className="flex justify-between items-center h-16">
             {/* Logo */}
             <Link to="/" className="flex items-center space-x-3">
-              <div className="w-10 h-10 bg-gradient-to-br from-green-500 to-green-600 rounded-xl flex items-center justify-center shadow-lg">
-                {/* <img
+              {/* <div className="w-10 h-10 bg-gradient-to-br from-green-500 to-green-600 rounded-xl flex items-center justify-center shadow-lg">
+                <img
                   src="https://i.postimg.cc/mkJMjhYT/BCO2-Logo-01.png"
                   alt="BCO2 Logo"
                   className="w-8 h-8 object-contain"
-                /> */}
-              </div>
+                />
+              </div> */}
               <div>
                 <h1 className="text-xl font-bold text-gray-900">
                   BiCO<sub className="text-sm">2</sub>
@@ -398,7 +398,7 @@ export default function Layout({ children }) {
             <div className="flex items-center space-x-2">
               <Leaf className="w-5 h-5 text-green-600" />
               <p className="text-gray-600">
-                BCO<sub>2</sub> - Decentralized Carbon Credits Platform
+                BiCO<sub>2</sub> - Decentralized Carbon Credits Platform
               </p>
             </div>
             <div className="flex items-center space-x-4 mt-4 md:mt-0">

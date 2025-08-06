@@ -2,7 +2,6 @@
 import React from 'react';
 import PropTypes from 'prop-types';
 import { Button } from '@/components/ui/button';
-import { t } from 'framer-motion/dist/types.d-D0HXPxHm';
 
 const RoleActions = ({
   isOwner,

@@ -84,7 +84,7 @@ export default function Home() {
             </h1>
             <p className="text-xl text-gray-600 max-w-3xl mx-auto mb-8">
               Trade, mint, and retire carbon credits on the blockchain. 
-              Join the future of carbon offsetting with BCO<sub>2</sub> - 
+              Join the future of carbon offsetting with BiCO<sub>2</sub> - 
               where transparency meets sustainability.
             </p>
           </div>
@@ -130,7 +130,7 @@ export default function Home() {
         <div className="max-w-7xl mx-auto">
           <div className="text-center mb-16">
             <h2 className="text-3xl md:text-4xl font-bold text-gray-900 mb-4">
-              Why Choose BCO<sub>2</sub>?
+              Why Choose BCiO<sub>2</sub>?
             </h2>
             <p className="text-xl text-gray-600 max-w-3xl mx-auto">
               Our platform combines the power of blockchain technology with 
@@ -205,7 +205,7 @@ export default function Home() {
             Ready to Make an Impact?
           </h2>
           <p className="text-xl text-green-100 mb-8">
-            Join thousands of users already trading carbon credits on BCO<sub>2</sub>
+            Join thousands of users already trading carbon credits on BiCO<sub>2</sub>
           </p>
           {!isConnected && (
             <div className="max-w-md mx-auto">
