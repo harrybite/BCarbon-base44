@@ -1,17 +1,17 @@
 /* eslint-disable react-refresh/only-export-components */
 /* eslint-disable no-unused-vars */
 import { useState, useEffect } from 'react';
-import Web3 from 'web3';
-import { BrowserProvider, Contract, decodeBytes32String, formatEther, JsonRpcProvider, parseEther, toBigInt } from 'ethers';
+import { Contract, decodeBytes32String, formatEther, JsonRpcProvider, parseEther, toBigInt } from 'ethers';
 import governanceAbi from './Governance.json';
 import ERC20Abi from './ERC20.json';
 import projectFactoryabi from './ProjectFactory.json';
 import projectManagerabi from './ProjectManager.json';
 import projectDataabi from './ProjectData.json';
+import BCO2DAOabi from './BCO2DAO.json';
 import bco2Abi from './BCO2.json';
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { AlertCircle } from "lucide-react";
-import { apihost, chainInfo, GOVERNANCE_ADDRESS, MARKETPLACE_ADDRESS, projectData, projectFactory, projectManager, RUSD } from './address';
+import { apihost, BCO2DAO, chainInfo, GOVERNANCE_ADDRESS, MARKETPLACE_ADDRESS, projectData, projectFactory, projectManager, RUSD } from './address';
 import { useConnectWallet } from '@/context/walletcontext';
 import { bscTestnet } from 'thirdweb/chains';
 import { thirdwebclient } from '@/thirwebClient';
@@ -71,6 +71,14 @@ export const useContractInteraction = () => {
     abi: projectDataabi,
   });
 
+  // BCO2 DAO contract instance
+  const thirdWebBCO2DAOContract = getContract({
+    client: thirdwebclient,
+    chain: bscTestnet,
+    address: BCO2DAO,
+    abi: BCO2DAOabi,
+  });
+
 
   const getProvider = () => {
     return new JsonRpcProvider(chainInfo.rpc);
@@ -107,6 +115,12 @@ export const useContractInteraction = () => {
     }
     // reading operations can use the provider directly
     return new Contract(projectData, projectDataabi, provider);
+  };
+
+  const getBCO2DAOContract = async () => {
+    const provider = getProvider();
+    // reading operations can use the provider directly
+    return new Contract(BCO2DAO, BCO2DAOabi, provider);
   };
 
   const getProjectFactoryContract = async (withSigner = false) => {
@@ -149,7 +163,7 @@ export const useContractInteraction = () => {
 
     const requiredFields = [
       "mintPrice",
-      "treasury",
+      "isPresale",
       "defaultIsPermanent",
       "defaultValidity",
       "defaultVintage",
@@ -173,7 +187,7 @@ export const useContractInteraction = () => {
     try {
       const {
         mintPrice,
-        treasury,
+        isPresale,
         defaultIsPermanent,
         defaultValidity,
         defaultVintage,
@@ -192,7 +206,7 @@ export const useContractInteraction = () => {
         method: "createAndListProject",
         params: [
           mintPriceWei,
-          treasury,
+          isPresale,
           defaultIsPermanent,
           defaultValidity,
           defaultVintage,
@@ -221,6 +235,25 @@ export const useContractInteraction = () => {
       const transaction = prepareContractCall({
         contract: bco2Contract,
         method: "mintWithRUSD",
+        params: [amount],
+      });
+      const transactionReceipt = await sendAndConfirmTransaction({
+        account,
+        transaction,
+      });
+      return transactionReceipt;
+    } catch (error) {
+      throw new Error(`Failed to mint: ${error.message}`);
+    }
+  };
+
+    const mintForIssuer = async (projectAddress, amount, account) => {
+    if (!account) throw new Error("Account is required to set token URI");
+    try {
+      const bco2Contract = thirdWebBCO2Contract(projectAddress);
+      const transaction = prepareContractCall({
+        contract: bco2Contract,
+        method: "mintForIssuer",
         params: [amount],
       });
       const transactionReceipt = await sendAndConfirmTransaction({
@@ -321,7 +354,10 @@ const getUserApproveProjectBalance = async (address, page = 1, limit = 10) => {
               certificateId: project.certificateId,
               projectID: project.projectID,
               metadata: metadata,
-              tokenURI: tokenURI
+              tokenURI: tokenURI,
+              tokenId: project.tokenId,
+              certificateId: project.certificateId,
+              projectID: project.projectID,
             });
           } catch (metadataError) {
             console.error('Error fetching metadata:', metadataError);
@@ -333,7 +369,10 @@ const getUserApproveProjectBalance = async (address, page = 1, limit = 10) => {
               certificateId: project.certificateId,
               projectID: project.projectID,
               metadata: { name: 'Unknown Project', description: 'Metadata unavailable' },
-              tokenURI: tokenURI
+              tokenURI: tokenURI,
+              tokenId: project.tokenId,
+              certificateId: project.certificateId,
+              projectID: project.projectID,
             });
           }
         }
@@ -351,6 +390,25 @@ const getUserApproveProjectBalance = async (address, page = 1, limit = 10) => {
 };
 
 
+  const updateURI = async (projectAddress, nonRetiredURI,retiredURI, account) => {
+    if (!account) throw new Error("Account is required to set token URI");
+    try {
+      const bco2Contract = thirdWebBCO2Contract(projectAddress);
+      const transaction = prepareContractCall({
+        contract: bco2Contract,
+        method: "updateTokenURIs",
+        params: [nonRetiredURI, retiredURI],
+      });
+      const transactionReceipt = await sendAndConfirmTransaction({
+        account,
+        transaction,
+      });
+      return transactionReceipt;
+    } catch (error) {
+      throw new Error(`Failed to set token URI: ${error.message}`);
+    }
+  };
+
 
 
   const setTokenURI = async (projectAddress, nonRetiredURI, retiredURI, account) => {
@@ -359,7 +417,7 @@ const getUserApproveProjectBalance = async (address, page = 1, limit = 10) => {
       const bco2Contract = thirdWebBCO2Contract(projectAddress);
       const transaction = prepareContractCall({
         contract: bco2Contract,
-        method: "setTokenURI",
+        method: "updateTokenURIs",
         params: [nonRetiredURI, retiredURI],
       });
       const transactionReceipt = await sendAndConfirmTransaction({
@@ -687,13 +745,38 @@ const getUserApproveProjectBalance = async (address, page = 1, limit = 10) => {
     }
   };
 
-  const approveAndIssueCredits = async (projectAddress, creditAmount, account) => {
+
+  //approvePresaleAndIssuePresaleCredits
+
+  const approvePresaleAndIssuePresaleCredits = async (projectAddress, creditAmount, mintPrice, account) => {
+    if (!account) throw new Error("Account is required to approve presale and");
+      try {
+        if (!account) throw new Error("Account is required to approve presale and issue credits");
+        const mintPriceWei = parseEther(mintPrice.toString());
+        const transaction = prepareContractCall({
+          contract: thirdWebGovernanceContract,
+          method: "approvePresaleAndIssuePresaleCredits",
+          params: [projectAddress, creditAmount, mintPriceWei],
+        });
+        const transactionReceipt = await sendAndConfirmTransaction({
+          account,
+          transaction,
+        });
+        return transactionReceipt;
+      } catch (error) {
+        console.error("Error approving presale and issuing credits:", error);
+        // throw new Error(`Failed to approve presale and issue credits: ${error.message}`); 
+      }
+  }
+
+  const approveAndIssueCredits = async (projectAddress, creditAmount,mintPrice, account) => {
     if (!account) throw new Error("Account is required to approve and issue credits");
     try {
+       const mintPriceWei = parseEther(mintPrice.toString());
       const transaction = prepareContractCall({
         contract: thirdWebGovernanceContract,
         method: "approveAndIssueCredits",
-        params: [projectAddress, creditAmount],
+        params: [projectAddress, creditAmount, mintPriceWei],
       });
       const transactionReceipt = await sendAndConfirmTransaction({
         account,
@@ -869,7 +952,6 @@ const getUserApproveProjectBalance = async (address, page = 1, limit = 10) => {
   const checkIsProjectOwner = async (projectAddress) => {
     try {
       const projectDataContract = await getProjectDataContract(false);
-      console.log("Project address:", projectAddress);
       const owners = await projectDataContract.getAuthorizedProjectOwners(projectAddress);
       return owners.map(addr => addr.toLowerCase()).includes(userAddress.toLowerCase());
     } catch (error) {
@@ -958,12 +1040,24 @@ const getUserApproveProjectBalance = async (address, page = 1, limit = 10) => {
     }
   };
 
+  const getPesaleStatus = async (projectAddress) => {
+    try {
+      const projectDataContract = await getProjectDataContract(false);
+      const detail = await projectDataContract.getPresaleStatus(projectAddress);
+      return detail;
+    } catch (error) {
+      console.log('Error fetching presale status:', error);
+      throw new Error(`Failed to fetch presale status: ${error.message}`);
+    }
+  };
+
 
 
   const getListedProjectDetails = async (address) => {
     try {
       const projectDataContract = await getProjectDataContract(false);
       const detail = await projectDataContract.getProjectDetails(address);
+      const presaleStatus = await getPesaleStatus(address);
       const projectMintPrice = await getMintPrice(address);
       const projectTotalSupply = await getTotalSupply(address);
       const projectTotalRetired = await getTotalRetired(address);
@@ -976,6 +1070,9 @@ const getUserApproveProjectBalance = async (address, page = 1, limit = 10) => {
       return {
         projectContract: detail.projectContract,
         projectId: detail.projectId,
+        isPresale: presaleStatus.listed,
+        presaleAmount: presaleStatus.amount,
+        isPresaleApproved: Number(detail.credits) > 0 ? true : false,
         certificateId: detail.certificateId,
         methodology: detail.methodology,
         emissionReductions: Number(detail.emissionReductions),
@@ -987,8 +1084,8 @@ const getUserApproveProjectBalance = async (address, page = 1, limit = 10) => {
         comments: detail.comments,
         isValidated: detail.isValidated,
         isVerified: detail.isVerified,
-        isApproved: Number(detail.credits) ? true : false,
-        prokectMintPrice: projectMintPrice,
+        isApproved: detail.certificateId ? true : false,
+        projectMintPrice: projectMintPrice,
         totalSupply: projectTotalSupply,
         totalRetired: projectTotalRetired,
         defaultIsPermanent: defaultIsPermanent,
@@ -1024,11 +1121,71 @@ const getUserApproveProjectBalance = async (address, page = 1, limit = 10) => {
     }
   };
 
+
+  const requestWithdrawal = async (projectAddress, amount, proof,  account) => {
+    if (!account) throw new Error("Account is required to request withdrawal");
+    try {
+      const toWei = parseEther(amount.toString()); // Convert amount to wei
+      console.log("Requesting withdrawal for project:", projectAddress, "Amount:", toWei, "Proof:", proof);
+      const transaction = prepareContractCall({
+        contract: thirdWebBCO2DAOContract,
+        method: "requestWithdrawal",
+        params: [projectAddress, toWei, proof],
+      });
+      const transactionReceipt = await sendAndConfirmTransaction({
+        account, // thirdweb account object
+        transaction,
+      });
+      return transactionReceipt;
+    } catch (error) { 
+      console.error("Error requesting withdrawal:", error);
+    }
+  };
+
+
+  const getProjectBalances = async (projectAddress) => {
+    try {
+      const bco2Contract = await getBCO2DAOContract();
+      const balances = await bco2Contract.getProjectBalance(projectAddress);
+      const convertBalance = formatEther(balances);
+      return convertBalance;
+    } catch (error) {
+      console.error("Error fetching project balances:", error);
+      // throw new Error(`Failed to fetch project balances: ${error.message}`);
+    }
+  };
+
+
+  // governanceDecision
+
+  const setGovernanceDecision = async (requestID, amount, decision, account) => {
+    if (!account) throw new Error("Account is required to set governance decision");
+    try {
+      const amountInWei = parseEther(amount.toString()); // Convert amount to wei
+      const transaction = prepareContractCall({
+        contract: thirdWebGovernanceContract,
+        method: "executeApprovalForWithdrawal",
+        params: [requestID, decision, amountInWei],
+      });
+      const transactionReceipt = await sendAndConfirmTransaction({
+        account,
+        transaction,
+      });
+      return transactionReceipt;
+    } catch (error) {
+      console.error("Error setting governance decision:", error);
+      throw new Error(`Failed to set governance decision: ${error.message}`);
+    }
+  }
+
   return {
     userAddress,
     setUserAddress,
     isContractsInitised,
     createAndListProject,
+    setGovernanceDecision,
+    requestWithdrawal,
+    getProjectBalances,
     isApproveForAll,
     setApprovalForAll,
     mintWithRUSD,
@@ -1046,7 +1203,8 @@ const getUserApproveProjectBalance = async (address, page = 1, limit = 10) => {
     validateRetirementCertificate,
     getRetirementCertificatesForAllProject,
     removeVVB,
-
+    mintForIssuer,
+    approvePresaleAndIssuePresaleCredits,
     approveRUSD,
     checkRUSDAllowance,
     getProjectStats,

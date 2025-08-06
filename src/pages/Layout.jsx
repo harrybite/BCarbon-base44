@@ -93,8 +93,6 @@ export default function Layout({ children }) {
       userInfo = null;
     }
   }
-
-  console.log("User Info:", userInfo);
   // Check if user is admin or VVB
   const isAdminOrVVB = userInfo && (userInfo.role === "gov" || userInfo.role === "vvb");
 

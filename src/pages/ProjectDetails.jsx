@@ -59,6 +59,7 @@ export default function ProjectDetails() {
     checkAuthorizedVVB,
     checkIsOwner,
     approveAndIssueCredits,
+    approvePresaleAndIssuePresaleCredits,
     validateProject,
     verifyProject,
     submitComment,
@@ -642,6 +643,22 @@ export default function ProjectDetails() {
                 </h1>
               </div>
             </div>
+
+            <div className="mt-2 sm:mt-0 sm:ml-auto">
+              {project.isPresale && project.presaleAmount !== 0  ? (
+                <Badge className="px-3 py-1 text-sm font-semibold rounded-full bg-green-100 text-green-700 border-green-200">
+                  <CheckCircle2 className="w-4 h-4 mr-1" />
+                   In Presale 
+                </Badge>
+              ) : project.isPresale && project.presaleAmount === 0 ?  (
+                <Badge className="px-3 py-1 text-sm font-semibold rounded-full bg-yellow-100 text-yellow-700 border-yellow-200">
+                  <AlertCircle className="w-4 h-4 mr-1" />
+                  Presale Approval Pending
+                </Badge>
+              ) : ''}
+            </div>
+
+
             <div className="mt-2 sm:mt-0 sm:ml-auto">
               {project.isApproved ? (
                 <Badge className="px-3 py-1 text-sm font-semibold rounded-full bg-green-100 text-green-700 border-green-200">
