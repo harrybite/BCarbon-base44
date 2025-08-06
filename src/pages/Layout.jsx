@@ -242,15 +242,15 @@ export default function Layout({ children }) {
             {/* Logo */}
             <Link to="/" className="flex items-center space-x-3">
               <div className="w-10 h-10 bg-gradient-to-br from-green-500 to-green-600 rounded-xl flex items-center justify-center shadow-lg">
-                <img
+                {/* <img
                   src="https://i.postimg.cc/mkJMjhYT/BCO2-Logo-01.png"
                   alt="BCO2 Logo"
                   className="w-8 h-8 object-contain"
-                />
+                /> */}
               </div>
               <div>
                 <h1 className="text-xl font-bold text-gray-900">
-                  BCO<sub className="text-sm">2</sub>
+                  BiCO<sub className="text-sm">2</sub>
                 </h1>
                 <p className="text-xs text-gray-500">Decentralized Carbon Credits</p>
               </div>
