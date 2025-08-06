@@ -152,16 +152,16 @@ contract BCO2DAO is ReentrancyGuard {
         emit Voted(requestId, msg.sender, support, balance);
     }
 
-    function vvbApproveWithdrawal(uint256 requestId) external nonReentrant {
-        if (!governance.checkAuthorizedVVBs(msg.sender)) revert NotVVB();
-
+    function vvbApproveWithdrawal(uint256 requestId, bool support) external nonReentrant {
         WithdrawalRequest storage request = withdrawalRequests[requestId];
+        bool isVVB = projectData.checkAuthorizedVVBs(request.projectContract, msg.sender);
+        if (!isVVB) revert NotVVB();
         if (!request.isActive) revert RequestNotActive();
         if (block.timestamp > (request.governanceExtended ? request.extendedVotingEnd : request.votingEnd))
             revert VotingPeriodEnded();
         if (request.vvbApprovals[msg.sender]) revert AlreadyVoted();
 
-        request.vvbApprovals[msg.sender] = true;
+        request.vvbApprovals[msg.sender] = support;
         emit VVBApproved(requestId, msg.sender);
     }
 
@@ -217,7 +217,8 @@ contract BCO2DAO is ReentrancyGuard {
     }
 
     function isApprovedByVVB(uint256 requestId) public view returns (bool) {
-        address[] memory authorizedVVBs = governance.getAuthorizedVVBs();
+        WithdrawalRequest storage request = withdrawalRequests[requestId];
+        address[] memory authorizedVVBs = projectData.getAuthorizedVVBs(request.projectContract);
         for (uint256 i = 0; i < authorizedVVBs.length; i++) {
             if (withdrawalRequests[requestId].vvbApprovals[authorizedVVBs[i]]) {
                 return true;

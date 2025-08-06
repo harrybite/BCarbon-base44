@@ -39,6 +39,9 @@ contract ProjectData is Ownable {
     mapping(address => bool) private isListedForPresale;
     mapping(address => uint256) private approvedPresaleAmount;
     mapping(address => mapping(address => bool)) public authorizedProjectOwners;
+    mapping(address => mapping(address => bool)) private authorizedVVBs;
+    // Mapping of project address to list of authorized validators and verifiers
+    mapping(address => address[]) private projectAuthorizedVVBsList;
     mapping(address => address[]) public userListedProjects;
     address[] public listedProjects;
     address[] public approvedProjects;
@@ -225,6 +228,13 @@ contract ProjectData is Ownable {
         project.vintageTimestamp = _defaultVintage;
     }
 
+    function _addAuthorizedVVBs(address projectContract, address vvb) external onlyFactory {
+        if(projectContract == address(0) || vvb == address(0)) revert ("Invalid Address");
+
+        authorizedVVBs[projectContract][vvb] = true;
+        projectAuthorizedVVBsList[projectContract].push(vvb);
+    }
+
     function _addComment(
         address projectContract,
         string memory comment,
@@ -390,6 +400,17 @@ contract ProjectData is Ownable {
 
     function getApprovedProjects() external view returns (address[] memory) {
         return approvedProjects;
+    }
+
+    function checkAuthorizedVVBs(address projectContract, address vvb) external view returns(bool) {
+        if(projectContract == address(0) || vvb == address(0)) revert ("Invalid Address");
+        
+        bool isAuthorized = authorizedVVBs[projectContract][vvb];
+        return isAuthorized;
+    }
+
+    function getAuthorizedVVBs(address projectAddress) external view returns (address[] memory) {
+        return projectAuthorizedVVBsList[projectAddress];
     }
 
     function getAuthorizedProjectOwners(address projectContract)

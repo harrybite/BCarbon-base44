@@ -24,8 +24,9 @@ contract BCO2Test is Test {
     BCO2Marketplace marketplace;
 
     address user = address(1);
-    address vvb = address(2);
-    address issuer = address(3);
+    address validator = address(2);
+    address verifier = address(3);
+    address issuer = address(4);
     address owner = address(this);
     bytes32 public constant VINTAGE = keccak256("Vintage");
     
@@ -70,13 +71,15 @@ contract BCO2Test is Test {
         projectData.setFactory(address(projectFactory));
         
         // Add VVB
-        governance.addVVB(vvb);
+        governance.addValidator(validator);
+        governance.addVerifier(verifier);
         
         // Test if governance can access certificate ID generation
         // We need to create a project first
         rusd.setBalance(user, 10000 ether);
         
         vm.startPrank(issuer);
+        console.log("Creating and listing project");
         bco2 = BCO2(
             projectFactory.createAndListProject{gas: 50000000}(
                 1 ether,
@@ -87,9 +90,12 @@ contract BCO2Test is Test {
                 0,
                 "Kenya",
                 1000000,
-                "Test project details"
+                "Test project details",
+                validator,
+                verifier
             )
         );
+        console.log("Listing successful, project Address:", address(bco2));
         vm.stopPrank();
 
         console.log("Non retired URI:", bco2.uri(bco2.unit_tCO2_TOKEN_ID()));
@@ -109,13 +115,23 @@ contract BCO2Test is Test {
         console.log("User BCO2 Balance:", bco2.balanceOf(user, 1));
         vm.stopPrank();
 
-        vm.startPrank(vvb);
+        vm.startPrank(validator);
+        projectManager.submitComment(address(bco2), "Validator found all information true");
         governance.validateProject(address(bco2));
+        vm.stopPrank();
+
+        vm.startPrank(issuer);
+        projectManager.submitComment(address(bco2), "Thanks for review");
+        vm.stopPrank();
+
+        vm.startPrank(verifier);
+        projectManager.submitComment(address(bco2), "Verifierfound all information true");
         governance.verifyProject(address(bco2));
         vm.stopPrank();
 
         vm.startPrank(owner);
         console.log("approving and issuing credits");
+        projectManager.submitComment(address(bco2), "Governance found all good");
         governance.approveAndIssueCredits{gas: 50000000}(address(bco2), 500000);
         vm.stopPrank();
 
@@ -123,6 +139,10 @@ contract BCO2Test is Test {
         console.log("validation status:", project.isValidated, project.isVerified);
         console.log("Total credits issued:", project.credits);
         console.log("CertificateId issued:", project.certificateId);
+        for (uint i = 0; i < project.comments.length; i++) {
+            console.log("Comment #", i);
+            console.log("Text:", project.comments[i].comment);
+        }
 
         // User minting
         vm.startPrank(user);
@@ -150,18 +170,21 @@ contract BCO2Test is Test {
         assertEq(rawPermanent, bytes32("true"), "Token must be permanent");
         assertEq(uint256(rawValidity), 0, "Validity must be 0 for permanent token");
 
-        vm.prank(user);
-        bco2.retire(5);
+        vm.startPrank(user);
+        bco2.retire(10);
+        vm.stopPrank();
 
-        assertEq(bco2.balanceOf(user, 1), userBalance - 5, "Remaining credits incorrect");
-        assertEq(bco2.balanceOf(user, 2), 5, "Retired credits incorrect");
+        console.log("User Remaining Balance:", bco2.balanceOf(user, 1));
+        console.log("User retired balance:", bco2.balanceOf(user, 2));
+        assertEq(bco2.balanceOf(user, 1), userBalance - 10, "Remaining credits incorrect");
+        assertEq(bco2.balanceOf(user, 2), 10, "Retired credits incorrect");
 
         bytes32 certHash = bco2.getRetirementCertificate(user, 0);
         assertTrue(certHash != bytes32(0), "Certificate hash should not be empty");
 
         (bool isValid, uint256 retiredTonnes) = bco2.validateRetirementCertificate(user, 0, certHash);
         assertTrue(isValid, "Certificate hash should match");
-        assertEq(retiredTonnes, 5 * bco2.tonnesPerToken(), "Retired tonnes mismatch");
+        assertEq(retiredTonnes, 10 * bco2.tonnesPerToken(), "Retired tonnes mismatch");
 
         console.log("Retirement test passed successfully!");
     }
@@ -186,10 +209,17 @@ contract BCO2Test is Test {
         vm.stopPrank();
 
         // Step 2: VVB approves request
-        vm.startPrank(vvb);
-        console.log("VVB is valid in Governance:", governance.checkAuthorizedVVBs(vvb));
-        bco2DAO.vvbApproveWithdrawal(withdrawalRequestID);
-        console.log("VVB Approval status:", bco2DAO.getVVBApproval(withdrawalRequestID, vvb));
+        vm.startPrank(validator);
+        console.log("Validator is valid in Project:", projectData.checkAuthorizedVVBs(address(bco2), validator));
+        bco2DAO.vvbApproveWithdrawal(withdrawalRequestID, true);
+        console.log("Validator Approval status:", bco2DAO.getVVBApproval(withdrawalRequestID, validator));
+        console.log("Is VVB Approved:", bco2DAO.isApprovedByVVB(withdrawalRequestID));
+        vm.stopPrank();
+
+        vm.startPrank(verifier);
+        console.log("Verifier is valid in Project:", projectData.checkAuthorizedVVBs(address(bco2), verifier));
+        bco2DAO.vvbApproveWithdrawal(withdrawalRequestID, true);
+        console.log("Verifier Approval status:", bco2DAO.getVVBApproval(withdrawalRequestID, verifier));
         console.log("Is VVB Approved:", bco2DAO.isApprovedByVVB(withdrawalRequestID));
         vm.stopPrank();
 
