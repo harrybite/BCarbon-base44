@@ -11,6 +11,10 @@ export const BCO2Factory = "0x3aacc8277128d800E5F0b81F172470431c80E6dC"
 //https://bico2-backend-api.aigb.io
 export const apihost = "https://bico2-backend-api.aigb.io"
 
+export  const uriTokenOne = 'https://ipfs.io/ipfs/bafkreihzb5t6ppevzlkkueyoo5b6pcx2n7aph623qz2mxpoitjlxjj2x4a?filename=1.json'
+export const uriTokenTwo = 'https://ipfs.io/ipfs/bafkreiaiekypittzfv322picx2pzvixqirwhcdmtwwhwslsqmtujc7ygle?filename=2.json'
+export  const uriTokenThree = 'https://ipfs.io/ipfs/bafkreib3bvfvidmgxgpwsohepcfwud2v4eg243trozlaj75s2iatiklan4?filename=3.json'
+
 export const chainInfo = {
   id: 7862,
   rpc: "https://bsc-testnet.drpc.org",

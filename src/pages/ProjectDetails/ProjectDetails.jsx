@@ -3,7 +3,7 @@ import { useParams } from "react-router-dom";
 import { Link } from "react-router-dom";
 import { createPageUrl } from "@/utils";
 import { useContractInteraction } from "../../components/contract/ContractInteraction";
-import { apihost, methodology } from "@/components/contract/address";
+import { apihost, methodology, uriTokenThree } from "@/components/contract/address";
 import { useToast } from "@/components/ui/use-toast";
 import { useConnectWallet } from "@/context/walletcontext";
 import { useActiveAccount } from "thirdweb/react";
@@ -469,6 +469,15 @@ export default function ProjectDetails() {
         title: "Error",
         description: "Please enter a valid credit amount",
       });
+      return;
+    }
+
+    if(project.tokenUri === uriTokenThree) {
+        toast({
+          variant: "destructive",
+          title: "Error",
+          description: "Please update the project token URI ",
+        });
       return;
     }
 

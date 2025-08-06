@@ -5,7 +5,7 @@ import CreateProjectTab from '../admin/CreateProjectTab';
 import ProjectCard from '../projects/ProjectCard';
 import { useToast } from '../ui/use-toast';
 import { useConnectWallet } from '@/context/walletcontext';
-import { apihost } from '../contract/address';
+import { apihost, uriTokenOne, uriTokenThree, uriTokenTwo } from '../contract/address';
 import { Loader2, Plus, Settings, Edit, RefreshCw } from 'lucide-react';
 import { useActiveAccount } from 'thirdweb/react';
 
@@ -27,9 +27,7 @@ const MyProjects = () => {
   const [isPresale, setIsPresale] = useState(false);
   const account = useActiveAccount()
 
-  const uriTokenOne = 'https://ipfs.io/ipfs/bafkreihzb5t6ppevzlkkueyoo5b6pcx2n7aph623qz2mxpoitjlxjj2x4a?filename=1.json'
-  const uriTokenTwo = 'https://ipfs.io/ipfs/bafkreiaiekypittzfv322picx2pzvixqirwhcdmtwwhwslsqmtujc7ygle?filename=2.json'
-  const uriTokenThree = 'https://ipfs.io/ipfs/bafkreib3bvfvidmgxgpwsohepcfwud2v4eg243trozlaj75s2iatiklan4?filename=3.json'
+
 
   console.log("Wallet Address:", walletAddress);
   

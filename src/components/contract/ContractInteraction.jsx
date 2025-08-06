@@ -355,9 +355,7 @@ const getUserApproveProjectBalance = async (address, page = 1, limit = 10) => {
               projectID: project.projectID,
               metadata: metadata,
               tokenURI: tokenURI,
-              tokenId: project.tokenId,
-              certificateId: project.certificateId,
-              projectID: project.projectID,
+
             });
           } catch (metadataError) {
             console.error('Error fetching metadata:', metadataError);
@@ -370,9 +368,7 @@ const getUserApproveProjectBalance = async (address, page = 1, limit = 10) => {
               projectID: project.projectID,
               metadata: { name: 'Unknown Project', description: 'Metadata unavailable' },
               tokenURI: tokenURI,
-              tokenId: project.tokenId,
-              certificateId: project.certificateId,
-              projectID: project.projectID,
+
             });
           }
         }
