@@ -8,6 +8,7 @@ import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import "../Interfaces/IProjectData.sol";
 import "../Interfaces/IProjectManager.sol";
 import "../Interfaces/IBCO2Factory.sol";
+import "../Interfaces/IBCO2Governance.sol";
 
 interface IBCO2Config {
     function configParameters(
@@ -50,7 +51,6 @@ contract ProjectFactory is Ownable, Pausable, ReentrancyGuard {
         if (_governance == address(0)) revert("Invalid Governance address");
         if (_bco2DAO == address(0)) revert("Invalid DAO address");
         if (_RUSD == address(0)) revert("Invalid RUSD address");
-        // if (initialOwner == address(0)) revert("Invalid owner address");
         projectData = IProjectData(_projectData);
         projectManager = IProjectManager(_projectManager);
         bco2Factory = IBCO2Factory(_bco2Factory);
@@ -106,7 +106,9 @@ contract ProjectFactory is Ownable, Pausable, ReentrancyGuard {
         uint8 methodologyIndex,
         string memory location,
         uint256 emissionReductions,
-        string memory projectDetails
+        string memory projectDetails,
+        address validator,
+        address verifier
     ) external whenNotPaused nonReentrant returns (address projectContract) {
         if ((defaultIsPermanent && defaultValidity != 0) || (!defaultIsPermanent && defaultValidity == 0)) {
             revert("Invalid validity");
@@ -145,6 +147,16 @@ contract ProjectFactory is Ownable, Pausable, ReentrancyGuard {
         projectData._setDefaultVintage(projectContract, defaultVintage);
 
         projectData._setCommentDeadline(projectContract, currentCommentPeriod);
+
+        bool isValidator = IBCO2Governance(governance).checkAuthorizedValidators(validator);
+        bool isVerifier = IBCO2Governance(governance).checkAuthorizedVerifiers(verifier);
+
+        if(!isValidator) revert ("Validator is not approved by governance");
+        if(!isVerifier) revert ("Verifier is not approved by governance");
+
+        projectData._addAuthorizedVVBs(projectContract, validator);
+
+        projectData._addAuthorizedVVBs(projectContract, verifier);
 
         IBCO2Config(projectContract).configParameters(
             mintPrice,

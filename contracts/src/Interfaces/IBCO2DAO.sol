@@ -35,7 +35,7 @@ interface IBCO2DAO {
     function depositRUSD(address projectContract, uint256 amount) external returns (bool);
     function requestWithdrawal(address projectContract, uint256 amount, string calldata proofOfWork) external returns (uint256 requestId);
     function voteOnWithdrawal(uint256 requestId, bool support) external;
-    function vvbApproveWithdrawal(uint256 requestId) external;
+    function vvbApproveWithdrawal(uint256 requestId, bool support) external;
     function extendVotingPeriod(uint256 requestId) external;
     function governanceDecision(uint256 requestId, bool approve, uint256 approvedAmount) external;
     function setVotingDuration(uint256 newDuration) external;

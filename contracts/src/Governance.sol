@@ -20,25 +20,32 @@ contract BCO2Governance is Ownable, Pausable {
 
     bool public initialized;
 
-    uint8 public authorizedVVBCounter;
+    uint8 public authorizedValidatorCounter;
+    uint8 public authorizedVerifierCounter;
 
-    address[] public listOfAuthorizeVVBs;
+    address[] public listOfAuthorizedValidators;
+    address[] public listOfAuthorizedVerifiers;
 
     // Mappings
-    mapping(address => bool) public authorizedVVBs;
+    mapping(address => bool) public authorizedValidators;
+    mapping(address => bool) public authorizedVerifiers;
     mapping(string => bool) private _usedCertificateIds;
     mapping(address => uint256) public totalCreditsIssued;
 
     // Custom errors
     error notInitialized();
-    error InvalidVVBAddress();
-    error VVBAlreadyAuthorized();
-    error VVBNotAuthorized();
+    error InvalidValidatorAddress();
+    error InvalidVerifierAddress();
+    error ValidatorAlreadyAuthorized();
+    error VerifierAlreadyAuthorized();
+    error ValidatorNotAuthorized();
+    error VerifierNotAuthorized();
     error ProjectNotListed();
     error CommentPeriodNotEnded();
     error ProjectAlreadyValidated();
     error ProjectNotValidated();
     error ProjectAlreadyVerified();
+    error ProjectNotVerified();
     error InvalidCreditAmount();
     error EmptyCertificateId();
     error CertificateIdAlreadyUsed();
@@ -50,10 +57,12 @@ contract BCO2Governance is Ownable, Pausable {
     event ProjectDataUpdated(address indexed newProjectData);
     event ProjectManagerUpdated(address indexed newProjectManager);
     event BCO2DAOUpdated(address indexed newBCO2DAO);
-    event VVBAdded(address vvb);
-    event VVBRemoved(address vvb);
-    event ProjectValidated(address indexed projectContract, address vvb);
-    event ProjectVerified(address indexed projectContract, address vvb);
+    event ValidatorAdded(address validator);
+    event VerifierAdded(address verifier);
+    event ValidatorRemoved(address validator);
+    event VerifierRemoved(address verifier);
+    event ProjectValidated(address indexed projectContract, address validator);
+    event ProjectVerified(address indexed projectContract, address validator);
     event PresaleCreditsIssued(address indexed projectContract, uint256 amount);
     event CreditsIssued(address indexed projectContract, uint256 amount);
     event ProjectRemoved(address indexed projectContract);
@@ -97,44 +106,72 @@ contract BCO2Governance is Ownable, Pausable {
         emit BCO2DAOUpdated(_newBCO2DAO);
     }
 
-    function addVVB(address vvb) external onlyOwner {
+    function addValidator(address validator) external onlyOwner {
         if (!initialized) revert notInitialized();
-        if (vvb == address(0)) revert InvalidVVBAddress();
-        if (authorizedVVBs[vvb]) revert VVBAlreadyAuthorized();
-        authorizedVVBs[vvb] = true;
-        listOfAuthorizeVVBs.push(vvb);
-        authorizedVVBCounter++;
-        emit VVBAdded(vvb);
+        if (validator == address(0)) revert InvalidValidatorAddress();
+        if (authorizedValidators[validator]) revert ValidatorAlreadyAuthorized();
+        authorizedValidators[validator] = true;
+        listOfAuthorizedValidators.push(validator);
+        authorizedValidatorCounter++;
+        emit ValidatorAdded(validator);
     }
 
-    function removeVVB(address vvb) external onlyOwner {
+    function addVerifier(address verifier) external onlyOwner {
         if (!initialized) revert notInitialized();
-        if (!authorizedVVBs[vvb]) revert VVBNotAuthorized();
-        
-        authorizedVVBs[vvb] = false;
-        authorizedVVBCounter--;
+        if (verifier == address(0)) revert InvalidVerifierAddress();
+        if (authorizedVerifiers[verifier]) revert VerifierAlreadyAuthorized();
+        authorizedVerifiers[verifier] = true;
+        listOfAuthorizedVerifiers.push(verifier);
+        authorizedVerifierCounter++;
+        emit VerifierAdded(verifier);
+    }
 
-        for (uint256 i = 0; i < listOfAuthorizeVVBs.length; i++) {
-            if (listOfAuthorizeVVBs[i] == vvb) {
-                listOfAuthorizeVVBs[i] = listOfAuthorizeVVBs[listOfAuthorizeVVBs.length - 1];
-                listOfAuthorizeVVBs.pop();
+    function removeValidator(address validator) external onlyOwner {
+        if (!initialized) revert notInitialized();
+        if (!authorizedValidators[validator]) revert ValidatorNotAuthorized();
+        
+        authorizedValidators[validator] = false;
+        authorizedValidatorCounter--;
+
+        for (uint256 i = 0; i < listOfAuthorizedValidators.length; i++) {
+            if (listOfAuthorizedValidators[i] == validator) {
+                listOfAuthorizedValidators[i] = listOfAuthorizedValidators[listOfAuthorizedValidators.length - 1];
+                listOfAuthorizedValidators.pop();
                 break;
             }
         }
 
-        emit VVBRemoved(vvb);
+        emit ValidatorRemoved(validator);
+    }
+
+    function removeVerifier(address verifier) external onlyOwner {
+        if (!initialized) revert notInitialized();
+        if (!authorizedVerifiers[verifier]) revert VerifierNotAuthorized();
+        
+        authorizedVerifiers[verifier] = false;
+        authorizedVerifierCounter--;
+
+        for (uint256 i = 0; i < listOfAuthorizedVerifiers.length; i++) {
+            if (listOfAuthorizedVerifiers[i] == verifier) {
+                listOfAuthorizedVerifiers[i] = listOfAuthorizedVerifiers[listOfAuthorizedVerifiers.length - 1];
+                listOfAuthorizedVerifiers.pop();
+                break;
+            }
+        }
+
+        emit VerifierRemoved(verifier);
     }
 
     function validateProject(address projectContract) external whenNotPaused {
         if (!initialized) revert notInitialized();
-        if (!authorizedVVBs[msg.sender]) revert VVBNotAuthorized();
+        if (!authorizedValidators[msg.sender]) revert ValidatorNotAuthorized();
         projectManager.setValidationStatus(projectContract);
         emit ProjectValidated(projectContract, msg.sender);
     }
 
     function verifyProject(address projectContract) external whenNotPaused {
         if (!initialized) revert notInitialized();
-        if (!authorizedVVBs[msg.sender]) revert VVBNotAuthorized();
+        if (!authorizedVerifiers[msg.sender]) revert VerifierNotAuthorized();
         projectManager.setVerificationStatus(projectContract);
         emit ProjectVerified(projectContract, msg.sender);
     }
@@ -160,7 +197,8 @@ contract BCO2Governance is Ownable, Pausable {
         uint256 amount
     ) external onlyOwner whenNotPaused returns (bool) {
         ProjectData.Project memory project = projectData.getProjectDetails(projectContract);
-        if (!project.isVerified || !project.isValidated) revert ProjectNotValidated();
+        if (!project.isValidated) revert ProjectNotValidated();
+        if (!project.isVerified) revert ProjectNotVerified();
         if (amount == 0 || amount > project.emissionReductions) revert InvalidCreditAmount();
 
         (string memory baseCertificateId, ) = projectData.getNextBaseCertificateId(projectContract);
@@ -202,12 +240,21 @@ contract BCO2Governance is Ownable, Pausable {
         return projectData.getListedProjects();
     }
 
-    function checkAuthorizedVVBs(address _vvb) external view returns (bool) {
-        if (_vvb == address(0)) revert InvalidVVBAddress();
-        return authorizedVVBs[_vvb];
+    function checkAuthorizedValidators(address _validator) external view returns (bool) {
+        if (_validator == address(0)) revert InvalidValidatorAddress();
+        return authorizedValidators[_validator];
     }
 
-    function getAuthorizedVVBs() external view returns(address[] memory) {
-        return listOfAuthorizeVVBs;
+    function checkAuthorizedVerifiers(address _verifier) external view returns (bool) {
+        if (_verifier == address(0)) revert InvalidVerifierAddress();
+        return authorizedVerifiers[_verifier];
+    }
+
+    function getAuthorizedValidators() external view returns(address[] memory) {
+        return listOfAuthorizedValidators;
+    }
+
+    function getAuthorizedVerifiers() external view returns(address[] memory) {
+        return listOfAuthorizedVerifiers;
     }
 }
