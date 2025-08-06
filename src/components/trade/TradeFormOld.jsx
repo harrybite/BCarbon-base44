@@ -14,7 +14,7 @@ import { useConnectWallet } from "@/context/walletcontext";
 import { useToast } from "../ui/use-toast";
 
 export default function TradeForm() {
-  const { marketplaceContract, getListings, purchase, getRUSDBalance } = useMarketplaceInteraction();
+  const { getListings, purchase, getRUSDBalance } = useMarketplaceInteraction();
    const { walletAddress } = useConnectWallet();
   const [listings, setListings] = React.useState([]);
   const [cardStates, setCardStates] = React.useState({});
@@ -61,10 +61,10 @@ export default function TradeForm() {
          setIsLoading(false)
       }
     };
-    if (walletAddress && marketplaceContract) {
+    if (walletAddress) {
       fetchListings();
     }
-  }, [ walletAddress, marketplaceContract, update]);
+  }, [ walletAddress, update]);
 
   const handleInputChange = (listingId, value) => {
     setCardStates(prev => ({

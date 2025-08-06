@@ -10,11 +10,6 @@
 				"internalType": "address",
 				"name": "_governance",
 				"type": "address"
-			},
-			{
-				"internalType": "address",
-				"name": "initialOwner",
-				"type": "address"
 			}
 		],
 		"stateMutability": "nonpayable",
@@ -142,6 +137,24 @@
 		"type": "event"
 	},
 	{
+		"inputs": [
+			{
+				"internalType": "address",
+				"name": "projectContract",
+				"type": "address"
+			},
+			{
+				"internalType": "uint256",
+				"name": "amount",
+				"type": "uint256"
+			}
+		],
+		"name": "approvePresale",
+		"outputs": [],
+		"stateMutability": "nonpayable",
+		"type": "function"
+	},
+	{
 		"inputs": [],
 		"name": "commentPeriod",
 		"outputs": [
@@ -185,7 +198,7 @@
 				"type": "string"
 			}
 		],
-		"name": "issueCredits",
+		"name": "issueFinalApproval",
 		"outputs": [],
 		"stateMutability": "nonpayable",
 		"type": "function"
@@ -228,7 +241,7 @@
 		"name": "projectData",
 		"outputs": [
 			{
-				"internalType": "contract ProjectData",
+				"internalType": "contract IProjectData",
 				"name": "",
 				"type": "address"
 			}
@@ -355,6 +368,24 @@
 			}
 		],
 		"name": "updateProjectData",
+		"outputs": [],
+		"stateMutability": "nonpayable",
+		"type": "function"
+	},
+	{
+		"inputs": [
+			{
+				"internalType": "address",
+				"name": "receiver",
+				"type": "address"
+			},
+			{
+				"internalType": "address",
+				"name": "token",
+				"type": "address"
+			}
+		],
+		"name": "withdrawFunds",
 		"outputs": [],
 		"stateMutability": "nonpayable",
 		"type": "function"

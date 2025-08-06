@@ -1,13 +1,19 @@
 export const RUSD = "0x604756016db44ad0a38d2787B8e2E3563b03Ab4e"; // Replace with actual RUSD contract address
-export const GOVERNANCE_ADDRESS = '0xc84c3e85778b3A5ECEF69319615988F780A47488';
-export const MARKETPLACE_ADDRESS = '0x1387d0eAF557f852E48C1e4C66C9D4972Fe82a48';
-export const projectData = "0x1204058F5EC282aC273C4Ac6ca854ebe3510ae58"
-export const projectManager = "0xa74965d242028Af3d15bb43007e2dBAd75B7b7b8";
-export const projectFactory = "0xB5608BdBceE578AA743Ae421c5CB91c34Ed6B1B4";
+export const GOVERNANCE_ADDRESS = '0x51D8adb797c0a19cD37DF538e178eEb82eB4C662';
+export const MARKETPLACE_ADDRESS = '0x17e562FE878A8B5ef62D39816E3dA424F054D56F';
+export const projectData = "0x718f58d767b314207be145B38E479Bf912ea4781"
+export const projectManager = "0x310890E7E0715d6bC4E33c00CBa9138f1562E43F";
+export const projectFactory = "0x70e9bBA430f98FD590358CF1a2ba863C70Deb104";
+export const BCO2DAO = "0xCBAA7B0Ef01d911210E849BA2F47916dDB30022a"
+export const BCO2Factory = "0x3aacc8277128d800E5F0b81F172470431c80E6dC"
+
+//http://localhost:4090
+//https://bico2-backend-api.aigb.io
+export const apihost = "http://localhost:4090"
 
 export const chainInfo = {
   id: 7862,
-  rpc: "https://node1-mainnet-new.maalscan.io",
+  rpc: "https://bsc-testnet.drpc.org",
 }
 
 export const methodology = [
@@ -43,3 +49,5 @@ export const methodology = [
   "Fuel Switching",
   "Energy Efficiency"
 ]
+
+// drsham19@gmail.com

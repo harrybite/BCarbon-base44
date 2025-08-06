@@ -3,11 +3,6 @@
 		"inputs": [
 			{
 				"internalType": "address",
-				"name": "initialOwner",
-				"type": "address"
-			},
-			{
-				"internalType": "address",
 				"name": "_governance",
 				"type": "address"
 			}
@@ -76,12 +71,6 @@
 				"internalType": "uint256",
 				"name": "amount",
 				"type": "uint256"
-			},
-			{
-				"indexed": false,
-				"internalType": "string",
-				"name": "certificateId",
-				"type": "string"
 			}
 		],
 		"name": "CreditsIssued",
@@ -148,6 +137,56 @@
 	{
 		"anonymous": false,
 		"inputs": [
+			{
+				"indexed": true,
+				"internalType": "address",
+				"name": "projectContract",
+				"type": "address"
+			},
+			{
+				"indexed": false,
+				"internalType": "uint256",
+				"name": "amount",
+				"type": "uint256"
+			}
+		],
+		"name": "PresaleApproved",
+		"type": "event"
+	},
+	{
+		"anonymous": false,
+		"inputs": [
+			{
+				"indexed": true,
+				"internalType": "address",
+				"name": "projectContract",
+				"type": "address"
+			},
+			{
+				"indexed": false,
+				"internalType": "uint256",
+				"name": "amount",
+				"type": "uint256"
+			},
+			{
+				"indexed": false,
+				"internalType": "string",
+				"name": "certificateId",
+				"type": "string"
+			}
+		],
+		"name": "ProjectApproved",
+		"type": "event"
+	},
+	{
+		"anonymous": false,
+		"inputs": [
+			{
+				"indexed": false,
+				"internalType": "bool",
+				"name": "isPresale",
+				"type": "bool"
+			},
 			{
 				"indexed": true,
 				"internalType": "address",
@@ -247,6 +286,24 @@
 			},
 			{
 				"internalType": "uint256",
+				"name": "presaleAmount",
+				"type": "uint256"
+			}
+		],
+		"name": "_approvePresale",
+		"outputs": [],
+		"stateMutability": "nonpayable",
+		"type": "function"
+	},
+	{
+		"inputs": [
+			{
+				"internalType": "address",
+				"name": "projectContract",
+				"type": "address"
+			},
+			{
+				"internalType": "uint256",
 				"name": "amount",
 				"type": "uint256"
 			},
@@ -256,13 +313,18 @@
 				"type": "string"
 			}
 		],
-		"name": "_issueCredits",
+		"name": "_finalApproval",
 		"outputs": [],
 		"stateMutability": "nonpayable",
 		"type": "function"
 	},
 	{
 		"inputs": [
+			{
+				"internalType": "bool",
+				"name": "_isPresale",
+				"type": "bool"
+			},
 			{
 				"internalType": "string",
 				"name": "_projectId",
@@ -292,16 +354,6 @@
 				"internalType": "address",
 				"name": "_proposer",
 				"type": "address"
-			},
-			{
-				"internalType": "uint256",
-				"name": "_vintageTimestamp",
-				"type": "uint256"
-			},
-			{
-				"internalType": "uint256",
-				"name": "_commentPeriod",
-				"type": "uint256"
 			}
 		],
 		"name": "_registerProject",
@@ -318,6 +370,42 @@
 			}
 		],
 		"name": "_removeProject",
+		"outputs": [],
+		"stateMutability": "nonpayable",
+		"type": "function"
+	},
+	{
+		"inputs": [
+			{
+				"internalType": "address",
+				"name": "_projectContract",
+				"type": "address"
+			},
+			{
+				"internalType": "uint256",
+				"name": "_commentPeriod",
+				"type": "uint256"
+			}
+		],
+		"name": "_setCommentDeadline",
+		"outputs": [],
+		"stateMutability": "nonpayable",
+		"type": "function"
+	},
+	{
+		"inputs": [
+			{
+				"internalType": "address",
+				"name": "_projectContract",
+				"type": "address"
+			},
+			{
+				"internalType": "uint256",
+				"name": "_defaultVintage",
+				"type": "uint256"
+			}
+		],
+		"name": "_setDefaultVintage",
 		"outputs": [],
 		"stateMutability": "nonpayable",
 		"type": "function"
@@ -531,6 +619,30 @@
 			}
 		],
 		"stateMutability": "nonpayable",
+		"type": "function"
+	},
+	{
+		"inputs": [
+			{
+				"internalType": "address",
+				"name": "projectContract",
+				"type": "address"
+			}
+		],
+		"name": "getPresaleStatus",
+		"outputs": [
+			{
+				"internalType": "bool",
+				"name": "listed",
+				"type": "bool"
+			},
+			{
+				"internalType": "uint256",
+				"name": "amount",
+				"type": "uint256"
+			}
+		],
+		"stateMutability": "view",
 		"type": "function"
 	},
 	{
@@ -898,19 +1010,6 @@
 		"inputs": [
 			{
 				"internalType": "address",
-				"name": "_governance",
-				"type": "address"
-			}
-		],
-		"name": "setGovernance",
-		"outputs": [],
-		"stateMutability": "nonpayable",
-		"type": "function"
-	},
-	{
-		"inputs": [
-			{
-				"internalType": "address",
 				"name": "_manager",
 				"type": "address"
 			}
@@ -937,6 +1036,19 @@
 		"inputs": [
 			{
 				"internalType": "address",
+				"name": "_governance",
+				"type": "address"
+			}
+		],
+		"name": "updateGovernance",
+		"outputs": [],
+		"stateMutability": "nonpayable",
+		"type": "function"
+	},
+	{
+		"inputs": [
+			{
+				"internalType": "address",
 				"name": "",
 				"type": "address"
 			},
@@ -955,6 +1067,24 @@
 			}
 		],
 		"stateMutability": "view",
+		"type": "function"
+	},
+	{
+		"inputs": [
+			{
+				"internalType": "address",
+				"name": "receiver",
+				"type": "address"
+			},
+			{
+				"internalType": "address",
+				"name": "token",
+				"type": "address"
+			}
+		],
+		"name": "withdrawFunds",
+		"outputs": [],
+		"stateMutability": "nonpayable",
 		"type": "function"
 	}
 ]

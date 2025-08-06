@@ -13,17 +13,22 @@
 			},
 			{
 				"internalType": "address",
+				"name": "_bco2Factory",
+				"type": "address"
+			},
+			{
+				"internalType": "address",
 				"name": "_governance",
 				"type": "address"
 			},
 			{
 				"internalType": "address",
-				"name": "_RUSD",
+				"name": "_bco2DAO",
 				"type": "address"
 			},
 			{
 				"internalType": "address",
-				"name": "initialOwner",
+				"name": "_RUSD",
 				"type": "address"
 			}
 		],
@@ -66,6 +71,19 @@
 		"inputs": [],
 		"name": "ReentrancyGuardReentrantCall",
 		"type": "error"
+	},
+	{
+		"anonymous": false,
+		"inputs": [
+			{
+				"indexed": true,
+				"internalType": "address",
+				"name": "newBCO2Factory",
+				"type": "address"
+			}
+		],
+		"name": "BCO2FactoryUpdated",
+		"type": "event"
 	},
 	{
 		"anonymous": false,
@@ -197,6 +215,32 @@
 		"type": "function"
 	},
 	{
+		"inputs": [],
+		"name": "bco2DAO",
+		"outputs": [
+			{
+				"internalType": "address",
+				"name": "",
+				"type": "address"
+			}
+		],
+		"stateMutability": "view",
+		"type": "function"
+	},
+	{
+		"inputs": [],
+		"name": "bco2Factory",
+		"outputs": [
+			{
+				"internalType": "contract IBCO2Factory",
+				"name": "",
+				"type": "address"
+			}
+		],
+		"stateMutability": "view",
+		"type": "function"
+	},
+	{
 		"inputs": [
 			{
 				"internalType": "uint256",
@@ -204,9 +248,9 @@
 				"type": "uint256"
 			},
 			{
-				"internalType": "address",
-				"name": "treasury",
-				"type": "address"
+				"internalType": "bool",
+				"name": "isPresale",
+				"type": "bool"
 			},
 			{
 				"internalType": "bool",
@@ -306,7 +350,7 @@
 		"name": "projectData",
 		"outputs": [
 			{
-				"internalType": "contract ProjectData",
+				"internalType": "contract IProjectData",
 				"name": "",
 				"type": "address"
 			}
@@ -319,7 +363,7 @@
 		"name": "projectManager",
 		"outputs": [
 			{
-				"internalType": "contract ProjectManager",
+				"internalType": "contract IProjectManager",
 				"name": "",
 				"type": "address"
 			}
@@ -358,6 +402,19 @@
 		"inputs": [
 			{
 				"internalType": "address",
+				"name": "_newBCO2Factory",
+				"type": "address"
+			}
+		],
+		"name": "updateBCO2Factory",
+		"outputs": [],
+		"stateMutability": "nonpayable",
+		"type": "function"
+	},
+	{
+		"inputs": [
+			{
+				"internalType": "address",
 				"name": "_newGovernance",
 				"type": "address"
 			}
@@ -384,11 +441,42 @@
 		"inputs": [
 			{
 				"internalType": "address",
+				"name": "_newProjectManager",
+				"type": "address"
+			}
+		],
+		"name": "updateProjectManager",
+		"outputs": [],
+		"stateMutability": "nonpayable",
+		"type": "function"
+	},
+	{
+		"inputs": [
+			{
+				"internalType": "address",
 				"name": "_newRUSD",
 				"type": "address"
 			}
 		],
 		"name": "updateRUSD",
+		"outputs": [],
+		"stateMutability": "nonpayable",
+		"type": "function"
+	},
+	{
+		"inputs": [
+			{
+				"internalType": "address",
+				"name": "receiver",
+				"type": "address"
+			},
+			{
+				"internalType": "address",
+				"name": "token",
+				"type": "address"
+			}
+		],
+		"name": "withdrawFunds",
 		"outputs": [],
 		"stateMutability": "nonpayable",
 		"type": "function"

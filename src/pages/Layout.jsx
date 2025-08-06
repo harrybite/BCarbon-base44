@@ -1,28 +1,31 @@
 /* eslint-disable no-unused-vars */
-import { useEffect, useState } from "react";
-import { Link, useLocation } from "react-router-dom";
+import { useEffect, useState, useRef } from "react";
+import { Link, useLocation, useNavigate } from "react-router-dom";
 import { createPageUrl } from "@/utils";
+import { jwtDecode } from "jwt-decode";
 
 import {
   Home,
   TreePine,
   TrendingUp,
   Settings,
-  Wallet,
   Leaf,
-  BadgeCheck,
   ChevronRight,
   Menu,
   User
 } from "lucide-react";
-
 import { Button } from "@/components/ui/button";
 import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
-import { Badge } from "@/components/ui/badge";
-import { useContractInteraction } from "@/components/contract/ContractInteraction";
+import { ConnectButton, useActiveAccount, useConnect } from "thirdweb/react";
+import { thirdwebclient } from "@/thirwebClient";
+import { createWallet } from "thirdweb/wallets";
+import { bscTestnet } from "thirdweb/chains"
 import { useConnectWallet } from "@/context/walletcontext";
+import { apihost } from "@/components/contract/address";
+import { useContractInteraction } from "@/components/contract/ContractInteraction";
 
-const navigationItems = [
+// Base navigation items (always visible)
+const baseNavigationItems = [
   {
     title: "Home",
     url: createPageUrl("Home"),
@@ -40,92 +43,184 @@ const navigationItems = [
     url: createPageUrl("Trade"),
     icon: TrendingUp,
     description: "Trade carbon credits"
-  },
-  // {
-  //   title: "Validate",
-  //   url: createPageUrl("ValidateCertificate"),
-  //   icon: BadgeCheck,
-  //   description: "Validate BCO₂ Retirement Certificates on chain"
-  // },
-  {
-    title: "My Account",
-    url: createPageUrl("MyAccount"),
-    icon: User,
-    description: "Manage your projects and BCO₂ assets"
-  },
-  {
-    title: "Administration",
-    url: createPageUrl("Administration"),
-    icon: Settings,
-    description: "Admin controls"
   }
 ];
 
+// Role-specific navigation items
+const createProjectItem = {
+  title: "Create Project",
+  url: createPageUrl("MyAccount"),
+  icon: User,
+  description: "Create and manage your carbon credit projects"
+};
+
+const myAccountItem = {
+  title: "My Account",
+  url: createPageUrl("MyAccount"),
+  icon: User,
+  description: "Manage your account and BCO₂ assets"
+};
+
+// Admin/VVB only navigation item
+const adminNavigationItem = {
+  title: "Administration",
+  url: createPageUrl("Administration"),
+  icon: Settings,
+  description: "Admin controls"
+};
+
 // eslint-disable-next-line react/prop-types, no-unused-vars
-export default function Layout({ children, currentPageName }) {
+export default function Layout({ children }) {
   const location = useLocation();
+  const navigate = useNavigate();
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
-  const [walletConnected, setWalletConnected] = useState(false);
-  const { ConnectWallet, walletAddress, setWalletAddress } = useConnectWallet();
-  const { initializeProvider } = useContractInteraction();
-  const [update, setUpdate] = useState(0);
+  const [userMenuOpen, setUserMenuOpen] = useState(false);
+  const userMenuRef = useRef(null);
+  const { walletAddress } = useConnectWallet();
+  const [pendingUrl, setPendingUrl] = useState(null);
+  const [initialLoad, setInitialLoad] = useState(true);
+  const { connect, } = useConnect();
+  const { checkAuthorizedVVB, checkIsOwner } = useContractInteraction()
+  const account = useActiveAccount();
 
-  useEffect(() => {
-    const checkWallet = async () => {
-      if (window.ethereum) {
-        try {
-          initializeProvider();
-          if (typeof window !== "undefined" && window?.ethereum) {
-            try {
-              const accounts = await window.ethereum.request({ method: "eth_requestAccounts" });
-              if (accounts.length > 0) {
-                setWalletAddress(accounts[0]);
-              }
-            } catch (err) {
-              console.error("Wallet check failed:", err);
-            }
-          }
-        } catch (err) {
-          console.error("Error checking wallet:", err);
-        }
+  // Get user info from token
+  let userInfo = null;
+  const token = typeof window !== "undefined" ? localStorage.getItem("token") : null;
+  if (token) {
+    try {
+      userInfo = jwtDecode(token);
+    } catch (e) {
+      userInfo = null;
+    }
+  }
+  // Check if user is admin or VVB
+  const isAdminOrVVB = userInfo && (userInfo.role === "gov" || userInfo.role === "vvb");
+
+  // Create navigation items based on user role
+  const getNavigationItems = () => {
+    let items = [...baseNavigationItems];
+    
+    // Add role-specific navigation items
+    if (userInfo) {
+      if (userInfo.role === "issuer") {
+        // Show "Create Project" for Issuer
+        items.push(createProjectItem);
+      } else if (userInfo.role === "user") {
+        // Show "My Account" for User
+        items.push(myAccountItem);
+      } else if (userInfo.role === "gov" || userInfo.role === "vvb") {
+        // Show both Create Project and My Account for Gov/VVB (as before)
+        // items.push(createProjectItem);
+        // items.push(myAccountItem);
       }
-    };
-    checkWallet();
-  }, [update]);
-
-   const checkWalletoutSide = async () => {
-     if (typeof window !== "undefined" && window.ethereum) {
-       try {
-         initializeProvider();
-         const accounts = await window.ethereum.request({ method: "eth_requestAccounts" });
-         if (accounts.length > 0) {
-           setWalletAddress(accounts[0]);
-         }
-       } catch (err) {
-         console.error("Wallet connection failed:", err);
-       }
-     }
-   };
-
-
-  // const connectWallet = async () => {
-  //   if (window.ethereum) {
-  //     try {
-  //       const accounts = await window.ethereum.request({ method: "eth_requestAccounts" });
-  //       setWalletConnected(true);
-  //       setWalletAddress(accounts[0]);
-  //     } catch (err) {
-  //       console.error("Error connecting wallet:", err);
-  //     }
-  //   }
-  // };
-
-  const disconnectWallet = () => {
-    setWalletConnected(false);
-    setWalletAddress("");
+    }
+    
+    // Add admin item for admin/VVB roles
+    if (isAdminOrVVB) {
+      items.push(adminNavigationItem);
+    }
+    
+    return items;
   };
 
-  const formatAddress = (addr) => `${addr?.slice(0, 6)}...${addr?.slice(-4)}`;
+  const navigationItems = getNavigationItems();
+
+  // Close dropdown if clicked outside
+  useEffect(() => {
+    function handleClickOutside(event) {
+      if (userMenuRef.current && !userMenuRef.current.contains(event.target)) {
+        setUserMenuOpen(false);
+      }
+    }
+    if (userMenuOpen) {
+      document.addEventListener("mousedown", handleClickOutside);
+    } else {
+      document.removeEventListener("mousedown", handleClickOutside);
+    }
+    return () => document.removeEventListener("mousedown", handleClickOutside);
+  }, [userMenuOpen]);
+
+  // Handle account changes - but only after initial load
+  useEffect(() => {
+    // Give some time for wallet to initialize on page load
+    const initTimer = setTimeout(() => {
+      setInitialLoad(false);
+    }, 2000); // Wait 2 seconds before considering account changes
+
+    return () => clearTimeout(initTimer);
+  }, []);
+
+  // Only handle account changes after initial load period
+  useEffect(() => {
+    if (!initialLoad && account?.address !== walletAddress) {
+      // Only logout if there was a previous wallet address and now it's different
+      if (walletAddress && account?.address && account.address !== walletAddress) {
+        console.log("Wallet address changed, logging out");
+        localStorage.removeItem("token");
+        setUserMenuOpen(false);
+        navigate("/login");
+      }
+    }
+  }, [account?.address, walletAddress, initialLoad, navigate]);
+
+  // Handler to trigger wallet connect and redirect
+  const handleNavClick = (url) => {
+    if (!walletAddress) {
+      connect(async () => {
+        // instantiate wallet
+        const wallet = createWallet("io.metamask");
+        // connect wallet
+        await wallet.connect({
+          thirdwebclient,
+          chain: bscTestnet
+        });
+        // return the wallet
+        return wallet;
+      })
+      setPendingUrl(url);
+    } else {
+      navigate(url);
+    }
+  };
+
+  // Listen for wallet connection and redirect if pending
+  useEffect(() => {
+    if (walletAddress && pendingUrl) {
+      navigate(pendingUrl);
+      setPendingUrl(null);
+    }
+  }, [walletAddress, pendingUrl, navigate]);
+
+  // Poll token validation every 30 seconds (reduced frequency)
+  useEffect(() => {
+    // Don't start polling immediately, wait for initial load
+    if (initialLoad) return;
+
+    const interval = setInterval(async () => {
+      const token = localStorage.getItem("token");
+      if (!token) return;
+      
+      try {
+        const res = await fetch(`${apihost}/api/protected`, {
+          headers: {
+            Authorization: `Bearer ${token}`,
+          },
+        });
+        if (res.status === 401) {
+          // Token invalid or expired
+          console.log("Token expired, logging out");
+          localStorage.removeItem("token");
+          navigate("/login");
+        }
+      } catch (err) {
+        // Only logout on network errors if we're sure the token is invalid
+        // Don't logout on temporary network issues
+        console.log("Network error during token validation:", err.message);
+      }
+    }, 30000); // Check every 30 seconds instead of 5
+
+    return () => clearInterval(interval);
+  }, [navigate, initialLoad]);
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-green-50 via-white to-blue-50">
@@ -147,9 +242,9 @@ export default function Layout({ children, currentPageName }) {
             {/* Logo */}
             <Link to="/" className="flex items-center space-x-3">
               <div className="w-10 h-10 bg-gradient-to-br from-green-500 to-green-600 rounded-xl flex items-center justify-center shadow-lg">
-                <img 
-                  src="https://i.postimg.cc/mkJMjhYT/BCO2-Logo-01.png" 
-                  alt="BCO2 Logo" 
+                <img
+                  src="https://i.postimg.cc/mkJMjhYT/BCO2-Logo-01.png"
+                  alt="BCO2 Logo"
                   className="w-8 h-8 object-contain"
                 />
               </div>
@@ -164,47 +259,82 @@ export default function Layout({ children, currentPageName }) {
             {/* Desktop Nav */}
             <nav className="hidden md:flex items-center space-x-1">
               {navigationItems.map(({ title, url, icon: Icon }) => (
-                <Link
+                <button
                   key={title}
-                  to={url}
+                  onClick={() => handleNavClick(url)}
                   className={`flex items-center space-x-2 px-4 py-2 rounded-lg transition-all duration-200 ${location.pathname === url
                       ? "bg-green-100 text-green-700 shadow-sm"
                       : "text-gray-600 hover:bg-gray-50 hover:text-gray-900"
                     }`}
+                  style={{ background: "none", border: "none", cursor: "pointer" }}
                 >
                   <Icon className="w-4 h-4" />
                   <span className="font-medium">{title}</span>
-                </Link>
+                </button>
               ))}
             </nav>
 
-            {/* Wallet */}
-            <div className="flex items-center space-x-4">
-              {walletAddress ? (
-                <>
-                  {/* <Badge className="bg-green-100 text-green-700 border-green-200">
-                    <div className="w-2 h-2 bg-green-500 rounded-full mr-2"></div>
-                    Connected
-                  </Badge> */}
-                  <Button
-                    variant="outline"
-                    onClick={disconnectWallet}
-                    className="hidden sm:flex items-center space-x-2"
+            {/* Wallet & User Dropdown */}
+            <div className="flex items-center space-x-4 relative">
+              <ConnectButton
+                client={thirdwebclient}
+                wallets={[
+                  createWallet("io.metamask"),
+                ]}
+                chain={bscTestnet}
+                data-testid="tw-connect-btn"
+              />
+              {userInfo ? (
+                <div
+                  className="relative"
+                  ref={userMenuRef}
+                >
+                  <button
+                    className="flex items-center px-4 py-2 rounded-lg bg-green-100 text-green-700 font-medium transition-all duration-200 focus:outline-none hover:bg-green-200"
+                    style={{ minWidth: 90 }}
+                    onClick={() => setUserMenuOpen((v) => !v)}
+                    aria-haspopup="true"
+                    aria-expanded={userMenuOpen}
                   >
-                    <Wallet className="w-4 h-4" />
-                    <span>{formatAddress(walletAddress)}</span>
-                  </Button>
-                </>
+                    <span className="mr-2">
+                      {userInfo.role === "user" && "User"}
+                      {userInfo.role === "issuer" && "Issuer"}
+                      {userInfo.role === "vvb" && "VVB"}
+                      {userInfo.role === "gov" && "Gov"}
+                    </span>
+                    <svg className={`w-4 h-4 transition-transform duration-200 ${userMenuOpen ? "rotate-180" : ""}`} fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" d="M19 9l-7 7-7-7" />
+                    </svg>
+                  </button>
+                  <div
+                    className={`transition-all duration-200 ease-in-out ${userMenuOpen ? "opacity-100 scale-100 pointer-events-auto" : "opacity-0 scale-95 pointer-events-none"} absolute left-1/2 -translate-x-1/2 mt-2 w-64 bg-white border border-gray-200 rounded shadow-lg z-50`}
+                    style={{ minWidth: 220 }}
+                  >
+                    <div className="px-4 py-3 text-gray-700 text-sm border-b flex items-center gap-2">
+                      <User className="w-4 h-4 text-green-600" />
+                      <span className="truncate">{userInfo.email || userInfo.walletAddress}</span>
+                    </div>
+                    <button
+                      className="w-full text-left px-4 py-2 text-red-600 hover:bg-gray-50 text-sm transition-colors"
+                      onClick={() => {
+                        localStorage.removeItem("token");
+                        setUserMenuOpen(false);
+                        navigate("/login");
+                      }}
+                    >
+                      Logout
+                    </button>
+                  </div>
+                </div>
               ) : (
                 <Button
-                  onClick={()=>checkWalletoutSide()}
-                  className="bg-green-600 hover:bg-green-700 text-white shadow-lg"
+                  variant="outline"
+                  className="hidden md:inline-flex"
+                  onClick={() => navigate("/login")}
                 >
-                  <Wallet className="w-4 h-4 mr-2" />
-                  Connect Wallet
+                  Login
                 </Button>
               )}
-
               {/* Mobile Nav */}
               <Sheet open={mobileMenuOpen} onOpenChange={setMobileMenuOpen}>
                 <SheetTrigger asChild>
@@ -214,15 +344,31 @@ export default function Layout({ children, currentPageName }) {
                 </SheetTrigger>
                 <SheetContent side="right" className="w-80">
                   <div className="flex flex-col space-y-4 mt-8">
+                    {/* Mobile Login Button */}
+                    {!userInfo && (
+                      <Button
+                        variant="outline"
+                        className="mb-2"
+                        onClick={() => {
+                          setMobileMenuOpen(false);
+                          navigate("/login");
+                        }}
+                      >
+                        Login
+                      </Button>
+                    )}
                     {navigationItems.map(({ title, url, icon: Icon, description }) => (
-                      <Link
+                      <button
                         key={title}
-                        to={url}
-                        onClick={() => setMobileMenuOpen(false)}
+                        onClick={() => {
+                          handleNavClick(url);
+                          setMobileMenuOpen(false);
+                        }}
                         className={`flex items-center justify-between p-4 rounded-lg transition-all duration-200 ${location.pathname === url
                             ? "bg-green-100 text-green-700"
                             : "text-gray-600 hover:bg-gray-50"
                           }`}
+                        style={{ background: "none", border: "none", cursor: "pointer" }}
                       >
                         <div className="flex items-center space-x-3">
                           <Icon className="w-5 h-5" />
@@ -232,7 +378,7 @@ export default function Layout({ children, currentPageName }) {
                           </div>
                         </div>
                         <ChevronRight className="w-4 h-4" />
-                      </Link>
+                      </button>
                     ))}
                   </div>
                 </SheetContent>

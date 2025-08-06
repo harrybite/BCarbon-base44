@@ -1,182 +1,184 @@
+/* eslint-disable no-constant-condition */
 /* eslint-disable no-unused-vars */
 import { useState, useEffect } from 'react';
 import { BrowserProvider, Contract, formatEther, parseEther, JsonRpcProvider } from 'ethers';
 import CarbonCreditMarketplaceABI from './Marketplace.json';
 import ERC20Abi from './ERC20.json';
-import { MARKETPLACE_ADDRESS, RUSD } from './address';
+import { chainInfo, MARKETPLACE_ADDRESS, RUSD } from './address';
 import { AlertCircle } from 'lucide-react';
 import { AlertDescription } from '../ui/alert';
 import { useContractInteraction } from './ContractInteraction';
 import { useConnectWallet } from '@/context/walletcontext';
+import { getContract, prepareContractCall, sendAndConfirmTransaction } from 'thirdweb';
+import { thirdwebclient } from '@/thirwebClient';
+import { bscTestnet } from 'thirdweb/chains';
 
 export const useMarketplaceInteraction = () => {
-  const [userAddress, setUserAddress] = useState("");
-  const [isConnected, setIsConnected] = useState(false);
-  const [error, setError] = useState("");
-  const [provider, setProvider] = useState(null);
-  const [signer, setSigner] = useState(null);
-  const [marketplaceContract, setMarketplaceContract] = useState(null);
-  const [rusdContract, setRUSDContract] = useState(null);
   const { getTokenURIs } = useContractInteraction();
   const { walletAddress } = useConnectWallet();
 
-  useEffect(() => {
-    initializeProvider();
+  const thridWeb_MARKETPLACE_Contract = getContract({
+    client: thirdwebclient,
+    chain: bscTestnet,
+    address: MARKETPLACE_ADDRESS,
+    abi: CarbonCreditMarketplaceABI,
+  });
 
-    if (window.ethereum) {
-      window.ethereum.on('accountsChanged', handleAccountsChanged);
-      window.ethereum.on('chainChanged', () => window.location.reload());
-    }
+  const thridWebERC20Contract = getContract({
+    client: thirdwebclient,
+    chain: bscTestnet,
+    address: RUSD,
+    abi: ERC20Abi,
+  });
 
-    return () => {
-      if (window.ethereum) {
-        window.ethereum.removeListener('accountsChanged', handleAccountsChanged);
-      }
-    };
-  }, [walletAddress]);
-
-  const initializeProvider = async () => {
-    if (typeof window !== 'undefined' && window.ethereum) {
-      try {
-        const web3Provider = new BrowserProvider(window.ethereum);
-        const signer = await web3Provider.getSigner();
-        const marketplace = new Contract(MARKETPLACE_ADDRESS, CarbonCreditMarketplaceABI, signer);
-        const rusd = new Contract(RUSD, ERC20Abi, signer);
-        setProvider(web3Provider);
-        setSigner(signer);
-        setMarketplaceContract(marketplace);
-        setRUSDContract(rusd);
-        const accounts = await window.ethereum.request({ method: 'eth_accounts' });
-        if (accounts.length > 0) {
-          setUserAddress(accounts[0]);
-          setIsConnected(true);
-        }
-      } catch (error) {
-        setError(`Failed to initialize wallet connection: ${error.message}`);
-      }
-    }
+  const getProvider = () => {
+    return new JsonRpcProvider(chainInfo.rpc);
   };
 
-  const handleAccountsChanged = async (accounts) => {
-    if (accounts.length > 0) {
-      setUserAddress(accounts[0]);
-      setIsConnected(true);
-      if (provider) {
-        const signer = await provider.getSigner();
-        setSigner(signer);
-        setMarketplaceContract(new Contract(MARKETPLACE_ADDRESS, CarbonCreditMarketplaceABI, signer));
-        setRUSDContract(new Contract(RUSD, ERC20Abi, signer));
-      }
-    } else {
-      setUserAddress("");
-      setIsConnected(false);
-      setSigner(null);
-      setMarketplaceContract(null);
-      setRUSDContract(null);
-    }
+  const getProjectMarketPlaceContract = async (withSigner = false) => {
+    const provider = getProvider();
+    return new Contract(MARKETPLACE_ADDRESS, CarbonCreditMarketplaceABI, provider);
   };
 
-  const connectWallet = async () => {
-    if (typeof window === 'undefined' || !window.ethereum) {
-      setError("MetaMask is not installed");
-      return;
-    }
+  const getProjectERC20Contract = async (withSigner = false) => {
+    const provider = getProvider();
+    return new Contract(RUSD, ERC20Abi, provider);
+  };
+
+
+  const createListing = async (tokenContract, tokenId = 1, quantity, pricePerUnit, account) => {
+    if (!account) throw new Error("Account is required to set token URI");
 
     try {
-      const accounts = await window.ethereum.request({ method: 'eth_requestAccounts' });
-      if (accounts.length > 0) {
-        setUserAddress(accounts[0]);
-        setIsConnected(true);
-        setError("");
-        const web3Provider = new BrowserProvider(window.ethereum);
-        const signer = await web3Provider.getSigner();
-        setProvider(web3Provider);
-        setSigner(signer);
-        setMarketplaceContract(new Contract(MARKETPLACE_ADDRESS, CarbonCreditMarketplaceABI, signer));
-        setRUSDContract(new Contract(RUSD, ERC20Abi, signer));
-      }
-    } catch (error) {
-      setError(`Failed to connect wallet: ${error.message}`);
-    }
-  };
-
-  const createListing = async (tokenContract, tokenId = 1, quantity, pricePerUnit) => {
-    if (!isConnected || !marketplaceContract || !signer) {
-      throw new Error("Wallet not connected or contract not initialized");
-    }
-    try {
+      console.log("Creating listing with params:", {
+        tokenContract,
+        tokenId,
+        quantity,
+        pricePerUnit,
+        account,
+      });
       const pricePerUnitWei = parseEther(pricePerUnit.toString());
-      const tx = await marketplaceContract.createListing(tokenContract, tokenId, quantity, pricePerUnitWei);
-      return await tx.wait();
+      // user thirdweb marketplace contract for sending tx
+      const transaction = prepareContractCall({
+        contract: thridWeb_MARKETPLACE_Contract,
+        method: "createListing",
+        params: [tokenContract, tokenId, quantity, pricePerUnitWei],
+      });
+      const transactionReceipt = await sendAndConfirmTransaction({
+        account,
+        transaction,
+      });
+      return transactionReceipt;
+
     } catch (error) {
-      throw new Error(`Failed to create listing: ${error.message}`);
+      // throw new Error(`Failed to create listing: ${error.message}`);
+      console.error("Failed to create listing:", error);
     }
   };
 
-  const updateListing = async (listingId, quantity, pricePerUnit) => {
-    if (!isConnected || !marketplaceContract || !signer) {
-      throw new Error("Wallet not connected or contract not initialized");
-    }
+  const updateListing = async (listingId, quantity, pricePerUnit, account) => {
+    if (!account) throw new Error("Account is required to set token URI");
     try {
-      const pricePerUnitWei = parseEther(pricePerUnit.toString());
-      const tx = await marketplaceContract.updateListing(listingId, quantity, pricePerUnitWei);
-      return await tx.wait();
+      const transaction = prepareContractCall({
+        contract: thridWeb_MARKETPLACE_Contract,
+        method: "updateListing",
+        params: [listingId, quantity, pricePerUnit],
+      });
+      const transactionReceipt = await sendAndConfirmTransaction({
+        account,
+        transaction,
+      });
+      return transactionReceipt;
     } catch (error) {
-      throw new Error(`Failed to update listing: ${error.message}`);
+      // throw new Error(`Failed to update listing: ${error.message}`);
+      console.error("Failed to update listing:", error);
     }
   };
 
-  const cancelListing = async (listingId) => {
-    if (!isConnected || !marketplaceContract || !signer) {
-      throw new Error("Wallet not connected or contract not initialized");
-    }
+  const cancelListing = async (listingId, account) => {
+    if (!account) throw new Error("Account is required to set token URI");
     try {
-      const tx = await marketplaceContract.cancelListing(listingId);
-      return await tx.wait();
+      // const tx = await marketplaceContract.cancelListing(listingId);
+      // return await tx.wait();
+      const transaction = prepareContractCall({
+        contract: thridWeb_MARKETPLACE_Contract,
+        method: "cancelListing",
+        params: [listingId],
+      });
+      const transactionReceipt = await sendAndConfirmTransaction({
+        account,
+        transaction,
+      });
+      return transactionReceipt;
     } catch (error) {
-      throw new Error(`Failed to cancel listing: ${error.message}`);
+      // throw new Error(`Failed to cancel listing: ${error.message}`);
+      console.error("Failed to cancel listing:", error);
     }
   };
 
-  const purchase = async (listingId, quantity) => {
-    console.log("marketplaceContract || !rusdContract", marketplaceContract,  rusdContract)
-    if (!marketplaceContract || !rusdContract ) {
-      throw new Error("Wallet not connected or contracts not initialized");
-    }
+  const purchase = async (listingId, quantity, account) => {
+    if (!account) throw new Error("Account is required to set token URI");
     try {
-      console.log("listing details", listingId, quantity)
+
       const totalPrice = "0xffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff";
-      const allowance = await rusdContract.allowance(userAddress, MARKETPLACE_ADDRESS);
+
+      const rusdContract = await getProjectERC20Contract();
+      const allowance = await rusdContract.allowance(walletAddress, MARKETPLACE_ADDRESS);
+      console.log("RUSD Allowance:", allowance, listingId, quantity);
       if (Number(allowance) === 0) {
-        const approveTx = await rusdContract.approve(MARKETPLACE_ADDRESS, totalPrice);
-        await approveTx.wait();
+        const RUSDtransaction = prepareContractCall({
+          contract: thridWebERC20Contract,
+          method: "approve",
+          params: [MARKETPLACE_ADDRESS, totalPrice],
+        });
+        const transactionReceipt = await sendAndConfirmTransaction({
+          account,
+          transaction: RUSDtransaction,
+        });
+        if (transactionReceipt.status !== "success") {
+          throw new Error("Failed to approve RUSD for marketplace");
+        } 
       }
-      const tx = await marketplaceContract.purchase(listingId, quantity);
-      return await tx.wait();
+
+
+      const transaction = prepareContractCall({
+        contract: thridWeb_MARKETPLACE_Contract,
+        method: "purchase",
+        params: [listingId, quantity],
+      });
+      const transactionReceipt = await sendAndConfirmTransaction({
+        account,
+        transaction,
+      });
+      return transactionReceipt;
     } catch (error) {
-      throw new Error(`Failed to purchase: ${error.message}`);
+      // throw new Error(`Failed to purchase: ${error.message}`);
+      console.error("Failed to purchase:", error);
     }
   };
 
-  const withdrawFees = async () => {
-    if (!isConnected || !marketplaceContract || !signer) {
-      throw new Error("Wallet not connected or contract not initialized");
-    }
+  const withdrawFees = async (account) => {
+    if (!account) throw new Error("Account is required to set token URI");
     try {
-      const tx = await marketplaceContract.withdrawFees();
-      return await tx.wait();
+      const transaction = prepareContractCall({
+        contract: thridWeb_MARKETPLACE_Contract,
+        method: "withdrawFees",
+        params: [],
+      });
+      const transactionReceipt = await sendAndConfirmTransaction({
+        account,
+        transaction,
+      });
+      return transactionReceipt;
     } catch (error) {
-      throw new Error(`Failed to withdraw fees: ${error.message}`);
+      // throw new Error(`Failed to withdraw fees: ${error.message}`);
+      console.error("Failed to withdraw fees:", error);
     }
   };
 
   const getListing = async (listingId) => {
     try {
-      const contract = new Contract(
-        MARKETPLACE_ADDRESS,
-        CarbonCreditMarketplaceABI,
-        provider || new JsonRpcProvider('https://data-seed-prebsc-1-s1.binance.org:8545/')
-      );
+      const contract = await getProjectMarketPlaceContract();
       const listing = await contract.getListing(listingId);
       return {
         listingId: listingId.toString(),
@@ -188,17 +190,14 @@ export const useMarketplaceInteraction = () => {
         active: listing.active
       };
     } catch (error) {
-      throw new Error(`Failed to fetch listing: ${error.message}`);
+      // throw new Error(`Failed to fetch listing: ${error.message}`);
+      console.error("Failed to fetch listing:", error);
     }
   };
 
   const getListings = async () => {
     try {
-      const contract = new Contract(
-        MARKETPLACE_ADDRESS,
-        CarbonCreditMarketplaceABI,
-        provider || new JsonRpcProvider('https://data-seed-prebsc-1-s1.binance.org:8545/')
-      );
+      const contract = await getProjectMarketPlaceContract();
       const listingCount = await contract.listingCounter();
       const listings = [];
       for (let i = 0; i < listingCount; i++) {
@@ -220,17 +219,14 @@ export const useMarketplaceInteraction = () => {
       }
       return listings.reverse();
     } catch (error) {
-      throw new Error(`Failed to fetch listings: ${error.message}`);
+      // throw new Error(`Failed to fetch listings: ${error.message}`);
+      console.error("Failed to fetch listings:", error);
     }
   };
 
   const getUserListings = async (userAddress) => {
     try {
-      const contract = new Contract(
-        MARKETPLACE_ADDRESS,
-        CarbonCreditMarketplaceABI,
-        provider || new JsonRpcProvider('https://data-seed-prebsc-1-s1.binance.org:8545/')
-      );
+      const contract = await getProjectMarketPlaceContract()
       const listingIds = await contract.getUserListings(userAddress);
       const listings = [];
       for (let id of listingIds) {
@@ -247,60 +243,54 @@ export const useMarketplaceInteraction = () => {
       }
       return listings.reverse();
     } catch (error) {
-      throw new Error(`Failed to fetch user listings: ${error.message}`);
+      // throw new Error(`Failed to fetch user listings: ${error.message}`);
+      console.error("Failed to fetch user listings:", error);
     }
   };
 
-  const approveRUSD = async (amount) => {
-    if (!isConnected || !rusdContract || !signer) {
-      throw new Error("Wallet not connected or contract not initialized");
-    }
+  const approveRUSD = async (amount, account) => {
+    if (!account) throw new Error("Account is required to set token URI");
     try {
       const amountWei = parseEther(amount.toString());
-      const tx = await rusdContract.approve(MARKETPLACE_ADDRESS, amountWei);
-      return await tx.wait();
+      const transaction = prepareContractCall({
+        contract: thridWebERC20Contract,
+        method: "approve",
+        params: [MARKETPLACE_ADDRESS, amountWei],
+      });
+      const transactionReceipt = await sendAndConfirmTransaction({
+        account,
+        transaction,
+      });
+      return transactionReceipt;
     } catch (error) {
-      throw new Error(`Failed to approve RUSD: ${error.message}`);
+      // throw new Error(`Failed to approve RUSD: ${error.message}`);
+      console.error("Failed to approve RUSD:", error);
     }
   };
 
   const getRUSDBalance = async (address = null) => {
     try {
-      const targetAddress = address || userAddress;
-      if (!targetAddress) throw new Error("No address provided");
-      const contract = new Contract(
-        RUSD,
-        ERC20Abi,
-        provider || new JsonRpcProvider('https://data-seed-prebsc-1-s1.binance.org:8545/')
-      );
-      const balance = await contract.balanceOf(targetAddress);
+      const contract = await getProjectERC20Contract();
+      const balance = await contract.balanceOf(address || walletAddress);
       return formatEther(balance);
     } catch (error) {
-      throw new Error(`Failed to fetch RUSD balance: ${error.message}`);
+      // throw new Error(`Failed to fetch RUSD balance: ${error.message}`);
+      console.error("Failed to fetch RUSD balance:", error);
     }
   };
 
   const checkRUSDAllowance = async () => {
-    if (!userAddress) throw new Error("User wallet not connected");
     try {
-      const contract = new Contract(
-        RUSD,
-        ERC20Abi,
-        provider || new JsonRpcProvider('https://data-seed-prebsc-1-s1.binance.org:8545/')
-      );
-      const allowance = await contract.allowance(userAddress, MARKETPLACE_ADDRESS);
+      const contract = await getProjectERC20Contract();
+      const allowance = await contract.allowance(walletAddress, MARKETPLACE_ADDRESS);
       return formatEther(allowance);
     } catch (error) {
-      throw new Error(`Failed to check RUSD allowance: ${error.message}`);
+      console.error("Failed to check RUSD allowance:", error);
+      // throw new Error(`Failed to check RUSD allowance: ${error.message}`);
     }
   };
 
   return {
-    userAddress,
-    isConnected,
-    error,
-    marketplaceContract,
-    connectWallet,
     createListing,
     updateListing,
     cancelListing,

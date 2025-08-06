@@ -4,11 +4,13 @@ import Layout from "./Layout.jsx";
 
 import Home from "./Home";
 import Projects from "./Projects";
-import ProjectDetails from "./ProjectDetails";
+import ProjectDetails from "./ProjectDetails/ProjectDetails.jsx";
 import Trade from "./Trade";
 import Administration from "./Administration";
 import MyAccount from "./MyAccount";
 import ValidateCertificate from "./ValidateCertificate";
+import Login from './Login.jsx';
+import Register from './Ragister.jsx';
 
 // Page mapping
 const PAGES = {
@@ -49,11 +51,15 @@ function PagesContent() {
         <Route path="/" element={<Home />} />
         <Route path="/Home" element={<Home />} />
         <Route path="/Projects" element={<Projects />} />
+
         <Route path="/ProjectDetails/:projectContract" element={<ProjectDetails />} />
         <Route path="/Trade" element={<Trade />} />
         <Route path="/ValidateCertificate" element={<ValidateCertificate />} />
         <Route path="/Administration" element={<Administration />} />
         <Route path="/MyAccount" element={<MyAccount />} />
+        {/* login and ragistration */}
+        <Route path="/login" element={<Login />} />
+        <Route path="/ragister" element={<Register />} />
         {/* Optional: redirect unknown paths */}
         <Route path="*" element={<Navigate to="/" replace />} />
       </Routes>

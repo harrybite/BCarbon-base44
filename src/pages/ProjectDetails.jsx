@@ -1,3 +1,4 @@
+/* eslint-disable no-constant-condition */
 /* eslint-disable no-unused-vars */
 import { useState, useEffect } from "react";
 import { useParams } from "react-router-dom";
@@ -6,7 +7,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Alert, AlertDescription } from "@/components/ui/alert";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import {
   ArrowLeft,
   TreePine,
@@ -23,27 +24,47 @@ import {
   GitBranch,
   Coins,
   AlertCircle,
-  CheckCircle2
+  CheckCircle2,
+  DollarSign,
+  PersonStanding,
+  ChevronLeft,
+  ChevronRight,
+  Loader2,
+  X,
+  Users
 } from "lucide-react";
 import { Link } from "react-router-dom";
 import { createPageUrl } from "@/utils";
 import { useContractInteraction } from "../components/contract/ContractInteraction";
-import { methodology } from "@/components/contract/address";
+import { apihost, methodology } from "@/components/contract/address";
 import { useToast } from "@/components/ui/use-toast";
 import { useConnectWallet } from "@/context/walletcontext";
+import { useActiveAccount } from "thirdweb/react";
+import { Textarea } from "@/components/ui/textarea";
+import { jwtDecode } from "jwt-decode";
 
 export default function ProjectDetails() {
   const { projectContract } = useParams();
-  const { mintWithRUSD, retireCredits,
+  const {
+    mintWithRUSD,
+    retireCredits,
     getListedProjectDetails,
-    getTokenURIs,
-    getRetiredTokenURIs,
-    isContractsInitised,
-    getWalletMinted, getRUSDBalance,
+    getWalletMinted,
+    getRUSDBalance,
     getWalletRetrides,
     getCurrentBalance,
-    checkRUSDAllowance, approveRUSD } = useContractInteraction();
+    checkRUSDAllowance,
+    approveRUSD,
+    checkAuthorizedVVB,
+    checkIsOwner,
+    approveAndIssueCredits,
+    approvePresaleAndIssuePresaleCredits,
+    validateProject,
+    verifyProject,
+    submitComment,
+  } = useContractInteraction();
   const { walletAddress } = useConnectWallet();
+  const account = useActiveAccount()
 
   const [project, setProject] = useState();
   const [isLoading, setIsLoading] = useState(true);
@@ -58,25 +79,46 @@ export default function ProjectDetails() {
   const [retiredBalance, setRetiredBalance] = useState(0);
   const [mintNftImage, setMintNftImage] = useState("");
   const [retireNftImage, setRetireNftImage] = useState("");
+  const [comment, setComment] = useState("");
+  const [isCommenting, setIsCommenting] = useState(false);
+
+  // Add these states for role checks
+  const [isOwner, setIsOwner] = useState(false);
+  const [isVVB, setIsVVB] = useState(false);
+
+  // Add states for approval modal
+  const [showApproveModal, setShowApproveModal] = useState(false);
+  const [creditAmount, setCreditAmount] = useState('');
+  const [isApproving, setIsApproving] = useState(false);
+
+  // Add states for holders modal
+  const [showHoldersModal, setShowHoldersModal] = useState(false);
+  const [holders, setHolders] = useState([]);
+  const [holdersLoading, setHoldersLoading] = useState(false);
+  const [holdersCurrentPage, setHoldersCurrentPage] = useState(1);
+  const [holdersTotalPages, setHoldersTotalPages] = useState(1);
+  const [holdersTotalNFTs, setHoldersTotalNFTs] = useState(0);
+  const [holdersPerPage, setHoldersPerPage] = useState(10);
+  const [holdersHasNextPage, setHoldersHasNextPage] = useState(false);
+  const [holdersHasPrevPage, setHoldersHasPrevPage] = useState(false);
+  const [selectedTokenId, setSelectedTokenId] = useState("all"); // Add tokenId filter state
 
   const fallbackImage = "https://ibb.co/CpZ8x06y";
 
   const { toast } = useToast();
 
   useEffect(() => {
-    if (projectContract && walletAddress && isContractsInitised) {
+    if (projectContract && walletAddress) {
       loadProject(projectContract);
     }
-  }, [projectContract, walletAddress, isContractsInitised]);
+  }, [projectContract, walletAddress]);
 
   const loadProject = async (projectAddress) => {
     setIsLoading(true);
     try {
       const data = await getListedProjectDetails(projectAddress);
       setProject(data);
-      console.log('Project details:', data);
 
-      // Fetch NFT images for token IDs 1 (Mint) and 2 (Retire)
       try {
         // Token ID 1 for Mint
         const mintTokenUri = data.tokenUri;
@@ -85,13 +127,12 @@ export default function ProjectDetails() {
           if (response.ok) {
             const metadata = await response.json();
             setMintNftImage(metadata.image || fallbackImage);
-          }else {
+          } else {
             setRetireNftImage(fallbackImage);
           }
         }
         // Token ID 2 for Retire
         const retireTokenUri = data.retiredTokenUri;
-        console.log("Retire Token URI:", retireTokenUri);
         if (retireTokenUri) {
           const response = await fetch(retireTokenUri.replace('ipfs://', 'https://ipfs.io/ipfs/'));
           if (response.ok) {
@@ -110,7 +151,7 @@ export default function ProjectDetails() {
         });
       }
 
-      const balance = await getRUSDBalance();
+      const balance = await getRUSDBalance(walletAddress);
       setRUSDBalance(balance);
       const mintBalance = await getCurrentBalance(projectAddress, 1);
       const retiredBalance = await getCurrentBalance(projectAddress, 2);
@@ -132,6 +173,174 @@ export default function ProjectDetails() {
     }
   };
 
+  // Fetch holders data with tokenId filter
+  const fetchHolders = async (page = 1, limit = 10, tokenId = "all") => {
+    if (!projectContract) return;
+
+    setHoldersLoading(true);
+    try {
+      const requestBody = {
+        ...(tokenId !== "all" && { tokenId: parseInt(tokenId) })
+      };
+
+      const response = await fetch(`${apihost}/user/nftsholders/${projectContract}?page=${page}&limit=${limit}`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          "tokenId": tokenId
+        }),
+      });
+
+      const data = await response.json();
+
+      if (data.status === 'success') {
+        setHolders(data.nfts || []);
+        console.log("Fetched holders:", data.nfts);
+        // Update pagination state
+        if (data.pagination) {
+          setHoldersTotalPages(data.pagination.totalPages);
+          setHoldersTotalNFTs(data.pagination.totalNFTs);
+          setHoldersHasNextPage(data.pagination.hasNextPage);
+          setHoldersHasPrevPage(data.pagination.hasPrevPage);
+          setHoldersCurrentPage(data.pagination.currentPage);
+        }
+      } else {
+        throw new Error(data.message || 'Failed to fetch holders');
+      }
+    } catch (error) {
+      console.error('Error fetching holders:', error);
+      toast({
+        variant: "destructive",
+        title: "Error",
+        description: "Failed to fetch project holders.",
+      });
+      setHolders([]);
+    } finally {
+      setHoldersLoading(false);
+    }
+  };
+
+  let userInfo = null;
+  const token = typeof window !== "undefined" ? localStorage.getItem("token") : null;
+  if (token) {
+    try {
+      userInfo = jwtDecode(token);
+    } catch (e) {
+      userInfo = null;
+    }
+  }
+  // Handle holders modal open
+  const handleOpenHoldersModal = () => {
+    setShowHoldersModal(true);
+    setHoldersCurrentPage(1);
+    setSelectedTokenId("all"); // Reset filter when opening modal
+    fetchHolders(1, holdersPerPage, "all");
+  };
+
+  // Handle holders page change
+  const handleHoldersPageChange = (newPage) => {
+    if (newPage >= 1 && newPage <= holdersTotalPages) {
+      setHoldersCurrentPage(newPage);
+      fetchHolders(newPage, holdersPerPage, selectedTokenId);
+    }
+  };
+
+  // Handle holders limit change
+  const handleHoldersLimitChange = (newLimit) => {
+    setHoldersPerPage(parseInt(newLimit));
+    setHoldersCurrentPage(1);
+    fetchHolders(1, parseInt(newLimit), selectedTokenId);
+  };
+
+  // Handle tokenId filter change
+  const handleTokenIdFilterChange = (newTokenId) => {
+    setSelectedTokenId(newTokenId);
+    setHoldersCurrentPage(1);
+    fetchHolders(1, holdersPerPage, newTokenId);
+  };
+
+  // Generate page numbers for holders pagination
+  const getHoldersPageNumbers = () => {
+    const pages = [];
+    const maxVisiblePages = 5;
+
+    let startPage = Math.max(1, holdersCurrentPage - Math.floor(maxVisiblePages / 2));
+    let endPage = Math.min(holdersTotalPages, startPage + maxVisiblePages - 1);
+
+    if (endPage - startPage + 1 < maxVisiblePages) {
+      startPage = Math.max(1, endPage - maxVisiblePages + 1);
+    }
+
+    for (let i = startPage; i <= endPage; i++) {
+      pages.push(i);
+    }
+
+    return pages;
+  };
+
+  // Handle approval with custom amount
+  const handleApprove = async () => {
+    if (!creditAmount || parseFloat(creditAmount) <= 0) {
+      toast({
+        variant: "destructive",
+        title: "Error",
+        description: "Please enter a valid credit amount",
+      });
+      return;
+    }
+
+    const emissionReductions = Number(project?.emissionReductions ?? 0);
+    if (Number(creditAmount) > emissionReductions) {
+      toast({
+        title: "Credit amount error",
+        description: "Credit amount must be less than or equal to emission reductions.",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    setIsApproving(true);
+    try {
+      const tx = await approveAndIssueCredits(project.projectContract, Number(creditAmount), account);
+      if (tx.status === "success") {
+        const data = await fetch(`${apihost}/project/updateprojectdetails/${project.projectContract}`, {
+          method: 'PUT',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+        });
+        if (data.ok) {
+          const result = await data.json();
+          console.log("Approval result:", result);
+        }
+        toast({
+          variant: "default",
+          title: "Success",
+          description: "Credits approved and issued.",
+        });
+        setTimeout(() => loadProject(project.projectContract), 2000);
+        setShowApproveModal(false);
+        setCreditAmount('');
+      } else {
+        toast({
+          variant: "destructive",
+          title: "Error",
+          description: `Operation failed: ${tx.error}`,
+        });
+      }
+    } catch (error) {
+      toast({
+        variant: "destructive",
+        title: "Error",
+        description: `Failed to approve and issue credits: ${error.message}`,
+      });
+    } finally {
+      setIsApproving(false);
+    }
+  };
+
   const handleMintETH = async () => {
     if (!mintAmount || parseFloat(mintAmount) <= 0) {
       toast({
@@ -147,13 +356,13 @@ export default function ProjectDetails() {
     if (BigInt(allowance) <= BigInt(0)) {
       console.log("Insufficient allowance, approving RUSD first...");
       try {
-        const approveTx = await approveRUSD(project.projectContract);
-        const approveReceipt = await approveTx.wait();
-        if (approveReceipt.status !== 1) {
+        const approveReceipt = await approveRUSD(project.projectContract, account);
+
+        if (approveReceipt.status === "reverted") {
           toast({
             variant: "destructive",
             title: "Error",
-            description: "RUSD approval failed",
+            description: `RUSD approval failed ${approveReceipt}`,
           });
           setIsMinting(false);
           return;
@@ -181,13 +390,41 @@ export default function ProjectDetails() {
     }
 
     try {
-      const tx = await mintWithRUSD(project.projectContract, parseInt(mintAmount));
-      const receipt = await tx.wait();
-      toast({
-        variant: "default",
-        title: "Success",
-        description: `Minting initiated`,
-      });
+      const tx = await mintWithRUSD(project.projectContract, parseInt(mintAmount), account);
+      if (tx.status === "success") {
+        // store nft in backend
+        const nftData = {
+          projectContract: project.projectContract,
+          owner: account.address,
+          amount: mintAmount,
+          tokenId: 1, // Assuming tokenId 1 for mint
+          image: mintNftImage || fallbackImage,
+        };
+        const response = await fetch(`${apihost}/user/store-nft`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify(nftData),
+        });
+        if (response.ok) {
+          const data = await response.json();
+          console.log('NFT stored successfully:', data);
+        }
+        toast({
+          variant: "default",
+          title: "Success",
+          description: `Minting successful!`,
+        });
+      }
+      else {
+        toast({
+          variant: "destructive",
+          title: "Error",
+          description: `Minting failed: ${tx.error}`,
+        });
+      }
+
       setMintAmount("");
       setTimeout(() => loadProject(project.projectContract), 3000);
     } catch (error) {
@@ -224,14 +461,42 @@ export default function ProjectDetails() {
     setIsRetiring(true);
 
     try {
-      const tx = await retireCredits(project.projectContract, parseInt(retireAmount));
-      const receipt = await tx.wait();
-      toast({
-        variant: "default",
-        title: "Success",
-        description: `Credits retired!`,
-      });
-      setTimeout(() => loadProject(project.projectContract), 3000);
+      const tx = await retireCredits(project.projectContract, parseInt(retireAmount), account);
+      if (tx.status === "success") {
+        // store retired nft in backend
+        const nftData = {
+          projectContract: project.projectContract,
+          owner: account.address,
+          amount: retireAmount,
+          tokenId: 2, // Assuming tokenId 2 for retire
+          image: retireNftImage || fallbackImage,
+        };
+        const response = await fetch(`${apihost}/user/store-retired-nft`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify(nftData),
+        });
+        if (response.ok) {
+          const data = await response.json();
+          console.log('Retired NFT stored successfully:', data);
+        }
+        toast({
+          variant: "default",
+          title: "Success",
+          description: `Credits retired!`,
+        });
+        setTimeout(() => loadProject(project.projectContract), 3000);
+      }
+      else {
+        toast({
+          variant: "destructive",
+          title: "Error",
+          description: `Retirement failed: ${tx.error}`,
+        });
+      }
+
     } catch (error) {
       toast({
         variant: "destructive",
@@ -259,6 +524,63 @@ export default function ProjectDetails() {
       return loc;
     });
     return locations.length > 0 ? locations : ['N/A'];
+  };
+
+  // Check roles after loading project
+  useEffect(() => {
+    if (project && walletAddress) {
+
+      (async () => {
+        try {
+          const vvbStatus = await checkAuthorizedVVB(project.projectContract, walletAddress);
+          console.log("VVB Status:", vvbStatus);
+          setIsVVB(vvbStatus);
+
+          const governanceOwner = await checkIsOwner();
+          setIsOwner(governanceOwner);
+        } catch {
+          setIsVVB(false);
+        }
+      })();
+    }
+  }, [project, walletAddress]);
+
+  // Comment submit handler
+  const handleSubmitComment = async () => {
+    if (!comment.trim()) return;
+    setIsCommenting(true);
+    try {
+      const recept = await submitComment(project.projectContract, comment, account);
+      if (recept.status === "success") {
+        const response = await fetch(`${apihost}/vvb/make-comments`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            projectContract: project.projectContract,
+            comment: comment,
+            user: walletAddress,
+          }),
+        });
+        toast({
+          variant: "default",
+          title: "Comment Submitted",
+          description: "Your comment has been submitted.",
+        });
+        setComment("");
+        setTimeout(() => loadProject(project.projectContract), 2000);
+      }
+
+    } catch (error) {
+      toast({
+        variant: "destructive",
+        title: "Error",
+        description: `Failed to submit comment: ${error.message}`,
+      });
+    } finally {
+      setIsCommenting(false);
+    }
   };
 
   if (isLoading) {
@@ -323,6 +645,22 @@ export default function ProjectDetails() {
                 </h1>
               </div>
             </div>
+
+            <div className="mt-2 sm:mt-0 sm:ml-auto">
+              {project.isPresale && project.presaleAmount !== 0  ? (
+                <Badge className="px-3 py-1 text-sm font-semibold rounded-full bg-green-100 text-green-700 border-green-200">
+                  <CheckCircle2 className="w-4 h-4 mr-1" />
+                   In Presale 
+                </Badge>
+              ) : project.isPresale && project.presaleAmount === 0 ?  (
+                <Badge className="px-3 py-1 text-sm font-semibold rounded-full bg-yellow-100 text-yellow-700 border-yellow-200">
+                  <AlertCircle className="w-4 h-4 mr-1" />
+                  Presale Approval Pending
+                </Badge>
+              ) : ''}
+            </div>
+
+
             <div className="mt-2 sm:mt-0 sm:ml-auto">
               {project.isApproved ? (
                 <Badge className="px-3 py-1 text-sm font-semibold rounded-full bg-green-100 text-green-700 border-green-200">
@@ -335,6 +673,23 @@ export default function ProjectDetails() {
                   Pending Approval
                 </Badge>
               )}
+            </div>
+
+            <div className="mt-2 sm:mt-0 sm:ml-auto">
+              <Badge className="px-3 py-1 text-sm font-semibold rounded-full bg-green-100 text-green-700 border-green-200">
+                <DollarSign className="w-4 h-4 mr-1" />
+                Total RUSD Collected {Number(project.totalSupply) * Number(project.prokectMintPrice)}
+              </Badge>
+            </div>
+
+            <div className="mt-2 sm:mt-0 sm:ml-auto">
+              <Badge
+                className="px-3 py-1 text-sm font-semibold rounded-full bg-green-100 text-green-700 border-green-200 cursor-pointer hover:bg-green-200 transition-colors"
+                onClick={handleOpenHoldersModal}
+              >
+                <PersonStanding className="w-4 h-4 mr-1" />
+                Holders
+              </Badge>
             </div>
           </div>
         </div>
@@ -442,14 +797,14 @@ export default function ProjectDetails() {
                 <div className="flex items-center">
                   <span className="font-medium text-gray-700 w-[140px] sm:w-[180px] flex items-center">
                     <CoinsIcon className="w-4 h-4 text-gray-400 mr-2" />
-                    Emission Reduction:
+                    Emission Reduction Goal:
                   </span>
                   <span className="font-semibold flex-grow text-right">{Number(project.emissionReductions)} tCO<sub>2</sub></span>
                 </div>
                 <div className="flex items-center">
-                  <span className="font-medium text-gray-700 w-[140px] sm:w-[180px] flex items-center">
+                  <span className="font-medium text-gray-700 w-[140px] sm:w-[200px] flex items-center">
                     <CoinsIcon className="w-4 h-4 text-gray-400 mr-2" />
-                    Credits tCO<sub>2</sub>:
+                    Approved Credits tCO<sub>2</sub>
                   </span>
                   <span className="font-semibold flex-grow text-right">
                     {project.isValidated ? Number(project.credits) : "To be issued after approval from governance"}
@@ -549,133 +904,644 @@ export default function ProjectDetails() {
             </CardContent>
           </Card>
 
-          {/* Actions */}
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 sm:gap-6">
-            {/* Mint Credits */}
-            <Card>
-              <CardHeader>
-                <CardTitle className="flex items-center space-x-2">
-                  <Coins className="w-5 h-5 text-green-600" />
-                  <span>Mint Credits</span>
-                </CardTitle>
-              </CardHeader>
-              <CardContent className="space-y-4">
-                {(!project.tokenUri || project.tokenUri === "" || typeof project.tokenUri === "undefined") ? (
-                  <div className="text-center text-sm text-gray-500">
-                    Minting is currently disabled. Awaiting to set token URI.
-                  </div>
-                ) : (
-                  <>
-                    {mintNftImage && (
-                      <div className="w-full bg-black flex items-center justify-center" style={{ height: "180px sm:220px" }}>
-                        <img
-                          src={mintNftImage || fallbackImage}
-                          alt="Mint NFT"
-                          className="object-contain h-full w-full"
-                        />
-                      </div>
-                    )}
-                    <div>
-                      <Label htmlFor="mintAmount">Amount to Mint</Label>
-                      <Input
-                        id="mintAmount"
-                        type="number"
-                        step="1"
-                        min="1"
-                        placeholder="Enter amount"
-                        value={mintAmount}
-                        onChange={(e) => setMintAmount(e.target.value)}
-                        disabled={!project.isApproved}
-                      />
-                    </div>
-                    <Label htmlFor="mintAmount">Minted tCO<sub>2</sub>: {Number(mintedCredits)}</Label>
-                    <br />
-                    <Label htmlFor="mintAmount">Current Bal tCO<sub>2</sub>: {Number(mintBalance)}</Label>
-                    <br />
-                    <Label htmlFor="mintAmount">RUSD: {rusdBalance}</Label>
-                    <Button
-                      onClick={handleMintETH}
-                      disabled={isMinting || !project.isApproved}
-                      className="w-full bg-blue-600 hover:bg-blue-700"
-                    >
-                      {isMinting ? "Minting..." : "Mint with RUSD"}
-                    </Button>
-                    {!project.isApproved && (
-                      <p className="text-sm text-gray-500">
-                        Minting is currently disabled for this project. Project is awaiting approval.
-                      </p>
-                    )}
-                  </>
-                )}
-              </CardContent>
-            </Card>
+        </div>
 
-            {/* Retire Credits */}
-            <Card className={`${allowedRetire <= 0 ? "opacity-50 pointer-events-none" : ""}`}>
-              <CardHeader>
-                <CardTitle className="flex items-center space-x-2">
-                  <Recycle className="w-5 h-5 text-orange-600" />
-                  <span>Retire Credits</span>
-                </CardTitle>
-              </CardHeader>
-              <CardContent className="space-y-4">
-                {(!project.tokenUri || project.tokenUri === "" || typeof project.tokenUri === "undefined") ? (
-                  <div className="text-center text-sm text-gray-500">
-                    Retiring is currently disabled. Project is awaiting approval.
+        {/* Role-based Actions */}
+        <div className="mb-6 mt-3">
+          {isOwner ? (
+            <>
+              <Button
+                className="w-full bg-blue-700 hover:bg-blue-800 mb-4 mt-3"
+                onClick={() => {
+                  setShowApproveModal(true);
+                  setCreditAmount(project.emissionReductions);
+                }}
+                disabled={!(project.isValidated && project.isVerified) || project.isApproved}
+              >
+                {project.isApproved ? 'Approved ' : 'Approve and Issue Credits'}
+              </Button>
+              {/* Show reason if disabled */}
+              {!(project.isValidated && project.isVerified) && (
+                <div className="text-sm text-gray-500 mb-2">
+                  {!project.isValidated
+                    ? "Approval is disabled: Project must be validated first."
+                    : !project.isVerified
+                      ? "Approval is disabled: Project must be verified after validation."
+                      : null
+                  }
+                </div>
+              )}
+            </>
+          ) : isVVB ? (
+            <div className="flex flex-col sm:flex-row gap-4 mb-4">
+              <div className="flex-1">
+                <Button
+                  className="bg-yellow-700 hover:bg-yellow-800 w-full"
+                  onClick={async () => {
+                    try {
+                      const tx = await validateProject(project.projectContract, account);
+
+                      if (tx.status === "success") {
+                        const data = await fetch(`${apihost}/vvb/validate-project/${project.projectContract}`, {
+                          method: 'POST',
+                          headers: {
+                            'Content-Type': 'application/json',
+                          },
+                        });
+                        if (data.ok) {
+                          const result = await data.json();
+                          console.log("Validation result:", result);
+                        }
+
+                        toast({
+                          variant: "default",
+                          title: "Success",
+                          description: "Project validated.",
+                        });
+                        setTimeout(() => loadProject(project.projectContract), 2000);
+                      } else {
+                        toast({
+                          variant: "destructive",
+                          title: "Error",
+                          description: `Validation failed: ${tx.error}`,
+                        });
+                      }
+                    } catch (error) {
+                      toast({
+                        variant: "destructive",
+                        title: "Error",
+                        description: `Failed to validate project: ${error.message}`,
+                      });
+                    }
+                  }}
+                  disabled={project.isValidated}
+                >
+                  Validate
+                </Button>
+                {/* Show reason if disabled */}
+                {project.isValidated && (
+                  <div className="text-sm text-gray-500 mt-1">
+                    Validation is already completed.
                   </div>
-                ) : (
-                  <>
-                    {retireNftImage && (
-                      <div className="w-full bg-black flex items-center justify-center" style={{ height: "180px sm:220px" }}>
-                        <img
-                          src={retireNftImage || fallbackImage}
-                          alt="Retire NFT"
-                          className="object-contain h-full w-full"
-                        />
-                      </div>
-                    )}
-                    <div>
-                      <Label htmlFor="retireAmount">Amount to Retire</Label>
-                      <div className="flex space-x-2">
+                )}
+              </div>
+              <div className="flex-1">
+                <Button
+                  className="bg-green-700 hover:bg-green-800 w-full"
+                  onClick={async () => {
+                    try {
+                      const tx = await verifyProject(project.projectContract, account);
+                      if (tx.status === "success") {
+                        const data = await fetch(`${apihost}/vvb/verify-project/${(project.projectContract)}`, {
+                          method: 'POST',
+                          headers: {
+                            'Content-Type': 'application/json',
+                          },
+                        });
+                        if (data.ok) {
+                          const result = await data.json();
+                          console.log("Verification result:", result);
+                        }
+                        toast({
+                          variant: "default",
+                          title: "Success",
+                          description: "Project verified.",
+                        });
+                        setTimeout(() => loadProject(project.projectContract), 2000);
+                      } else {
+                        toast({
+                          variant: "destructive",
+                          title: "Error",
+                          description: `Verification failed: ${tx.error}`,
+                        });
+                      }
+                    } catch (error) {
+                      toast({
+                        variant: "destructive",
+                        title: "Error",
+                        description: `Failed to verify project: ${error.message}`,
+                      });
+                    }
+                  }}
+                  disabled={!project.isValidated || project.isVerified}
+                >
+                  Verify
+                </Button>
+                {/* Show reason if disabled */}
+                {!project.isValidated && (
+                  <div className="text-sm text-gray-500 mt-1">
+                    Verification is disabled: Validation is pending.
+                  </div>
+                )}
+                {project.isValidated && project.isVerified && (
+                  <div className="text-sm text-gray-500 mt-1">
+                    Verification is already completed.
+                  </div>
+                )}
+              </div>
+            </div>
+          ) : (
+            // Show Mint and Retire section for users who are not owner or VVB
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 sm:gap-6">
+              {/* Mint Credits */}
+              <Card>
+                <CardHeader>
+                  <CardTitle className="flex items-center space-x-2">
+                    <Coins className="w-5 h-5 text-green-600" />
+                    <span>Mint Credits</span>
+                  </CardTitle>
+                </CardHeader>
+                <CardContent className="space-y-4">
+                  {(!project.tokenUri || project.tokenUri === "" || typeof project.tokenUri === "undefined") ? (
+                    <div className="text-center text-sm text-gray-500">
+                      Minting is currently disabled. Awaiting to set token URI.
+                    </div>
+                  ) : (
+                    <>
+                      {mintNftImage && (
+                        <div className="w-full bg-black flex items-center justify-center" style={{ height: "180px sm:220px" }}>
+                          <img
+                            src={mintNftImage || fallbackImage}
+                            alt="Mint NFT"
+                            className="object-contain h-full w-full"
+                          />
+                        </div>
+                      )}
+                      <div>
+                        <Label htmlFor="mintAmount">Amount to Mint</Label>
                         <Input
-                          id="retireAmount"
+                          id="mintAmount"
                           type="number"
                           step="1"
                           min="1"
                           placeholder="Enter amount"
-                          value={retireAmount}
-                          onChange={(e) => setRetireAmount(e.target.value)}
-                          className="flex-1"
+                          className="appearance-none"
+                          value={mintAmount}
+                          onChange={(e) => setMintAmount(e.target.value)}
+                          disabled={!project.isApproved}
                         />
-                        <Button
-                          type="button"
-                          variant="outline"
-                          className="px-3"
-                          onClick={handleMaxRetire}
-                        >
-                          Max
-                        </Button>
                       </div>
+                      <Label htmlFor="mintAmount">Minted tCO<sub>2</sub>: {Number(mintedCredits)}</Label>
+                      <br />
+                      <Label htmlFor="mintAmount">Current Bal tCO<sub>2</sub>: {Number(mintBalance)}</Label>
+                      <br />
+                      <Label htmlFor="mintAmount">RUSD: {rusdBalance}</Label>
+                      <Button
+                        onClick={handleMintETH}
+                        disabled={isMinting || !project.isApproved}
+                        className="w-full bg-blue-600 hover:bg-blue-700"
+                      >
+                        {isMinting ? "Minting..." : "Mint with RUSD"}
+                      </Button>
+                      {!project.isApproved && (
+                        <p className="text-sm text-gray-500">
+                          Minting is currently disabled for this project. Project is awaiting approval.
+                        </p>
+                      )}
+                    </>
+                  )}
+                </CardContent>
+              </Card>
+
+              {/* Retire Credits */}
+              <Card className={`${allowedRetire <= 0 ? "opacity-50 pointer-events-none" : ""}`}>
+                <CardHeader>
+                  <CardTitle className="flex items-center space-x-2">
+                    <Recycle className="w-5 h-5 text-orange-600" />
+                    <span>Retire Credits</span>
+                  </CardTitle>
+                </CardHeader>
+                <CardContent className="space-y-4">
+                  {(!project.tokenUri || project.tokenUri === "" || typeof project.tokenUri === "undefined") ? (
+                    <div className="text-center text-sm text-gray-500">
+                      Retiring is currently disabled. Project is awaiting approval.
                     </div>
-                    <Label htmlFor="mintAmount">Retired tCO<sub>2</sub>: {Number(retiredBalance)}</Label>
-                    <br />
-                    <Label htmlFor="mintAmount">Allowed retired tCO<sub>2</sub>: {allowedRetire}</Label>
-                    <Button
-                      onClick={handleRetire}
-                      disabled={isRetiring || allowedRetire <= 0}
-                      className="w-full bg-orange-600 hover:bg-orange-700"
-                    >
-                      {isRetiring ? "Retiring..." : "Retire Credits"}
-                    </Button>
-                    <p className="text-sm text-gray-500">
-                      Retiring credits permanently removes them from circulation.
-                    </p>
-                  </>
-                )}
-              </CardContent>
-            </Card>
-          </div>
+                  ) : (
+                    <>
+                      {retireNftImage && (
+                        <div className="w-full bg-black flex items-center justify-center" style={{ height: "180px sm:220px" }}>
+                          <img
+                            src={retireNftImage || fallbackImage}
+                            alt="Retire NFT"
+                            className="object-contain h-full w-full"
+                          />
+                        </div>
+                      )}
+                      <div>
+                        <Label htmlFor="retireAmount">Amount to Retire</Label>
+                        <div className="flex space-x-2">
+                          <Input
+                            id="retireAmount"
+                            type="number"
+                            step="1"
+                            min="1"
+                            placeholder="Enter amount"
+                            value={retireAmount}
+                            onChange={(e) => setRetireAmount(e.target.value)}
+                            className="flex-1 appearance-none"
+                          />
+                          <Button
+                            type="button"
+                            variant="outline"
+                            className="px-3"
+                            onClick={handleMaxRetire}
+                          >
+                            Max
+                          </Button>
+                        </div>
+                      </div>
+                      <Label htmlFor="mintAmount">Retired tCO<sub>2</sub>: {Number(retiredBalance)}</Label>
+                      <br />
+                      <Label htmlFor="mintAmount">Allowed retired tCO<sub>2</sub>: {allowedRetire}</Label>
+                      <Button
+                        onClick={handleRetire}
+                        disabled={isRetiring || allowedRetire <= 0}
+                        className="w-full bg-orange-600 hover:bg-orange-700"
+                      >
+                        {isRetiring ? "Retiring..." : "Retire Credits"}
+                      </Button>
+                      <p className="text-sm text-gray-500">
+                        Retiring credits permanently removes them from circulation.
+                      </p>
+                    </>
+                  )}
+                </CardContent>
+              </Card>
+            </div>
+          )}
         </div>
+
+        {/* Approval Modal */}
+        {showApproveModal && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-40">
+            <div className="bg-white rounded-lg p-6 w-full max-w-sm shadow-lg">
+              <h2 className="text-xl font-bold mb-4">Enter Credit Amount to Approve</h2>
+              <div className="mb-4">
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Credit Amount (Max: {Number(project.emissionReductions)} tCO₂)
+                </label>
+                <input
+                  type="number"
+                  min="1"
+                  max={Number(project.emissionReductions)}
+                  className="w-full border rounded px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent appearance-none"
+                  placeholder="Enter credit amount"
+                  value={creditAmount}
+                  onChange={e => setCreditAmount(e.target.value)}
+                  disabled={isApproving}
+                />
+                <p className="text-xs text-gray-500 mt-1">
+                  Available emission reductions: {Number(project.emissionReductions)} tCO₂
+                </p>
+              </div>
+              <div className="flex justify-end space-x-2">
+                <button
+                  className="bg-gray-300 text-gray-800 px-4 py-2 rounded hover:bg-gray-400 transition-colors"
+                  onClick={() => {
+                    setShowApproveModal(false);
+                    setCreditAmount('');
+                  }}
+                  disabled={isApproving}
+                >
+                  Cancel
+                </button>
+                <button
+                  className="bg-green-600 text-white px-4 py-2 rounded hover:bg-green-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                  onClick={handleApprove}
+                  disabled={!creditAmount || isApproving || Number(creditAmount) <= 0 || Number(creditAmount) > Number(project.emissionReductions)}
+                >
+                  {isApproving ? "Approving..." : "Approve & Issue Credits"}
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* Holders Modal */}
+        {showHoldersModal && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-50 p-4">
+            <div className="bg-white rounded-lg w-full max-w-6xl max-h-[80vh] overflow-hidden shadow-2xl">
+              {/* Modal Header */}
+              <div className="flex items-center justify-between p-6 border-b border-gray-200">
+                <div className="flex items-center space-x-2">
+                  <Users className="w-6 h-6 text-green-600" />
+                  <h2 className="text-2xl font-bold text-gray-900">Project Holders</h2>
+                </div>
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  onClick={() => setShowHoldersModal(false)}
+                  className="hover:bg-gray-100"
+                >
+                  <X className="w-5 h-5" />
+                </Button>
+              </div>
+
+              {/* Modal Content */}
+              <div className="p-6">
+                {/* Filter and Pagination Controls Header */}
+                <div className="flex flex-col sm:flex-row items-center justify-between gap-4 mb-6">
+                  <div className="flex items-center space-x-4">
+                    <div className="text-sm text-gray-600">
+                      {holdersLoading ? (
+                        "Loading holders..."
+                      ) : (
+                        `Showing ${((holdersCurrentPage - 1) * holdersPerPage) + 1} to ${Math.min(holdersCurrentPage * holdersPerPage, holdersTotalNFTs)} of ${holdersTotalNFTs} holders`
+                      )}
+                    </div>
+                  </div>
+
+                  <div className="flex items-center space-x-4">
+                    {/* Token ID Filter */}
+                    <div className="flex items-center space-x-2">
+                      <label className="text-sm font-medium text-gray-700">Token ID:</label>
+                      <Select value={selectedTokenId} onValueChange={handleTokenIdFilterChange}>
+                        <SelectTrigger className="w-32">
+                          <SelectValue placeholder="Filter by Token ID" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="all">All</SelectItem>
+                          <SelectItem value="1">Minted</SelectItem>
+                          <SelectItem value="2">Retired</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </div>
+
+                    {/* Per Page Selector */}
+                    <Select value={holdersPerPage.toString()} onValueChange={handleHoldersLimitChange}>
+                      <SelectTrigger className="w-32">
+                        <SelectValue placeholder="Per page" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="5">5 per page</SelectItem>
+                        <SelectItem value="10">10 per page</SelectItem>
+                        <SelectItem value="20">20 per page</SelectItem>
+                        <SelectItem value="50">50 per page</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+                </div>
+
+                {/* Active Filter Display */}
+                {selectedTokenId !== "all" && (
+                  <div className="mb-4">
+                    <div className="inline-flex items-center px-3 py-1 rounded-full text-sm bg-blue-100 text-blue-800">
+                      <span className="mr-2">Filtered by Token ID: {selectedTokenId}</span>
+                      <button
+                        onClick={() => handleTokenIdFilterChange("all")}
+                        className="ml-1 hover:bg-blue-200 rounded-full p-1"
+                      >
+                        <X className="w-3 h-3" />
+                      </button>
+                    </div>
+                  </div>
+                )}
+
+                {/* Holders Table */}
+                <div className="max-h-[50vh] overflow-auto border border-gray-200 rounded-lg">
+                  {holdersLoading ? (
+                    <div className="flex items-center justify-center py-12">
+                      <Loader2 className="w-8 h-8 animate-spin text-green-600" />
+                      <span className="ml-2 text-gray-600">Loading holders...</span>
+                    </div>
+                  ) : holders.length === 0 ? (
+                    <div className="text-center py-12">
+                      <div className="w-16 h-16 bg-gray-100 rounded-full flex items-center justify-center mx-auto mb-4">
+                        <Users className="w-8 h-8 text-gray-400" />
+                      </div>
+                      <h3 className="text-lg font-semibold text-gray-900 mb-2">No Holders Found</h3>
+                      <p className="text-gray-600">
+                        {selectedTokenId !== "all"
+                          ? `No holders found for Token ID ${selectedTokenId}.`
+                          : "This project doesn't have any token holders yet."
+                        }
+                      </p>
+                    </div>
+                  ) : (
+                    <table className="w-full">
+                      {/* Table Header */}
+                      <thead className="bg-gray-50 border-b border-gray-200 sticky top-0">
+                        <tr>
+                          <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                            #
+                          </th>
+                          <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                            Holder Address
+                          </th>
+                          <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider hidden md:table-cell">
+                            Project Contract
+                          </th>
+                          <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                            Token ID
+                          </th>
+                          <th className="px-4 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">
+                            Amount (tCO₂)
+                          </th>
+                        </tr>
+                      </thead>
+
+                      {/* Table Body */}
+                      <tbody className="bg-white divide-y divide-gray-200">
+                        {holders.map((holder, index) => (
+                          <tr key={index} className="hover:bg-gray-50 transition-colors">
+                            {/* Row Number */}
+                            <td className="px-4 py-4 whitespace-nowrap text-sm text-gray-900">
+                              {((holdersCurrentPage - 1) * holdersPerPage) + index + 1}
+                            </td>
+
+                            {/* Holder Address */}
+                            <td className="px-4 py-4 whitespace-nowrap">
+                              <div className="flex items-center space-x-3">
+                                <div className="w-8 h-8 bg-green-100 rounded-full flex items-center justify-center flex-shrink-0">
+                                  <User className="w-4 h-4 text-green-600" />
+                                </div>
+                                <div className="min-w-0">
+                                  <a
+                                    href={`https://testnet.bscscan.com/address/${holder.owner}`}
+                                    target="_blank"
+                                    rel="noopener noreferrer"
+                                    className="text-blue-600 hover:underline font-medium"
+                                    title={holder.owner}
+                                  >
+                                    <span className="block sm:hidden">
+                                      {holder.owner ? `${holder.owner.slice(0, 6)}...${holder.owner.slice(-4)}` : "N/A"}
+                                    </span>
+                                    <span className="hidden sm:block">
+                                      {holder.owner ? `${holder.owner.slice(0, 10)}...${holder.owner.slice(-8)}` : "N/A"}
+                                    </span>
+                                  </a>
+                                </div>
+                              </div>
+                            </td>
+
+                            {/* Project Contract - Hidden on mobile */}
+                            <td className="px-4 py-4 whitespace-nowrap hidden md:table-cell">
+                              <a
+                                href={`https://testnet.bscscan.com/address/${holder.projectContract}`}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                className="text-blue-600 hover:underline text-sm"
+                                title={holder.projectContract}
+                              >
+                                {holder.projectContract ? `${holder.projectContract.slice(0, 10)}...${holder.projectContract.slice(-8)}` : "N/A"}
+                              </a>
+                            </td>
+
+                            {/* Token ID */}
+                            <td className="px-4 py-4 whitespace-nowrap">
+                              <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${holder.tokenId === 1
+                                  ? "bg-green-100 text-green-800"
+                                  : "bg-orange-100 text-orange-800"
+                                }`}>
+                                #{holder.tokenId} {holder.tokenId === 1 ? "(Mint)" : "(Retired)"}
+                              </span>
+                            </td>
+
+                            {/* Amount */}
+                            <td className="px-4 py-4 whitespace-nowrap text-right">
+                              <div className="text-sm font-semibold text-gray-900">
+                                {Number(holder.amount).toLocaleString()}
+                              </div>
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  )}
+                </div>
+
+                {/* Mobile Card View - Alternative for small screens */}
+                <div className="block md:hidden mt-4">
+                  {!holdersLoading && holders.length > 0 && (
+                    <div className="text-xs text-gray-500 mb-2">
+                      💡 Scroll horizontally in the table above or view individual cards below
+                    </div>
+                  )}
+                </div>
+
+                {/* Pagination Footer */}
+                {!holdersLoading && holdersTotalPages > 1 && (
+                  <div className="flex flex-col sm:flex-row items-center justify-between gap-4 mt-6 pt-4 border-t border-gray-200">
+                    <div className="text-sm text-gray-600">
+                      Page {holdersCurrentPage} of {holdersTotalPages} • Total: {holdersTotalNFTs} holders
+                      {selectedTokenId !== "all" && ` (Token ID ${selectedTokenId})`}
+                    </div>
+
+                    <div className="flex items-center space-x-2">
+                      {/* Previous Button */}
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => handleHoldersPageChange(holdersCurrentPage - 1)}
+                        disabled={!holdersHasPrevPage}
+                        className="flex items-center space-x-1"
+                      >
+                        <ChevronLeft className="w-4 h-4" />
+                        <span>Previous</span>
+                      </Button>
+
+                      {/* Page Numbers */}
+                      <div className="flex items-center space-x-1">
+                        {holdersCurrentPage > 3 && (
+                          <>
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              onClick={() => handleHoldersPageChange(1)}
+                            >
+                              1
+                            </Button>
+                            {holdersCurrentPage > 4 && <span className="px-2 text-gray-400">...</span>}
+                          </>
+                        )}
+
+                        {getHoldersPageNumbers().map((pageNumber) => (
+                          <Button
+                            key={pageNumber}
+                            variant={holdersCurrentPage === pageNumber ? "default" : "outline"}
+                            size="sm"
+                            onClick={() => handleHoldersPageChange(pageNumber)}
+                            className={holdersCurrentPage === pageNumber ? "bg-green-600 hover:bg-green-700" : ""}
+                          >
+                            {pageNumber}
+                          </Button>
+                        ))}
+
+                        {holdersCurrentPage < holdersTotalPages - 2 && (
+                          <>
+                            {holdersCurrentPage < holdersTotalPages - 3 && <span className="px-2 text-gray-400">...</span>}
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              onClick={() => handleHoldersPageChange(holdersTotalPages)}
+                            >
+                              {holdersTotalPages}
+                            </Button>
+                          </>
+                        )}
+                      </div>
+
+                      {/* Next Button */}
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => handleHoldersPageChange(holdersCurrentPage + 1)}
+                        disabled={!holdersHasNextPage}
+                        className="flex items-center space-x-1"
+                      >
+                        <span>Next</span>
+                        <ChevronRight className="w-4 h-4" />
+                      </Button>
+                    </div>
+                  </div>
+                )}
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* Comment Section */}
+        {userInfo && userInfo.role !== "user" && <Card className="mt-8">
+          <CardHeader>
+            <CardTitle>Comments</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="mb-4">
+              <Textarea
+                value={comment}
+                onChange={(e) => setComment(e.target.value)}
+                placeholder="Add a comment..."
+                rows={3}
+                disabled={isCommenting}
+              />
+              <Button
+                className="mt-2"
+                onClick={handleSubmitComment}
+                disabled={isCommenting || !comment.trim()}
+              >
+                {isCommenting ? "Submitting..." : "Submit Comment"}
+              </Button>
+            </div>
+
+            {project.comments && project.comments.length > 0 ? (
+              <div className="space-y-3">
+                {project.comments.map((c, i) => (
+                  <div key={i} className="bg-gray-50 p-3 rounded">
+                    {console.log("Comment:", c)}
+                    <div className="flex justify-between text-sm text-gray-500 mb-1">
+                      <span className="font-medium">
+                        {c.commenter && `${c.commenter.slice(0, 6)}...${c.commenter.slice(-4)}`}
+                      </span>
+                    </div>
+                    <p className="text-gray-800">{c.comment}</p>
+                  </div>
+                ))}
+              </div>
+            ) : (
+              <p className="text-gray-500 italic">No comments yet.</p>
+            )}
+          </CardContent>
+        </Card>}
       </div>
     </div>
   );

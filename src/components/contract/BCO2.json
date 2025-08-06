@@ -12,26 +12,6 @@
 				"type": "address"
 			},
 			{
-				"internalType": "uint256",
-				"name": "_mintPrice",
-				"type": "uint256"
-			},
-			{
-				"internalType": "bool",
-				"name": "_defaultIsPermanent",
-				"type": "bool"
-			},
-			{
-				"internalType": "uint256",
-				"name": "_defaultValidity",
-				"type": "uint256"
-			},
-			{
-				"internalType": "uint256",
-				"name": "_defaultVintage",
-				"type": "uint256"
-			},
-			{
 				"internalType": "address",
 				"name": "_governance",
 				"type": "address"
@@ -39,6 +19,11 @@
 			{
 				"internalType": "address",
 				"name": "_registry",
+				"type": "address"
+			},
+			{
+				"internalType": "address",
+				"name": "_bco2DAO",
 				"type": "address"
 			},
 			{
@@ -59,6 +44,16 @@
 		],
 		"stateMutability": "nonpayable",
 		"type": "constructor"
+	},
+	{
+		"inputs": [],
+		"name": "AlreadyConfigured",
+		"type": "error"
+	},
+	{
+		"inputs": [],
+		"name": "AlreadyMinting",
+		"type": "error"
 	},
 	{
 		"inputs": [],
@@ -249,11 +244,27 @@
 	},
 	{
 		"inputs": [],
+		"name": "MintingAlreadyDisabled",
+		"type": "error"
+	},
+	{
+		"inputs": [],
 		"name": "MintingClosed",
 		"type": "error"
 	},
 	{
 		"inputs": [],
+		"name": "NotValidRegistry",
+		"type": "error"
+	},
+	{
+		"inputs": [
+			{
+				"internalType": "address",
+				"name": "",
+				"type": "address"
+			}
+		],
 		"name": "OnlyGovernance",
 		"type": "error"
 	},
@@ -277,11 +288,6 @@
 			}
 		],
 		"name": "OwnableUnauthorizedAccount",
-		"type": "error"
-	},
-	{
-		"inputs": [],
-		"name": "ProjectNotApproved",
 		"type": "error"
 	},
 	{
@@ -405,8 +411,21 @@
 	},
 	{
 		"anonymous": false,
+		"inputs": [
+			{
+				"indexed": false,
+				"internalType": "uint256",
+				"name": "newMintPrice",
+				"type": "uint256"
+			}
+		],
+		"name": "MintPriceUpdated",
+		"type": "event"
+	},
+	{
+		"anonymous": false,
 		"inputs": [],
-		"name": "MintingStopped",
+		"name": "MintingToggled",
 		"type": "event"
 	},
 	{
@@ -426,6 +445,19 @@
 			}
 		],
 		"name": "OwnershipTransferred",
+		"type": "event"
+	},
+	{
+		"anonymous": false,
+		"inputs": [
+			{
+				"indexed": false,
+				"internalType": "uint256",
+				"name": "timestamp",
+				"type": "uint256"
+			}
+		],
+		"name": "PresaleEnded",
 		"type": "event"
 	},
 	{
@@ -702,6 +734,13 @@
 		"type": "function"
 	},
 	{
+		"inputs": [],
+		"name": "_endPresale",
+		"outputs": [],
+		"stateMutability": "nonpayable",
+		"type": "function"
+	},
+	{
 		"inputs": [
 			{
 				"internalType": "string",
@@ -712,6 +751,32 @@
 		"name": "_setCertificateId",
 		"outputs": [],
 		"stateMutability": "nonpayable",
+		"type": "function"
+	},
+	{
+		"inputs": [
+			{
+				"internalType": "uint256",
+				"name": "_approvedMintPrice",
+				"type": "uint256"
+			}
+		],
+		"name": "_updateMintPrice",
+		"outputs": [],
+		"stateMutability": "nonpayable",
+		"type": "function"
+	},
+	{
+		"inputs": [],
+		"name": "bCO2DAO",
+		"outputs": [
+			{
+				"internalType": "contract ICarbonCreditDAO",
+				"name": "",
+				"type": "address"
+			}
+		],
+		"stateMutability": "view",
 		"type": "function"
 	},
 	{
@@ -807,6 +872,39 @@
 			}
 		],
 		"stateMutability": "view",
+		"type": "function"
+	},
+	{
+		"inputs": [
+			{
+				"internalType": "bool",
+				"name": "_isPresale",
+				"type": "bool"
+			},
+			{
+				"internalType": "uint256",
+				"name": "_mintPrice",
+				"type": "uint256"
+			},
+			{
+				"internalType": "bool",
+				"name": "_defaultIsPermanent",
+				"type": "bool"
+			},
+			{
+				"internalType": "uint256",
+				"name": "_defaultValidity",
+				"type": "uint256"
+			},
+			{
+				"internalType": "uint256",
+				"name": "_defaultVintage",
+				"type": "uint256"
+			}
+		],
+		"name": "configParameters",
+		"outputs": [],
+		"stateMutability": "nonpayable",
 		"type": "function"
 	},
 	{
@@ -1009,6 +1107,19 @@
 		"type": "function"
 	},
 	{
+		"inputs": [],
+		"name": "isInPresale",
+		"outputs": [
+			{
+				"internalType": "bool",
+				"name": "",
+				"type": "bool"
+			}
+		],
+		"stateMutability": "view",
+		"type": "function"
+	},
+	{
 		"inputs": [
 			{
 				"internalType": "uint256",
@@ -1064,6 +1175,19 @@
 			}
 		],
 		"stateMutability": "view",
+		"type": "function"
+	},
+	{
+		"inputs": [
+			{
+				"internalType": "uint256",
+				"name": "quantity",
+				"type": "uint256"
+			}
+		],
+		"name": "mintForIssuer",
+		"outputs": [],
+		"stateMutability": "nonpayable",
 		"type": "function"
 	},
 	{
@@ -1173,6 +1297,19 @@
 	{
 		"inputs": [],
 		"name": "renounceOwnership",
+		"outputs": [],
+		"stateMutability": "nonpayable",
+		"type": "function"
+	},
+	{
+		"inputs": [
+			{
+				"internalType": "address",
+				"name": "tokenAddress",
+				"type": "address"
+			}
+		],
+		"name": "rescueTokens",
 		"outputs": [],
 		"stateMutability": "nonpayable",
 		"type": "function"
@@ -1290,31 +1427,6 @@
 	{
 		"inputs": [
 			{
-				"internalType": "string",
-				"name": "_nonRetiredURI",
-				"type": "string"
-			},
-			{
-				"internalType": "string",
-				"name": "_retiredURI",
-				"type": "string"
-			}
-		],
-		"name": "setTokenURI",
-		"outputs": [],
-		"stateMutability": "nonpayable",
-		"type": "function"
-	},
-	{
-		"inputs": [],
-		"name": "stopMinting",
-		"outputs": [],
-		"stateMutability": "nonpayable",
-		"type": "function"
-	},
-	{
-		"inputs": [
-			{
 				"internalType": "bytes4",
 				"name": "interfaceId",
 				"type": "bytes4"
@@ -1342,6 +1454,19 @@
 			}
 		],
 		"stateMutability": "view",
+		"type": "function"
+	},
+	{
+		"inputs": [
+			{
+				"internalType": "bool",
+				"name": "_status",
+				"type": "bool"
+			}
+		],
+		"name": "toggleMinting",
+		"outputs": [],
+		"stateMutability": "nonpayable",
 		"type": "function"
 	},
 	{
@@ -1471,6 +1596,24 @@
 			}
 		],
 		"stateMutability": "view",
+		"type": "function"
+	},
+	{
+		"inputs": [
+			{
+				"internalType": "string",
+				"name": "_nonRetiredURI",
+				"type": "string"
+			},
+			{
+				"internalType": "string",
+				"name": "_retiredURI",
+				"type": "string"
+			}
+		],
+		"name": "updateTokenURIs",
+		"outputs": [],
+		"stateMutability": "nonpayable",
 		"type": "function"
 	},
 	{

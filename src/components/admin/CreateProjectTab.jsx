@@ -4,11 +4,38 @@ import { useState } from 'react';
 import ReactDatePicker from "react-datepicker";
 import "react-datepicker/dist/react-datepicker.css";
 import { useContractInteraction } from '../contract/ContractInteraction';
-import { methodology } from '../contract/address';
+import { apihost, methodology } from '../contract/address';
 import { useToast } from '../ui/use-toast';
 import { MapContainer, TileLayer, Marker, useMap, useMapEvents } from 'react-leaflet';
 import 'leaflet/dist/leaflet.css';
 import L from 'leaflet';
+import { useActionState } from 'react';
+import { useActiveAccount } from 'thirdweb/react';
+import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/card';
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
+import { Badge } from '@/components/ui/badge';
+import { Textarea } from '@/components/ui/textarea';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Switch } from '@/components/ui/switch';
+import { 
+  MapPin, 
+  Calendar, 
+  DollarSign, 
+  Leaf, 
+  FileText, 
+  MapIcon, 
+  Plus, 
+  Search,
+  Maximize2,
+  Minimize2,
+  Clock,
+  Target,
+  Settings,
+  CheckCircle2,
+  Info
+} from 'lucide-react';
 
 // Fix Leaflet marker icon issue
 delete L.Icon.Default.prototype._getIconUrl;
@@ -23,7 +50,7 @@ const CreateProjectTab = ({ setUpdate }) => {
   const { toast } = useToast();
   const [formData, setFormData] = useState({
     mintPrice: '',
-    treasury: '',
+    isPresale: false, // New boolean field replacing treasury
     defaultIsPermanent: false,
     defaultValidity: '',
     defaultVintage: new Date(),
@@ -37,6 +64,8 @@ const CreateProjectTab = ({ setUpdate }) => {
   const [searchQuery, setSearchQuery] = useState('');
   const [isSearching, setIsSearching] = useState(false);
   const [coordinatesList, setCoordinatesList] = useState([{ lat: '', lng: '' }]);
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const account = useActiveAccount()
 
   // Component to handle map interactions
   const LocationPicker = ({ setLocation }) => {
@@ -171,9 +200,11 @@ const CreateProjectTab = ({ setUpdate }) => {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
+    setIsSubmitting(true);
+    
     const {
       mintPrice,
-      treasury,
+      isPresale,
       defaultIsPermanent,
       defaultValidity,
       defaultVintage,
@@ -183,12 +214,14 @@ const CreateProjectTab = ({ setUpdate }) => {
       projectDetails,
     } = formData;
 
-    if (!treasury || treasury === '0x0000000000000000000000000000000000000000') {
+    // Validation
+    if (!mintPrice || isNaN(mintPrice) || Number(mintPrice) <= 0) {
       toast({
-        title: "Invalid Treasury Address",
-        description: "Please provide a valid treasury address.",
+        title: "Invalid Price",
+        description: "Please provide a valid mint price greater than 0.",
         variant: "destructive",
       });
+      setIsSubmitting(false);
       return;
     }
 
@@ -198,8 +231,10 @@ const CreateProjectTab = ({ setUpdate }) => {
         description: "Validity must be 0 if permanent, non-zero otherwise.",
         variant: "destructive",
       });
+      setIsSubmitting(false);
       return;
     }
+
     if (
       !defaultIsPermanent &&
       (isNaN(defaultValidity) || defaultValidity <= 0 || defaultValidity > 100)
@@ -209,6 +244,7 @@ const CreateProjectTab = ({ setUpdate }) => {
         description: "Validity must be a number between 1 and 100 years if not permanent.",
         variant: "destructive",
       });
+      setIsSubmitting(false);
       return;
     }
 
@@ -223,6 +259,7 @@ const CreateProjectTab = ({ setUpdate }) => {
         description: "Emission reductions must be a number between 1 and 1,000,000,000.",
         variant: "destructive",
       });
+      setIsSubmitting(false);
       return;
     }
 
@@ -232,6 +269,7 @@ const CreateProjectTab = ({ setUpdate }) => {
         description: "Please provide project details.",
         variant: "destructive",
       });
+      setIsSubmitting(false);
       return;
     }
 
@@ -241,6 +279,7 @@ const CreateProjectTab = ({ setUpdate }) => {
         description: "Methodology index must be between 0 and 31.",
         variant: "destructive",
       });
+      setIsSubmitting(false);
       return;
     }
 
@@ -250,6 +289,7 @@ const CreateProjectTab = ({ setUpdate }) => {
         description: "Please select a location on the map or via search.",
         variant: "destructive",
       });
+      setIsSubmitting(false);
       return;
     }
 
@@ -264,15 +304,43 @@ const CreateProjectTab = ({ setUpdate }) => {
 
     try {
       console.log("formdata", preparedData);
-      const tx = await createAndListProject(preparedData);
-      const receipt = await tx.wait();
-      if (receipt.status === 1) {
+      const receipt = await createAndListProject(preparedData, account);
+      if (receipt.status === "success") {
+        // store project details in the backend
+        const response = await fetch(`${apihost}/project/addproject`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({ hash: receipt.transactionHash }),
+        });
+        if (!response.ok) {
+          throw new Error('Failed to store project details in the backend');
+        }
+        const data = await response.json();
+        if (data.success) {
+          console.log('Project details stored successfully:', data);
+        }
         setUpdate(4);
         toast({
-          title: "Project Created",
-          description: `Project created successfully`,
+          title: "Project Created Successfully",
+          description: `Your carbon credit project has been submitted for review.`,
           variant: "success",
         });
+        
+        // Reset form
+        setFormData({
+          mintPrice: '',
+          isPresale: false,
+          defaultIsPermanent: false,
+          defaultValidity: '',
+          defaultVintage: new Date(),
+          methodologyIndex: '',
+          location: '',
+          emissionReductions: '',
+          projectDetails: '',
+        });
+        setCoordinatesList([{ lat: '', lng: '' }]);
       } else {
         toast({
           title: "Transaction Failed",
@@ -287,219 +355,420 @@ const CreateProjectTab = ({ setUpdate }) => {
         description: error.message,
         variant: "destructive",
       });
+    } finally {
+      setIsSubmitting(false);
     }
   };
 
   return (
-    <div className="p-4">
-      <h2 className="text-2xl font-bold mb-4">Create New Project</h2>
+    <div className="max-w-4xl mx-auto p-6 space-y-6">
+      {/* Header */}
+      <div className="text-center mb-8">
+        <div className="flex items-center justify-center mb-4">
+          <div className="w-12 h-12 bg-green-100 rounded-full flex items-center justify-center mr-4">
+            <Leaf className="w-6 h-6 text-green-600" />
+          </div>
+          <div>
+            <h1 className="text-3xl font-bold text-gray-900">Create Carbon Credit Project</h1>
+            <p className="text-gray-600 mt-2">Submit your project for validation and carbon credit issuance</p>
+          </div>
+        </div>
+        <div className="flex items-center justify-center space-x-4 text-sm text-gray-500">
+          <Badge variant="outline" className="flex items-center space-x-1">
+            <Info className="w-3 h-3" />
+            <span>Review Period: 30 days</span>
+          </Badge>
+          <Badge variant="outline" className="flex items-center space-x-1">
+            <CheckCircle2 className="w-3 h-3" />
+            <span>VVB Verification Required</span>
+          </Badge>
+        </div>
+      </div>
+
       {mapError && (
-        <div className="text-red-500 mb-4">
-          Map Error: {mapError}. Please try refreshing or reverting to manual location input.
-        </div>
+        <Card className="border-red-200 bg-red-50">
+          <CardContent className="p-4">
+            <div className="text-red-600 text-sm">
+              <strong>Map Error:</strong> {mapError}. Please try refreshing or reverting to manual location input.
+            </div>
+          </CardContent>
+        </Card>
       )}
-      <form onSubmit={handleSubmit} className="space-y-4">
-        <div>
-          <label className="block">Target Price (in RUSD)</label>
-          <input
-            type="text"
-            name="mintPrice"
-            value={formData.mintPrice}
-            onChange={handleChange}
-            className="w-full border rounded px-2 py-1"
-            required
-          />
-        </div>
-        <div>
-          <label className="block">Issuer's Treasury Wallet</label>
-          <input
-            type="text"
-            name="treasury"
-            value={formData.treasury}
-            onChange={handleChange}
-            className="w-full border rounded px-2 py-1"
-            required
-          />
-          <p className="mt-1">
-            <a href="https://genzvault.com/#download" className="text-green-600 hover:underline">
-              Download GenZ Wallet
-            </a>
-          </p>
-        </div>
-        <div className="flex items-center">
-          <button
-            type="button"
-            onClick={() =>
-              setFormData((prev) => ({
-                ...prev,
-                defaultIsPermanent: !prev.defaultIsPermanent,
-                defaultValidity: !prev.defaultIsPermanent ? '0' : prev.defaultValidity,
-              }))
-            }
-            className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors focus:outline-none ${formData.defaultIsPermanent ? 'bg-blue-600' : 'bg-gray-300'}`}
-          >
-            <span
-              className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${formData.defaultIsPermanent ? 'translate-x-6' : 'translate-x-1'}`}
-            />
-          </button>
-          <label className="block ml-4">Is Validity Permanent?</label>
-        </div>
-        <div>
-          <label className="block">Default Validity (in years)</label>
-          {!formData.defaultIsPermanent ? (
-            <input
-              type="text"
-              name="defaultValidity"
-              value={formData.defaultValidity}
-              onChange={handleChange}
-              className="w-full border rounded px-2 py-1"
-              disabled={formData.defaultIsPermanent}
-              required={!formData.defaultIsPermanent}
-            />
-          ) : (
-            <input
-              type="text"
-              name="defaultValidity"
-              value={'100+ years'}
-              disabled={formData.defaultIsPermanent}
-              className="w-full border rounded px-2 py-1"
-            />
-          )}
-          {formData.defaultIsPermanent && (
-            <p className="text-sm text-gray-500 mt-1">Disabled because validity is set to permanent.</p>
-          )}
-        </div>
-        <div className="relative">
-          <label className="block">Location</label>
-          <div className="flex items-center mb-2">
-            <input
-              type="text"
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-              placeholder="Search for a location (e.g., New York, NY)"
-              className="w-full border rounded px-2 py-1 mr-2"
-            />
-            <button
-              type="button"
-              onClick={handleSearch}
-              disabled={isSearching}
-              className="bg-blue-500 text-white px-4 py-1 rounded disabled:bg-gray-400"
-            >
-              {isSearching ? 'Searching...' : 'Search'}
-            </button>
-          </div>
-          {coordinatesList.map((coord, index) => (
-            <div key={index} className="flex items-center mb-2">
-              <input
-                type="text"
-                placeholder="Latitude"
-                value={coord.lat}
-                onChange={(e) => handleCoordinateChange(index, 'lat', e.target.value)}
-                className="w-1/2 border rounded px-2 py-1 mr-2"
-              />
-              <input
-                type="text"
-                placeholder="Longitude"
-                value={coord.lng}
-                onChange={(e) => handleCoordinateChange(index, 'lng', e.target.value)}
-                className="w-1/2 border rounded px-2 py-1"
-              />
-            </div>
-          ))}
-          <button
-            type="button"
-            onClick={addCoordinateField}
-            className="bg-green-500 text-white px-4 py-1 rounded mb-2"
-          >
-            + Add Coordinate
-          </button>
-          <div className="relative">
-            <div className={`${isFullScreen ? 'fixed inset-0 z-50 bg-white' : 'w-full h-64 border rounded'}`}>
-              <MapContainer
-                center={coordinatesList[0].lat && coordinatesList[0].lng 
-                  ? [Number(coordinatesList[0].lat), Number(coordinatesList[0].lng)] 
-                  : [51.505, -0.09]}
-                zoom={13}
-                style={{ height: '100%', width: '100%' }}
-              >
-                <TileLayer
-                  url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
-                  attribution='© <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
+
+      <form onSubmit={handleSubmit} className="space-y-6">
+        {/* Basic Information */}
+        <Card>
+          <CardHeader>
+            <CardTitle className="flex items-center space-x-2">
+              <DollarSign className="w-5 h-5 text-green-600" />
+              <span>Project Pricing & Type</span>
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div className="space-y-2">
+                <Label htmlFor="mintPrice" className="text-sm font-medium">
+                  Target Price (RUSD per tCO₂)
+                </Label>
+                <Input
+                  id="mintPrice"
+                  name="mintPrice"
+                  type="number"
+                  step="0.01"
+                  min="0"
+                  value={formData.mintPrice}
+                  onChange={handleChange}
+                  placeholder="e.g., 25.00"
+                  className="w-full"
+                  required
                 />
-                <LocationPicker setLocation={(location) => setFormData({ ...formData, location })} />
-              </MapContainer>
+                <p className="text-xs text-gray-500">Price per carbon credit token in RUSD</p>
+              </div>
+
+              <div className="space-y-2">
+                <Label htmlFor="isPresale" className="text-sm font-medium">
+                  Project Type
+                </Label>
+                <div className="flex items-center space-x-3 p-3 border rounded-lg">
+                  <Switch
+                    id="isPresale"
+                    checked={formData.isPresale}
+                    onCheckedChange={(checked) => setFormData(prev => ({ ...prev, isPresale: checked }))}
+                  />
+                  <div className="flex-1">
+                    <Label htmlFor="isPresale" className="text-sm font-medium cursor-pointer">
+                      {formData.isPresale ? "Presale Project" : "Regular Project"}
+                    </Label>
+                    <p className="text-xs text-gray-500">
+                      {formData.isPresale 
+                        ? "Credits available for advance purchase before verification"
+                        : "Credits available after full verification process"
+                      }
+                    </p>
+                  </div>
+                  <Badge variant={formData.isPresale ? "default" : "secondary"}>
+                    {formData.isPresale ? "Presale" : "Standard"}
+                  </Badge>
+                </div>
+              </div>
             </div>
-            <button
-              type="button"
-              onClick={() => setIsFullScreen(!isFullScreen)}
-              className="absolute top-2 right-2 bg-blue-500 text-white px-2 py-1 rounded text-sm"
-            >
-              {isFullScreen ? 'Exit Full Screen' : 'Full Screen'}
-            </button>
-          </div>
-          {formData.location && (
-            <p className="text-sm text-gray-500 mt-1">
-              Selected: {formData.location}
-            </p>
-          )}
-        </div>
-        <div className="relative">
-          <label className="block">Vintage</label>
-          <ReactDatePicker
-            selected={formData.defaultVintage}
-            onChange={(date) =>
-              setFormData((prev) => ({ ...prev, defaultVintage: date }))
-            }
-            showTimeSelect
-            dateFormat="Pp"
-            className="w-full border rounded px-2 py-1"
-            wrapperClassName="w-full"
-            required
-          />
-        </div>
-        <div>
-          <label className="block">Methodology</label>
-          <select
-            name="methodologyIndex"
-            value={formData.methodologyIndex}
-            onChange={handleChange}
-            className="w-full border rounded px-2 py-1"
-            required
-          >
-            <option value="">Select Methodology</option>
-            {methodology.map((method, index) => (
-              <option key={index} value={index}>
-                {method}
-              </option>
-            ))}
-          </select>
-        </div>
-        <div>
-          <label className="block">Emission Reduction goal in tCO<sub>2</sub></label>
-          <input
-            type="text"
-            name="emissionReductions"
-            value={formData.emissionReductions}
-            onChange={handleChange}
-            className="w-full border rounded px-2 py-1"
-            required
-          />
-        </div>
-        <div>
-          <label className="block">Project Details</label>
-          <input
-            name="projectDetails"
-            value={formData.projectDetails}
-            placeholder='Upload all the project-related files to a public GitHub repository and paste the link here.'
-            onChange={handleChange}
-            className="w-full border rounded px-2 py-1"
-            required
-          />
-          <p>Check example here: <a href="https://github.com/arrnaya/BCO2_Listing_Application" className="text-green-600 hover:underline">Github Link</a></p>
-        </div>
-        <button type="submit" className="bg-blue-500 text-white px-4 py-2 rounded">
-          Create Project
-        </button>
+          </CardContent>
+        </Card>
+
+        {/* Validity Settings */}
+        <Card>
+          <CardHeader>
+            <CardTitle className="flex items-center space-x-2">
+              <Clock className="w-5 h-5 text-blue-600" />
+              <span>Credit Validity</span>
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            <div className="flex items-center space-x-3 p-3 border rounded-lg">
+              <Switch
+                id="defaultIsPermanent"
+                checked={formData.defaultIsPermanent}
+                onCheckedChange={(checked) => setFormData(prev => ({
+                  ...prev,
+                  defaultIsPermanent: checked,
+                  defaultValidity: checked ? '0' : prev.defaultValidity,
+                }))}
+              />
+              <div className="flex-1">
+                <Label htmlFor="defaultIsPermanent" className="text-sm font-medium cursor-pointer">
+                  Permanent Validity
+                </Label>
+                <p className="text-xs text-gray-500">
+                  {formData.defaultIsPermanent 
+                    ? "Credits never expire"
+                    : "Credits have a limited validity period"
+                  }
+                </p>
+              </div>
+              <Badge variant={formData.defaultIsPermanent ? "default" : "secondary"}>
+                {formData.defaultIsPermanent ? "Permanent" : "Limited"}
+              </Badge>
+            </div>
+
+            {!formData.defaultIsPermanent && (
+              <div className="space-y-2">
+                <Label htmlFor="defaultValidity" className="text-sm font-medium">
+                  Validity Period (Years)
+                </Label>
+                <Input
+                  id="defaultValidity"
+                  name="defaultValidity"
+                  type="number"
+                  min="1"
+                  max="100"
+                  value={formData.defaultValidity}
+                  onChange={handleChange}
+                  placeholder="e.g., 10"
+                  className="w-full md:w-48"
+                  required={!formData.defaultIsPermanent}
+                />
+                <p className="text-xs text-gray-500">Number of years the credits remain valid</p>
+              </div>
+            )}
+
+            {formData.defaultIsPermanent && (
+              <div className="p-3 bg-blue-50 border border-blue-200 rounded-lg">
+                <p className="text-sm text-blue-800">
+                  ✓ Credits set to permanent validity (100+ years)
+                </p>
+              </div>
+            )}
+          </CardContent>
+        </Card>
+
+        {/* Project Details */}
+        <Card>
+          <CardHeader>
+            <CardTitle className="flex items-center space-x-2">
+              <Target className="w-5 h-5 text-orange-600" />
+              <span>Project Specifications</span>
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div className="space-y-2">
+                <Label htmlFor="defaultVintage" className="text-sm font-medium">
+                  Project Vintage
+                </Label>
+                <div className="relative">
+                  <Calendar className="absolute left-3 top-3 h-4 w-4 text-gray-400" />
+                  <ReactDatePicker
+                    id="defaultVintage"
+                    selected={formData.defaultVintage}
+                    onChange={(date) => setFormData(prev => ({ ...prev, defaultVintage: date }))}
+                    showTimeSelect
+                    dateFormat="PPpp"
+                    className="w-full pl-10 border rounded-md px-3 py-2"
+                    wrapperClassName="w-full"
+                    required
+                  />
+                </div>
+                <p className="text-xs text-gray-500">When the emission reductions occurred</p>
+              </div>
+
+              <div className="space-y-2">
+                <Label htmlFor="methodologyIndex" className="text-sm font-medium">
+                  Methodology
+                </Label>
+                <Select value={formData.methodologyIndex} onValueChange={(value) => setFormData(prev => ({ ...prev, methodologyIndex: value }))}>
+                  <SelectTrigger>
+                    <SelectValue placeholder="Select methodology" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {methodology.map((method, index) => (
+                      <SelectItem key={index} value={index.toString()}>
+                        <div className="flex items-center space-x-2">
+                          <Badge variant="outline" className="text-xs">
+                            {index}
+                          </Badge>
+                          <span className="truncate">{method}</span>
+                        </div>
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+                <p className="text-xs text-gray-500">Carbon accounting methodology used</p>
+              </div>
+            </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="emissionReductions" className="text-sm font-medium">
+                Emission Reduction Goal (tCO₂)
+              </Label>
+              <Input
+                id="emissionReductions"
+                name="emissionReductions"
+                type="number"
+                min="1"
+                max="1000000000"
+                value={formData.emissionReductions}
+                onChange={handleChange}
+                placeholder="e.g., 10000"
+                className="w-full"
+                required
+              />
+              <p className="text-xs text-gray-500">Total tonnes of CO₂ equivalent to be reduced/removed</p>
+            </div>
+          </CardContent>
+        </Card>
+
+        {/* Location */}
+        <Card>
+          <CardHeader>
+            <CardTitle className="flex items-center space-x-2">
+              <MapPin className="w-5 h-5 text-red-600" />
+              <span>Project Location</span>
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            {/* Location Search */}
+            <div className="flex items-center space-x-2">
+              <div className="flex-1 relative">
+                <Search className="absolute left-3 top-3 h-4 w-4 text-gray-400" />
+                <Input
+                  type="text"
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
+                  placeholder="Search for a location (e.g., New York, NY)"
+                  className="pl-10"
+                />
+              </div>
+              <Button
+                type="button"
+                onClick={handleSearch}
+                disabled={isSearching}
+                variant="outline"
+                className="px-4"
+              >
+                {isSearching ? 'Searching...' : 'Search'}
+              </Button>
+            </div>
+
+            {/* Manual Coordinates */}
+            <div className="space-y-3">
+              <div className="flex items-center justify-between">
+                <Label className="text-sm font-medium">Manual Coordinates</Label>
+                <Button
+                  type="button"
+                  onClick={addCoordinateField}
+                  variant="outline"
+                  size="sm"
+                  className="flex items-center space-x-1"
+                >
+                  <Plus className="w-3 h-3" />
+                  <span>Add Point</span>
+                </Button>
+              </div>
+              
+              {coordinatesList.map((coord, index) => (
+                <div key={index} className="grid grid-cols-2 gap-2">
+                  <Input
+                    type="text"
+                    placeholder="Latitude"
+                    value={coord.lat}
+                    onChange={(e) => handleCoordinateChange(index, 'lat', e.target.value)}
+                  />
+                  <Input
+                    type="text"
+                    placeholder="Longitude"
+                    value={coord.lng}
+                    onChange={(e) => handleCoordinateChange(index, 'lng', e.target.value)}
+                  />
+                </div>
+              ))}
+            </div>
+
+            {/* Map */}
+            <div className="relative">
+              <div className={`${isFullScreen ? 'fixed inset-0 z-50 bg-white' : 'w-full h-80 border rounded-lg overflow-hidden'}`}>
+                <MapContainer
+                  center={coordinatesList[0].lat && coordinatesList[0].lng 
+                    ? [Number(coordinatesList[0].lat), Number(coordinatesList[0].lng)] 
+                    : [51.505, -0.09]}
+                  zoom={13}
+                  style={{ height: '100%', width: '100%' }}
+                >
+                  <TileLayer
+                    url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
+                    attribution='© <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
+                  />
+                  <LocationPicker setLocation={(location) => setFormData({ ...formData, location })} />
+                </MapContainer>
+              </div>
+              <Button
+                type="button"
+                onClick={() => setIsFullScreen(!isFullScreen)}
+                variant="secondary"
+                size="sm"
+                className="absolute top-2 right-2 z-10"
+              >
+                {isFullScreen ? <Minimize2 className="w-4 h-4" /> : <Maximize2 className="w-4 h-4" />}
+              </Button>
+            </div>
+            
+            {formData.location && (
+              <div className="p-3 bg-green-50 border border-green-200 rounded-lg">
+                <p className="text-sm text-green-800">
+                  <strong>Selected Location:</strong> {formData.location}
+                </p>
+              </div>
+            )}
+          </CardContent>
+        </Card>
+
+        {/* Project Details */}
+        <Card>
+          <CardHeader>
+            <CardTitle className="flex items-center space-x-2">
+              <FileText className="w-5 h-5 text-purple-600" />
+              <span>Project Documentation</span>
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            <div className="space-y-2">
+              <Label htmlFor="projectDetails" className="text-sm font-medium">
+                Project Details & Documentation
+              </Label>
+              <Textarea
+                id="projectDetails"
+                name="projectDetails"
+                value={formData.projectDetails}
+                onChange={handleChange}
+                placeholder="Upload all project-related files to a public GitHub repository and paste the link here."
+                className="min-h-[100px] resize-vertical"
+                required
+              />
+              <div className="text-xs text-gray-500">
+                <p>Please include comprehensive project documentation. </p>
+                <p>
+                  <strong>Example:</strong>{' '}
+                  <a 
+                    href="https://github.com/arrnaya/BCO2_Listing_Application" 
+                    className="text-green-600 hover:underline"
+                    target="_blank"
+                    rel="noopener noreferrer"
+                  >
+                    Sample project repository
+                  </a>
+                </p>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+
+        {/* Submit Button */}
+        <Card>
+          <CardContent className="p-6">
+            <div className="text-center space-y-4">
+              <Button 
+                type="submit" 
+                size="lg"
+                disabled={isSubmitting}
+                className="w-full md:w-auto px-8 bg-green-600 hover:bg-green-700"
+              >
+                {isSubmitting ? (
+                  <>
+                    <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2" />
+                    Creating Project...
+                  </>
+                ) : (
+                  <>
+                    <Leaf className="w-4 h-4 mr-2" />
+                    Create Carbon Credit Project
+                  </>
+                )}
+              </Button>
+              <p className="text-sm text-gray-500">
+                By submitting, you agree to the platform terms and validation process
+              </p>
+            </div>
+          </CardContent>
+        </Card>
       </form>
     </div>
   );

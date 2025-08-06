@@ -7,7 +7,7 @@ import { useConnectWallet } from '@/context/walletcontext';
 import { Link, useNavigate } from "react-router-dom";
 
 const CertificatesTab = () => {
-  const { isContractsInitised, getRetirementCertificatesForAllProject } = useContractInteraction();
+  const { getRetirementCertificatesForAllProject } = useContractInteraction();
   const [projects, setProjects] = useState([]);
   const [loading, setLoading] = useState(true);
   const [update, setUpdate] = useState(0);
@@ -28,10 +28,10 @@ const CertificatesTab = () => {
       }
       setLoading(false);
     };
-    if (walletAddress && isContractsInitised) {
+    if (walletAddress ) {
       fetchUserProjects();
     }
-  }, [walletAddress, update, isContractsInitised]);
+  }, [walletAddress, update]);
 
   // Helper function to trim address
   const trimAddress = (addr) => {

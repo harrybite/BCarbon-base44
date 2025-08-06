@@ -7,11 +7,111 @@ import BuyerTab from "../components/account/BuyerTab";
 import WalletConnection from "../components/wallet/WalletConnection";
 import { useConnectWallet } from "@/context/walletcontext";
 import CertificatesTab from "@/components/account/CertificateTab";
+import MyProjects from "@/components/account/Myproject";
+import { useNavigate } from 'react-router-dom';
+import { useContractInteraction } from "@/components/contract/ContractInteraction";
+import {  useToast } from "@/components/ui/use-toast";
+import { jwtDecode } from "jwt-decode";
+import MyRequest from "@/components/account/MyRequest";
+
 
 export default function MyAccount() {
 
   const { walletAddress } = useConnectWallet();
+  const { toast } = useToast();
+  const navigate = useNavigate();
+  const [isOwner, setIsOwner] = useState(false);
+  const [isVVB, setIsVVB] = useState(false);
+  const { checkIsOwner, checkAuthorizedVVB } = useContractInteraction();
 
+    useEffect(() => {
+    // Check wallet connection
+    if (!walletAddress || walletAddress === '0x0000000000000000000000000000000000000000') {
+      toast({
+        title: 'Wallet Not Connected',
+        description: 'Please connect your wallet.',
+        variant: 'destructive',
+      });
+      return;
+    }
+    // Check owner and authorized VVB
+    const checkAccess = async () => {
+      try {
+        const isOwner = await checkIsOwner();
+        const isVVB = await checkAuthorizedVVB();
+        console.log('isOwner:', isOwner, 'isVVB:', isVVB);
+        if (isOwner || isVVB) {
+          toast({
+            title: 'Access Denied',
+            description: 'You are not the owner or an authorized VVB. Redirecting to Administration.',
+            variant: 'destructive',
+          });
+          navigate('/Administration');
+        }
+      } catch (err) {
+        // If check fails, treat as not authorized
+        toast({
+          title: 'Access Check Failed',
+          description: 'Unable to verify access. Redirecting to Administration.',
+          variant: 'destructive',
+        });
+        navigate('/Administration');
+      }
+    };
+    checkAccess();
+  }, [walletAddress]);
+
+    let userInfo = null;
+    const token = typeof window !== "undefined" ? localStorage.getItem("token") : null;
+    if (token) {
+      try {
+        userInfo = jwtDecode(token);
+      } catch (e) {
+        userInfo = null;
+      }
+    }
+
+    // Determine which tabs to show based on user role
+    const getTabsToShow = () => {
+      if (!userInfo) return { showCreateProject: false, showMyProject: false };
+      
+      const isIssuer = userInfo.role === "issuer";
+      const isUser = userInfo.role === "user";
+      const isGovOrVVB = userInfo.role === "gov" || userInfo.role === "vvb";
+      
+      return {
+        showCreateProject: isIssuer || isGovOrVVB, // Show for Issuer, Gov, VVB
+        showMyProject: isIssuer || isGovOrVVB, // Show for Issuer, Gov, VVB
+      };
+    };
+
+    const { showCreateProject, showMyProject } = getTabsToShow();
+
+    // Determine default tab based on available tabs
+    const getDefaultTab = () => {
+      if (showCreateProject) return "issuer";
+      if (showMyProject) return "myproject";
+      return "buyer"; // Always available
+    };
+
+    // Calculate grid columns based on visible tabs with responsive design
+    const getGridCols = () => {
+      let count = 2; // Always show buyer and certificate tabs
+      if (showCreateProject) count++;
+      if (showMyProject) count++;
+      
+      // Use responsive grid classes that work better across different screen sizes
+      switch (count) {
+        case 2:
+          return "grid-cols-1 sm:grid-cols-2";
+        case 3:
+          return "grid-cols-1 sm:grid-cols-2 lg:grid-cols-3";
+        case 4:
+          return "grid-cols-1 sm:grid-cols-2 lg:grid-cols-4";
+        default:
+          return "grid-cols-1 sm:grid-cols-2";
+      }
+    };
 
   if (!walletAddress) {
     return (
@@ -38,32 +138,63 @@ export default function MyAccount() {
         </div>
 
         {/* Tab View */}
-        <Tabs defaultValue="issuer" className="space-y-6">
-         <TabsList className="grid w-full grid-cols-3">
-        <TabsTrigger value="issuer" className="flex items-center space-x-2">
-          <Briefcase className="w-4 h-4" />
-          <span>Project Owned</span>
-        </TabsTrigger>
-        <TabsTrigger value="buyer" className="flex items-center space-x-2">
-          <ShoppingBag className="w-4 h-4" />
-          <span>My tCO<sub>2</sub> Holdings</span>
-        </TabsTrigger>
-        <TabsTrigger value="certificate" className="flex items-center space-x-2">
-          <BadgeCheck className="w-4 h-4" />
-          <span> Certificates</span>
-        </TabsTrigger>
-      </TabsList>
+        <Tabs defaultValue={getDefaultTab()} className="space-y-6">
+          <TabsList className={`grid w-full ${getGridCols()}`}>
+            {showCreateProject && (
+              <TabsTrigger value="issuer" className="flex items-center space-x-2">
+                <Briefcase className="w-4 h-4" />
+                <span>Create Project</span>
+              </TabsTrigger>
+            )}
 
-          <TabsContent value="issuer">
-            <IssuerTab walletAddress={walletAddress} />
-          </TabsContent>
+            {showMyProject && (
+              <TabsTrigger value="myproject" className="flex items-center space-x-2">
+                <Briefcase className="w-4 h-4" />
+                <span>My Project</span>
+              </TabsTrigger>
+            )}
+
+            <TabsTrigger value="buyer" className="flex items-center space-x-2">
+              <ShoppingBag className="w-4 h-4" />
+              <span>My tCO<sub>2</sub> Holdings</span>
+            </TabsTrigger>
+
+            {/* Uncomment if you want to enable Certificates tab */}
+
+            <TabsTrigger value="requests" className="flex items-center space-x-2">
+              <ShoppingBag className="w-4 h-4" />
+              <span>My Withdrawl Requests</span>
+            </TabsTrigger>
+            
+            {/* <TabsTrigger value="certificate" className="flex items-center space-x-2">
+              <BadgeCheck className="w-4 h-4" />
+              <span> Certificates</span>
+            </TabsTrigger> */}
+          </TabsList>
+
+          {showCreateProject && (
+            <TabsContent value="issuer">
+              <IssuerTab walletAddress={walletAddress} />
+            </TabsContent>
+          )}
+
+          {showMyProject && (
+            <TabsContent value="myproject">
+              <MyProjects/>
+            </TabsContent>
+          )}
+
           <TabsContent value="buyer">
             <BuyerTab walletAddress={walletAddress} />
           </TabsContent>
-          <TabsContent value="certificate">
-            <CertificatesTab  />
-          </TabsContent>
           
+          {/* <TabsContent value="certificate">
+            <CertificatesTab  />
+          </TabsContent> */}
+
+            <TabsContent value="requests">
+            <MyRequest/>
+          </TabsContent>
         </Tabs>
       </div>
     </div>
