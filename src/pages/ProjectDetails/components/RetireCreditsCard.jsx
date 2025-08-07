@@ -34,11 +34,11 @@ const RetireCreditsCard = ({
         {/* Show warning if project is not approved */}
         {!project.isApproved ? (
           <div className="text-center p-4 bg-yellow-50 border border-yellow-200 rounded-lg">
-            <div className="w-full bg-black flex items-center justify-center" style={{ height: "180px" }}>
+            <div className="w-full bg-black flex items-center justify-center" style={{ height: "380px" }}>
                 <img
                   src={retireNftImage || fallbackImage}
                   alt="Retire NFT"
-                  className="object-contain h-full w-full"
+                  className="object-fill h-full w-full"
                 />
               </div>
             <AlertCircle className="w-8 h-8 text-yellow-600 mx-auto mb-2 mt-2" />
