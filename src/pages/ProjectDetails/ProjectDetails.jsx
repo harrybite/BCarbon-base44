@@ -833,7 +833,7 @@ export default function ProjectDetails() {
           </div>
         )}
 
-        {userInfo && userInfo.role !== "user" && (
+        {userInfo && userInfo.role !== "user" && project.proposer.toLowerCase() === walletAddress.toLowerCase() && isVVB && isOwner && (
           <CommentsSection 
             comments={project.comments}
             comment={comment}

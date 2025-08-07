@@ -34,7 +34,7 @@ export default function TradeForm() {
   const [hasPrevPage, setHasPrevPage] = React.useState(false);
   
   // Filter states
-  const [activeFilter, setActiveFilter] = React.useState('all');
+  const [activeFilter, setActiveFilter] = React.useState('true');
   const [sortBy, setSortBy] = React.useState('createdAt');
   const [sortOrder, setSortOrder] = React.useState('desc');
   
