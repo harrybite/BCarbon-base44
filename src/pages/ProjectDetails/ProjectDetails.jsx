@@ -140,6 +140,7 @@ export default function ProjectDetails() {
           setWithdrawalRequests(withdrawalData.withdrawalRequests || []);
           data.projectRUSDBalance = withdrawalData.project.projectRUSDBalance || 0; 
           data.isPresale = withdrawalData.project.isPresale// Update project RUSD balance
+          data.presaleAmount = withdrawalData.project.presaleAmount || 0; // Update presale amount
           setProject(data);
         }
       } catch (error) {

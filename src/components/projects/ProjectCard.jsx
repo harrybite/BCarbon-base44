@@ -448,7 +448,7 @@ const ProjectCard = ({ project }) => {
                   <span className="text-sm font-medium text-purple-700">Presale Amount</span>
                 </div>
                 <div className="text-lg font-bold text-purple-700">
-                  {Number(details.presaleAmount).toLocaleString()} RUSD
+                  {Number(details.presaleAmount).toLocaleString()} tCO₂
                 </div>
               </div>
             </div>
