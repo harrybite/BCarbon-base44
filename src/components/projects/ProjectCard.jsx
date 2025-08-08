@@ -22,7 +22,9 @@ import {
   DollarSign,
   TreePine,
   Eye,
-  CreditCard
+  CreditCard,
+  Star,
+  Timer
 } from 'lucide-react';
 
 const ProjectCard = ({ project }) => {
@@ -58,6 +60,9 @@ const ProjectCard = ({ project }) => {
     defaultIsPermanent: false,
     commentPeriodEnd: 0,
     projectDetails: '',
+    // Presale related fields
+    isPresale: false,
+    presaleAmount: 0,
     // Withdrawal request related fields
     activeWithdrawalRequests: [],
     activeWithdrawalRequestsCount: 0,
@@ -210,6 +215,17 @@ const ProjectCard = ({ project }) => {
   };
 
   const getStatusText = (details) => {
+    // Presale logic - HIGHEST PRIORITY
+    if (details.isPresale) {
+      if (Number(details.presaleAmount) === 0) {
+        return 'Presale Pending Approval';
+      }
+      if (Number(details.presaleAmount) > 0) {
+        return 'Presale Approved';
+      }
+    }
+    
+    // Regular project approval flow
     if (details.isApproved) {
       return 'Approved';
     }
@@ -229,6 +245,10 @@ const ProjectCard = ({ project }) => {
     switch (status) {
       case 'Approved':
         return 'bg-green-100 text-green-800 border-green-200';
+      case 'Presale Approved':
+        return 'bg-purple-100 text-purple-800 border-purple-200';
+      case 'Presale Pending Approval':
+        return 'bg-amber-100 text-amber-800 border-amber-200';
       case 'Pending Validation':
         return 'bg-yellow-100 text-yellow-800 border-yellow-200';
       case 'Pending Verification':
@@ -244,6 +264,10 @@ const ProjectCard = ({ project }) => {
     switch (status) {
       case 'Approved':
         return <CheckCircle2 className="w-4 h-4" />;
+      case 'Presale Approved':
+        return <Star className="w-4 h-4" />;
+      case 'Presale Pending Approval':
+        return <Timer className="w-4 h-4" />;
       case 'Pending Validation':
       case 'Pending Verification':
       case 'Pending Approval':
@@ -314,6 +338,34 @@ const ProjectCard = ({ project }) => {
   return (
     <>
       <div className="border border-gray-200 rounded-xl p-6 w-full md:min-w-[450px] bg-white shadow-sm hover:shadow-md transition-shadow duration-200">
+        {/* Presale Project Badge - Show prominently for presale projects */}
+        {details.isPresale && (
+          <div className="mb-4 p-3 bg-gradient-to-r from-purple-50 to-pink-50 border border-purple-200 rounded-lg">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center space-x-2">
+                <Star className="w-5 h-5 text-purple-600" />
+                <div>
+                  <p className="text-sm font-semibold text-purple-800">
+                    Presale Project
+                  </p>
+                  <p className="text-xs text-purple-700">
+                    {Number(details.presaleAmount) > 0 
+                      ? `Presale approved: ${Number(details.presaleAmount).toLocaleString()} RUSD`
+                      : 'Awaiting presale approval'
+                    }
+                  </p>
+                </div>
+              </div>
+              <div className="text-right">
+                <p className="text-xs text-purple-600 font-medium">Status</p>
+                <p className={`text-sm font-bold ${Number(details.presaleAmount) > 0 ? 'text-purple-700' : 'text-amber-700'}`}>
+                  {Number(details.presaleAmount) > 0 ? 'Approved' : 'Pending'}
+                </p>
+              </div>
+            </div>
+          </div>
+        )}
+
         {/* Withdrawal Request Status Alert - Only show for project owner */}
         {isProjectOwner && hasActiveWithdrawals && (
           <div className="mb-4 p-3 bg-amber-50 border border-amber-200 rounded-lg">
@@ -343,10 +395,23 @@ const ProjectCard = ({ project }) => {
         {/* Header */}
         <div className="flex items-center justify-between mb-4">
           <div className="flex items-center space-x-3">
-            <div className="w-10 h-10 bg-gradient-to-br from-green-500 to-green-600 rounded-lg flex items-center justify-center">
-              <TreePine className="w-5 h-5 text-white" />
+            <div className={`w-10 h-10 rounded-lg flex items-center justify-center ${
+              details.isPresale 
+                ? 'bg-gradient-to-br from-purple-500 to-purple-600' 
+                : 'bg-gradient-to-br from-green-500 to-green-600'
+            }`}>
+              {details.isPresale ? (
+                <Star className="w-5 h-5 text-white" />
+              ) : (
+                <TreePine className="w-5 h-5 text-white" />
+              )}
             </div>
-            <h3 className="text-xl font-bold text-gray-900">{details.projectId}</h3>
+            <div>
+              <h3 className="text-xl font-bold text-gray-900">{details.projectId}</h3>
+              {details.isPresale && (
+                <p className="text-xs text-purple-600 font-medium">Presale Project</p>
+              )}
+            </div>
           </div>
           <span className={`inline-flex items-center space-x-1 px-3 py-1 text-sm font-semibold rounded-full border ${getStatusBadgeColor(status)}`}>
             {getStatusIcon(status)}
@@ -373,6 +438,23 @@ const ProjectCard = ({ project }) => {
           </div>
         </div>
 
+        {/* Presale Amount Display - Only for presale projects */}
+        {details.isPresale && Number(details.presaleAmount) > 0 && (
+          <div className="mb-6">
+            <div className="bg-purple-50 border border-purple-200 rounded-lg p-3">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center space-x-2">
+                  <Star className="w-4 h-4 text-purple-600" />
+                  <span className="text-sm font-medium text-purple-700">Presale Amount</span>
+                </div>
+                <div className="text-lg font-bold text-purple-700">
+                  {Number(details.presaleAmount).toLocaleString()} RUSD
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
+
         {/* Progress Bars */}
         <div className="space-y-4 mb-6">
           <div className="space-y-2">
@@ -389,12 +471,6 @@ const ProjectCard = ({ project }) => {
                 style={{ width: `${approvalProgress}%` }}
               ></div>
             </div>
-            {/* <div className="text-xs text-gray-500">
-              {details.isApproved 
-                ? `${Number(details.credits).toLocaleString()} of ${Number(details.emissionReductions).toLocaleString()} tCO₂ approved`
-                : 'Awaiting approval'
-              }
-            </div> */}
           </div>
 
           {/* Funds Raised */}
@@ -403,13 +479,6 @@ const ProjectCard = ({ project }) => {
               <span className="text-sm font-medium text-gray-700">Total RUSD Raised</span>
               <span className="text-sm font-semibold text-gray-900">{fundsRaised} RUSD</span>
             </div>
-            {/* Project Balance for Owner */}
-            {/* {isProjectOwner && (
-              <div className="flex justify-between items-center">
-                <span className="text-sm font-medium text-gray-700">Available Balance</span>
-                <span className="text-sm font-semibold text-green-700">{Number(projectBalance).toLocaleString()} RUSD</span>
-              </div>
-            )} */}
           </div>
         </div>
 
@@ -487,14 +556,18 @@ const ProjectCard = ({ project }) => {
         <div className="space-y-3 mb-4">
           {/* View Project Details Button */}
           <Link to={`/ProjectDetails/${details.projectContract}`}>
-            <button className="w-full bg-gradient-to-r from-blue-600 to-blue-700 hover:from-blue-700 hover:to-blue-800 text-white py-3 px-4 rounded-lg font-semibold transition-all duration-200 transform hover:scale-[1.02] flex items-center justify-center space-x-2">
+            <button className={`w-full py-3 px-4 rounded-lg font-semibold transition-all duration-200 transform hover:scale-[1.02] flex items-center justify-center space-x-2 text-white ${
+              details.isPresale 
+                ? 'bg-gradient-to-r from-purple-600 to-purple-700 hover:from-purple-700 hover:to-purple-800'
+                : 'bg-gradient-to-r from-blue-600 to-blue-700 hover:from-blue-700 hover:to-blue-800'
+            }`}>
               <span>View Project Details</span>
               <TrendingUp className="w-4 h-4" />
             </button>
           </Link>
 
           {/* Request Withdrawal Button - Only for Project Owner and when no active requests */}
-          {isProjectOwner && !hasActiveWithdrawals && Number(projectBalance) > 0 &&  details.isApproved &&  (
+          {isProjectOwner && !hasActiveWithdrawals && Number(projectBalance) > 0 && details.isApproved && (
             <button 
               className="w-full bg-gradient-to-r from-green-600 to-green-700 hover:from-green-700 hover:to-green-800 text-white py-3 px-4 rounded-lg font-semibold transition-all duration-200 transform hover:scale-[1.02] flex items-center justify-center space-x-2"
               onClick={() => setShowWithdrawalModal(true)}
@@ -503,8 +576,6 @@ const ProjectCard = ({ project }) => {
               <DollarSign className="w-4 h-4" />
             </button>
           )}
-
-
         </div>
 
         {/* Comments Section */}
