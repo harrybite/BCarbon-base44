@@ -428,6 +428,16 @@ export default function ProjectDetails() {
       return;
     }
 
+    console.log("Project token URI:", project.tokenUri, uriTokenThree);
+    if(project.tokenUri === uriTokenThree) {
+        toast({
+          variant: "destructive",
+          title: "Error",
+          description: "Please update the final token URI ",
+        });
+      return;
+    }
+
     setIsApproving(true);
     try {
       const tx = await approveAndIssueCredits(project.projectContract, Number(creditAmount), governancePresaleMintPrice, account);
@@ -472,14 +482,7 @@ export default function ProjectDetails() {
       return;
     }
 
-    if(project.tokenUri === uriTokenThree) {
-        toast({
-          variant: "destructive",
-          title: "Error",
-          description: "Please update the project token URI ",
-        });
-      return;
-    }
+
 
     const maxPresaleAmount = Math.floor(Number(project.emissionReductions) / 2);
     if (Number(presaleCreditAmount) > maxPresaleAmount) {
