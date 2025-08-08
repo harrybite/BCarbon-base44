@@ -59,7 +59,7 @@ function PagesContent() {
         <Route path="/MyAccount" element={<MyAccount />} />
         {/* login and ragistration */}
         <Route path="/login" element={<Login />} />
-        <Route path="/ragister" element={<Register />} />
+        <Route path="/register" element={<Register />} />
         {/* Optional: redirect unknown paths */}
         <Route path="*" element={<Navigate to="/" replace />} />
       </Routes>
