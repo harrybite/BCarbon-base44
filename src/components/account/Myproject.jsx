@@ -159,62 +159,91 @@ const MyProjects = () => {
     }
   };
 
-  const handleUpdateUriSave = async () => {
-    if (!selectedProject || !updateUriForm.newUri.trim()) {
-      toast({
-        title: "Validation Error",
-        description: "Please provide a valid URI",
-        variant: "destructive",
-      });
-      return;
-    }
+const handleUpdateUriSave = async () => {
+  if (!selectedProject || !updateUriForm.newUri.trim()) {
+    toast({
+      title: "Validation Error",
+      description: "Please provide a valid URI",
+      variant: "destructive",
+    });
+    return;
+  }
 
-    setUpdatingUri(true);
-    try {
-      // Get current retired URI from the project or use default
-      const currentRetiredUri = uriTokenTwo;
-      
-      const receipt = await setTokenURI(
-        selectedProject.projectContract,
-        updateUriForm.newUri,
-        currentRetiredUri,
-        account
-      );
-      
-      if (receipt.status === 'success') {
-        // Update project details in database
-        const response = await fetch(`${apihost}/project/updateprojectdetails/${selectedProject.projectContract}`, {
+  setUpdatingUri(true);
+  try {
+    // Get current retired URI from the project or use default
+    const currentRetiredUri = uriTokenTwo;
+    
+    const receipt = await setTokenURI(
+      selectedProject.projectContract,
+      updateUriForm.newUri,
+      currentRetiredUri,
+      account
+    );
+    
+    if (receipt.status === 'success') {
+      // Update project details in database
+      const response = await fetch(`${apihost}/project/updateprojectdetails/${selectedProject.projectContract}`, {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+      }); 
+      const data = await response.json();
+      if (data.success) {
+        console.log('Project updated successfully:', data);
+      }
+
+      // **NEW: Update listing NFT images after URI update**
+      try {
+        const updateListingResponse = await fetch(`${apihost}/user/update-listing-nft-image/${selectedProject.projectContract}`, {
           method: 'PUT',
           headers: {
             'Content-Type': 'application/json',
           },
-        }); 
-        const data = await response.json();
-        if (data.success) {
-          console.log('Project updated successfully:', data);
-        }
+        });
         
+        const updateListingData = await updateListingResponse.json();
+        if (updateListingData.success) {
+          console.log('Listing NFT images updated successfully:', updateListingData);
+          toast({
+            title: "Complete Update",
+            description: `URI and listing images updated successfully!`,
+            variant: "default",
+          });
+        } else {
+          console.error('Failed to update listing images:', updateListingData.message);
+          toast({
+            title: "Partial Update",
+            description: "URI updated but listing images may not be current. Please refresh.",
+            variant: "default",
+          });
+        }
+      } catch (listingError) {
+        console.error('Error updating listing images:', listingError);
         toast({
-          title: "URI Updated Successfully",
-          description: `Non-retired token URI has been updated successfully!`,
+          title: "Partial Update", 
+          description: "URI updated but listing images may not be current.",
           variant: "default",
         });
-        setUpdate(prev => prev + 1);
-        closeUpdateModal();
-      } else {
-        throw new Error('Transaction failed');
       }
-    } catch (error) {
-      console.error('Error updating URI:', error);
-      toast({
-        title: "Error",
-        description: `Failed to update token URI: ${error.message}`,
-        variant: "destructive",
-      });
-    } finally {
-      setUpdatingUri(false);
+      
+      setUpdate(prev => prev + 1);
+      closeUpdateModal();
+    } else {
+      throw new Error('Transaction failed');
     }
-  };
+  } catch (error) {
+    console.error('Error updating URI:', error);
+    toast({
+      title: "Error",
+      description: `Failed to update token URI: ${error.message}`,
+      variant: "destructive",
+    });
+  } finally {
+    setUpdatingUri(false);
+  }
+};
 
   if (!walletAddress) {
     return (
