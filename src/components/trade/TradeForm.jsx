@@ -8,7 +8,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Link } from "react-router-dom";
 import { Alert, AlertDescription } from "@/components/ui/alert";
-import { ArrowRight, AlertCircle, CheckCircle2, ChevronLeft, ChevronRight, Loader2 } from "lucide-react";
+import { ArrowRight, AlertCircle, CheckCircle2, ChevronLeft, ChevronRight, Loader2, TrendingUp, BarChart3, DollarSign, Package } from "lucide-react";
 import { useMarketplaceInteraction } from '@/components/contract/MarketplaceInteraction';
 import { useConnectWallet } from "@/context/walletcontext";
 import { useToast } from "../ui/use-toast";
@@ -17,13 +17,28 @@ import { apihost } from "../contract/address";
 import { useActiveAccount } from "thirdweb/react";
 
 export default function TradeForm() {
-  const { purchase, getRUSDBalance } = useMarketplaceInteraction();
+  const { 
+    purchase,
+    getRUSDBalance,  
+    listingCounter,
+    totalVolumeTransacted,
+    totalCreditsSold, 
+  } = useMarketplaceInteraction();
+  
   const { walletAddress } = useConnectWallet();
   const [listings, setListings] = React.useState([]);
   const [cardStates, setCardStates] = React.useState({});
   const [update, setUpdate] = React.useState(0);
   const [isLoading, setIsLoading] = React.useState(true);
   const [rusdBalance, setRUSDBalance] = React.useState('0');
+  
+  // Marketplace statistics states
+  const [marketStats, setMarketStats] = React.useState({
+    totalListings: '0',
+    totalVolume: '0',
+    totalCredits: '0',
+    isLoading: true
+  });
   
   // Pagination and filtering states
   const [currentPage, setCurrentPage] = React.useState(1);
@@ -40,6 +55,29 @@ export default function TradeForm() {
   
   const account = useActiveAccount();
   const { toast } = useToast();
+
+  // Fetch marketplace statistics
+  const fetchMarketStats = async () => {
+    try {
+      setMarketStats(prev => ({ ...prev, isLoading: true }));
+      
+      const [totalListingsCount, totalVolumeResult, totalCreditsResult] = await Promise.all([
+        listingCounter(),
+        totalVolumeTransacted(),
+        totalCreditsSold()
+      ]);
+      
+      setMarketStats({
+        totalListings: totalListingsCount || '0',
+        totalVolume: totalVolumeResult || '0',
+        totalCredits: totalCreditsResult || '0',
+        isLoading: false
+      });
+    } catch (error) {
+      console.error('Failed to fetch market stats:', error);
+      setMarketStats(prev => ({ ...prev, isLoading: false }));
+    }
+  };
 
   // Fetch listings with pagination and filters
   const fetchListings = async (page = 1, limit = 12, active = 'all', sort = 'createdAt', order = 'desc') => {
@@ -112,6 +150,7 @@ export default function TradeForm() {
   React.useEffect(() => {
     if (walletAddress) {
       fetchListings(currentPage, listingsPerPage, activeFilter, sortBy, sortOrder);
+      fetchMarketStats();
     }
   }, [walletAddress, update]);
 
@@ -286,6 +325,8 @@ export default function TradeForm() {
           variant: "success",
         });
         setUpdate(update + 1);
+        // Refresh market stats after successful purchase
+        fetchMarketStats();
       }
     } catch (error) {
       console.error("Purchase error:", error);
@@ -300,299 +341,419 @@ export default function TradeForm() {
     }
   };
 
+  // Format large numbers
+  const formatNumber = (num) => {
+    const number = Number(num);
+    if (number >= 1000000) {
+      return (number / 1000000).toFixed(1) + 'M';
+    }
+    if (number >= 1000) {
+      return (number / 1000).toFixed(1) + 'K';
+    }
+    return number.toLocaleString();
+  };
+
   return (
-    <Card className="w-full">
-      <CardHeader>
-        <CardTitle className="flex items-center space-x-2">
-          <ArrowRight className="w-5 h-5 text-green-600" />
-          <span>Carbon Credit NFT Marketplace</span>
-        </CardTitle>
-        <p className="text-sm text-gray-600">
-          Trade carbon credit NFTs (tCO2) from listed projects
-        </p>
-        
-        {/* Filters and Controls */}
-        <div className="flex flex-col sm:flex-row gap-4 mt-4">
-          {/* Active Filter */}
-          <div className="flex items-center space-x-2">
-            <Label htmlFor="active-filter">Status:</Label>
-            <Select value={activeFilter} onValueChange={handleFilterChange}>
-              <SelectTrigger id="active-filter" className="w-[140px]">
-                <SelectValue placeholder="Filter by status" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all">All Listings</SelectItem>
-                <SelectItem value="true">Active</SelectItem>
-                <SelectItem value="false">Sold Out</SelectItem>
-              </SelectContent>
-            </Select>
-          </div>
-          
-          {/* Sort By */}
-          <div className="flex items-center space-x-2">
-            <Label htmlFor="sort-filter">Sort by:</Label>
-            <Select value={`${sortBy}-${sortOrder}`} onValueChange={(value) => {
-              const [field, order] = value.split('-');
-              handleSortChange(field, order);
-            }}>
-              <SelectTrigger id="sort-filter" className="w-[160px]">
-                <SelectValue placeholder="Sort by" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="createdAt-desc">Newest First</SelectItem>
-                <SelectItem value="createdAt-asc">Oldest First</SelectItem>
-                <SelectItem value="pricePerUnit-asc">Price: Low to High</SelectItem>
-                <SelectItem value="pricePerUnit-desc">Price: High to Low</SelectItem>
-                <SelectItem value="quantity-desc">Quantity: High to Low</SelectItem>
-                <SelectItem value="quantity-asc">Quantity: Low to High</SelectItem>
-              </SelectContent>
-            </Select>
-          </div>
-          
-          {/* Per Page */}
-          <div className="flex items-center space-x-2">
-            <Label htmlFor="per-page">Per page:</Label>
-            <Select value={listingsPerPage.toString()} onValueChange={handleLimitChange}>
-              <SelectTrigger id="per-page" className="w-[100px]">
-                <SelectValue placeholder="Per page" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="6">6</SelectItem>
-                <SelectItem value="12">12</SelectItem>
-                <SelectItem value="24">24</SelectItem>
-                <SelectItem value="48">48</SelectItem>
-              </SelectContent>
-            </Select>
-          </div>
-        </div>
-        
-        {/* Results Info */}
-        <div className="text-sm text-gray-600 mt-2">
-          {isLoading ? (
-            "Loading listings..."
-          ) : (
-            `Showing ${((currentPage - 1) * listingsPerPage) + 1} to ${Math.min(currentPage * listingsPerPage, totalListings)} of ${totalListings} listings`
-          )}
-        </div>
-      </CardHeader>
-
-      <CardContent className="space-y-6">
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
-          {isLoading ? (
-            Array(listingsPerPage).fill(0).map((_, index) => (
-              <Card key={index} className="flex flex-col animate-pulse">
-                <CardHeader>
-                  <div className="h-6 bg-gray-200 rounded w-3/4"></div>
-                </CardHeader>
-                <CardContent className="flex-grow">
-                  <div className="space-y-2">
-                    <div className="h-4 bg-gray-200 rounded w-full"></div>
-                    <div className="h-4 bg-gray-200 rounded w-full"></div>
-                    <div className="h-4 bg-gray-200 rounded w-full"></div>
-                    <div className="h-4 bg-gray-200 rounded w-full"></div>
-                  </div>
-                  <div className="mt-4 h-10 bg-gray-200 rounded w-full"></div>
-                </CardContent>
-              </Card>
-            ))
-          ) : listings.length === 0 ? (
-            <div className="col-span-full text-center py-12">
-              <div className="w-16 h-16 bg-gray-100 rounded-full flex items-center justify-center mx-auto mb-4">
-                <ArrowRight className="w-8 h-8 text-gray-400" />
-              </div>
-              <h3 className="text-lg font-semibold text-gray-900 mb-2">No Listings Found</h3>
-              <p className="text-gray-600">
-                {activeFilter === 'true' 
-                  ? "No active listings available at the moment."
-                  : activeFilter === 'false'
-                  ? "No sold out listings found."
-                  : "No listings available at the moment."
-                }
-              </p>
-            </div>
-          ) : (
-            listings.map((listing) => (
-              <Card key={listing.listingId} className="flex flex-col">
-                <CardHeader>
-                  <div className="w-full bg-black flex items-center justify-center" style={{ height: "auto" }}>
-                    <img
-                      src={listing.image}
-                      alt={listing.metadata || "NFT"}
-                      className="object-contain h-full w-full"
-                    />
-                  </div>
-                  <Link to={`/ProjectDetails/${listing.tokenContract}`}>
-                    <CardTitle className="text-lg">
-                      {`${listing.tokenContract.slice(0, 6)}...${listing.tokenContract.slice(-4)}`}
-                    </CardTitle>
-                  </Link>
-                </CardHeader>
-                <CardContent className="flex-grow">
-                  <div className="space-y-2">
-                    <p><strong>Token ID:</strong> {listing.tokenId}</p>
-                    <p><strong>Certificate ID:</strong> {listing.certificateId}</p>
-                    <p><strong>Project ID:</strong> {listing.projectID}</p>
-                    <p><strong>Quantity (tCO2):</strong> {listing.quantity}</p>
-                    <p><strong>Price per Unit (RUSD):</strong> {listing.pricePerUnit}</p>
-                    <p><strong>Total Price (RUSD):</strong> {listing.pricePerUnit}</p>
-                    <p><strong>Status:</strong> {listing.active ? "Active" : "Sold Out"}</p>
-                  </div>
-                  {cardStates[listing.listingId]?.error && (
-                    <Alert variant="destructive" className="mt-4">
-                      <AlertCircle className="h-4 w-4" />
-                      <AlertDescription>{cardStates[listing.listingId].error}</AlertDescription>
-                    </Alert>
-                  )}
-                  {cardStates[listing.listingId]?.success && (
-                    <Alert className="mt-4 border-green-200 bg-green-50">
-                      <CheckCircle2 className="h-4 w-4 text-green-600" />
-                      <AlertDescription className="text-green-800">{cardStates[listing.listingId].success}</AlertDescription>
-                    </Alert>
-                  )}
-                  {listing.active ? (
-                    cardStates[listing.listingId]?.showInput ? (
-                      <div className="mt-4 space-y-2">
-                        <Label htmlFor={`quantity-${listing.listingId}`}>Quantity to Purchase</Label>
-                        <Input
-                          id={`quantity-${listing.listingId}`}
-                          type="number"
-                          step="1"
-                          min="1"
-                          className="appearance-none"
-                          placeholder="Enter quantity"
-                          value={cardStates[listing.listingId].quantity}
-                          onChange={(e) => handleInputChange(listing.listingId, e.target.value)}
-                        />
-                        <p className="text-xs text-gray-500">
-                          Your RUSD Balance: {rusdBalance}
-                        </p>
-                        <div className="flex space-x-2">
-                          <Button
-                            className="w-full bg-green-600 hover:bg-green-700"
-                            onClick={() => handlePurchase(listing.listingId)}
-                            disabled={cardStates[listing.listingId].isSubmitting}
-                          >
-                            {cardStates[listing.listingId].isSubmitting ? (
-                              <>
-                                <div className="animate-pulse rounded-full h-4 w-4 border-b-2 border-white mr-2"></div>
-                                Processing...
-                              </>
-                            ) : (
-                              <>
-                                <ArrowRight className="w-4 h-4 mr-2" />
-                                Confirm Purchase
-                              </>
-                            )}
-                          </Button>
-                          <Button
-                            variant="outline"
-                            className="w-full"
-                            onClick={() => toggleInput(listing.listingId)}
-                            disabled={cardStates[listing.listingId].isSubmitting}
-                          >
-                            Cancel
-                          </Button>
-                        </div>
-                      </div>
+    <div className="w-full space-y-6">
+      {/* Marketplace Statistics Section */}
+      <Card className="bg-gradient-to-br from-green-50 to-blue-50 border-green-200">
+        <CardHeader>
+          <CardTitle className="flex items-center space-x-2">
+            <BarChart3 className="w-6 h-6 text-green-600" />
+            <span>Marketplace Statistics</span>
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={fetchMarketStats}
+              disabled={marketStats.isLoading}
+              className="ml-auto"
+            >
+              {marketStats.isLoading ? (
+                <Loader2 className="w-4 h-4 animate-spin" />
+              ) : (
+                <TrendingUp className="w-4 h-4" />
+              )}
+              Refresh
+            </Button>
+          </CardTitle>
+        </CardHeader>
+        <CardContent>
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+            {/* Total Listings */}
+            <div className="bg-white rounded-lg p-4 shadow-sm border border-gray-100">
+              <div className="flex items-center justify-between">
+                <div>
+                  <p className="text-sm font-medium text-gray-600 mb-1">Total Listings</p>
+                  <p className="text-2xl font-bold text-gray-900">
+                    {marketStats.isLoading ? (
+                      <div className="h-8 w-12 bg-gray-200 rounded animate-pulse"></div>
                     ) : (
-                      <Button
-                        className="mt-4 w-full bg-green-600 hover:bg-green-700"
-                        onClick={() => toggleInput(listing.listingId)}
-                        disabled={cardStates[listing.listingId]?.isSubmitting || listing.seller.toLowerCase() === walletAddress.toLowerCase()}
-                      >
-                        Buy Credits
-                      </Button>
-                    )
-                  ) : (
-                    <Button
-                      className="mt-4 w-full bg-gray-400 cursor-not-allowed"
-                      disabled
-                    >
-                      Sold Out
-                    </Button>
-                  )}
-                </CardContent>
-              </Card>
-            ))
-          )}
-        </div>
+                      formatNumber(marketStats.totalListings)
+                    )}
+                  </p>
+                  <p className="text-xs text-gray-500 mt-1">All time listings created</p>
+                </div>
+                <div className="w-12 h-12 bg-blue-100 rounded-full flex items-center justify-center">
+                  <Package className="w-6 h-6 text-blue-600" />
+                </div>
+              </div>
+            </div>
 
-        {/* Pagination */}
-        {!isLoading && totalPages > 1 && (
-          <div className="flex flex-col sm:flex-row items-center justify-between gap-4 mt-6 pt-4 border-t border-gray-200">
-            <div className="text-sm text-gray-600">
-              Page {currentPage} of {totalPages} • Total: {totalListings} listings
+            {/* Total Volume */}
+            <div className="bg-white rounded-lg p-4 shadow-sm border border-gray-100">
+              <div className="flex items-center justify-between">
+                <div>
+                  <p className="text-sm font-medium text-gray-600 mb-1">Total Volume</p>
+                  <p className="text-2xl font-bold text-gray-900">
+                    {marketStats.isLoading ? (
+                      <div className="h-8 w-16 bg-gray-200 rounded animate-pulse"></div>
+                    ) : (
+                      `${formatNumber(marketStats.totalVolume)} RUSD`
+                    )}
+                  </p>
+                  <p className="text-xs text-gray-500 mt-1">Total value transacted</p>
+                </div>
+                <div className="w-12 h-12 bg-green-100 rounded-full flex items-center justify-center">
+                  <DollarSign className="w-6 h-6 text-green-600" />
+                </div>
+              </div>
+            </div>
+
+            {/* Total Credits Sold */}
+            <div className="bg-white rounded-lg p-4 shadow-sm border border-gray-100">
+              <div className="flex items-center justify-between">
+                <div>
+                  <p className="text-sm font-medium text-gray-600 mb-1">Credits Sold</p>
+                  <p className="text-2xl font-bold text-gray-900">
+                    {marketStats.isLoading ? (
+                      <div className="h-8 w-16 bg-gray-200 rounded animate-pulse"></div>
+                    ) : (
+                      `${formatNumber(marketStats.totalCredits)} tCO₂`
+                    )}
+                  </p>
+                  <p className="text-xs text-gray-500 mt-1">Total credits traded</p>
+                </div>
+                <div className="w-12 h-12 bg-orange-100 rounded-full flex items-center justify-center">
+                  <TrendingUp className="w-6 h-6 text-orange-600" />
+                </div>
+              </div>
+            </div>
+          </div>
+        </CardContent>
+      </Card>
+
+      {/* Main Marketplace Card */}
+      <Card className="w-full">
+        <CardHeader>
+          <CardTitle className="flex items-center space-x-2">
+            <ArrowRight className="w-5 h-5 text-green-600" />
+            <span>Carbon Credit NFT Marketplace</span>
+          </CardTitle>
+          <p className="text-sm text-gray-600">
+            Trade carbon credit NFTs (tCO2) from listed projects
+          </p>
+          
+          {/* User Balance Display */}
+          {/* <div className="mt-2 p-3 bg-blue-50 border border-blue-200 rounded-lg">
+            <div className="flex items-center justify-between">
+              <span className="text-sm font-medium text-blue-800">Your RUSD Balance:</span>
+              <span className="text-lg font-bold text-blue-900">{Number(rusdBalance).toLocaleString()} RUSD</span>
+            </div>
+          </div> */}
+          
+          {/* Filters and Controls */}
+          <div className="flex flex-col sm:flex-row gap-4 mt-4">
+            {/* Active Filter */}
+            <div className="flex items-center space-x-2">
+              <Label htmlFor="active-filter">Status:</Label>
+              <Select value={activeFilter} onValueChange={handleFilterChange}>
+                <SelectTrigger id="active-filter" className="w-[140px]">
+                  <SelectValue placeholder="Filter by status" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">All Listings</SelectItem>
+                  <SelectItem value="true">Active</SelectItem>
+                  <SelectItem value="false">Sold Out</SelectItem>
+                </SelectContent>
+              </Select>
             </div>
             
+            {/* Sort By */}
             <div className="flex items-center space-x-2">
-              {/* Previous Button */}
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={() => handlePageChange(currentPage - 1)}
-                disabled={!hasPrevPage}
-                className="flex items-center space-x-1"
-              >
-                <ChevronLeft className="w-4 h-4" />
-                <span>Previous</span>
-              </Button>
-
-              {/* Page Numbers */}
-              <div className="flex items-center space-x-1">
-                {currentPage > 3 && (
-                  <>
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      onClick={() => handlePageChange(1)}
-                    >
-                      1
-                    </Button>
-                    {currentPage > 4 && <span className="px-2 text-gray-400">...</span>}
-                  </>
-                )}
-
-                {getPageNumbers().map((pageNumber) => (
-                  <Button
-                    key={pageNumber}
-                    variant={currentPage === pageNumber ? "default" : "outline"}
-                    size="sm"
-                    onClick={() => handlePageChange(pageNumber)}
-                    className={currentPage === pageNumber ? "bg-green-600 hover:bg-green-700" : ""}
-                  >
-                    {pageNumber}
-                  </Button>
-                ))}
-
-                {currentPage < totalPages - 2 && (
-                  <>
-                    {currentPage < totalPages - 3 && <span className="px-2 text-gray-400">...</span>}
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      onClick={() => handlePageChange(totalPages)}
-                    >
-                      {totalPages}
-                    </Button>
-                  </>
-                )}
-              </div>
-
-              {/* Next Button */}
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={() => handlePageChange(currentPage + 1)}
-                disabled={!hasNextPage}
-                className="flex items-center space-x-1"
-              >
-                <span>Next</span>
-                <ChevronRight className="w-4 h-4" />
-              </Button>
+              <Label htmlFor="sort-filter">Sort by:</Label>
+              <Select value={`${sortBy}-${sortOrder}`} onValueChange={(value) => {
+                const [field, order] = value.split('-');
+                handleSortChange(field, order);
+              }}>
+                <SelectTrigger id="sort-filter" className="w-[160px]">
+                  <SelectValue placeholder="Sort by" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="createdAt-desc">Newest First</SelectItem>
+                  <SelectItem value="createdAt-asc">Oldest First</SelectItem>
+                  <SelectItem value="pricePerUnit-asc">Price: Low to High</SelectItem>
+                  <SelectItem value="pricePerUnit-desc">Price: High to Low</SelectItem>
+                  <SelectItem value="quantity-desc">Quantity: High to Low</SelectItem>
+                  <SelectItem value="quantity-asc">Quantity: Low to High</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+            
+            {/* Per Page */}
+            <div className="flex items-center space-x-2">
+              <Label htmlFor="per-page">Per page:</Label>
+              <Select value={listingsPerPage.toString()} onValueChange={handleLimitChange}>
+                <SelectTrigger id="per-page" className="w-[100px]">
+                  <SelectValue placeholder="Per page" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="6">6</SelectItem>
+                  <SelectItem value="12">12</SelectItem>
+                  <SelectItem value="24">24</SelectItem>
+                  <SelectItem value="48">48</SelectItem>
+                </SelectContent>
+              </Select>
             </div>
           </div>
-        )}
-      </CardContent>
-    </Card>
+          
+          {/* Results Info */}
+          <div className="text-sm text-gray-600 mt-2">
+            {isLoading ? (
+              "Loading listings..."
+            ) : (
+              `Showing ${((currentPage - 1) * listingsPerPage) + 1} to ${Math.min(currentPage * listingsPerPage, totalListings)} of ${totalListings} listings`
+            )}
+          </div>
+        </CardHeader>
+
+        <CardContent className="space-y-6">
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
+            {isLoading ? (
+              Array(listingsPerPage).fill(0).map((_, index) => (
+                <Card key={index} className="flex flex-col animate-pulse">
+                  <CardHeader>
+                    <div className="h-40 bg-gray-200 rounded mb-2"></div>
+                    <div className="h-6 bg-gray-200 rounded w-3/4"></div>
+                  </CardHeader>
+                  <CardContent className="flex-grow">
+                    <div className="space-y-2">
+                      <div className="h-4 bg-gray-200 rounded w-full"></div>
+                      <div className="h-4 bg-gray-200 rounded w-full"></div>
+                      <div className="h-4 bg-gray-200 rounded w-full"></div>
+                      <div className="h-4 bg-gray-200 rounded w-full"></div>
+                    </div>
+                    <div className="mt-4 h-10 bg-gray-200 rounded w-full"></div>
+                  </CardContent>
+                </Card>
+              ))
+            ) : listings.length === 0 ? (
+              <div className="col-span-full text-center py-12">
+                <div className="w-16 h-16 bg-gray-100 rounded-full flex items-center justify-center mx-auto mb-4">
+                  <ArrowRight className="w-8 h-8 text-gray-400" />
+                </div>
+                <h3 className="text-lg font-semibold text-gray-900 mb-2">No Listings Found</h3>
+                <p className="text-gray-600">
+                  {activeFilter === 'true' 
+                    ? "No active listings available at the moment."
+                    : activeFilter === 'false'
+                    ? "No sold out listings found."
+                    : "No listings available at the moment."
+                  }
+                </p>
+              </div>
+            ) : (
+              listings.map((listing) => (
+                <Card key={listing.listingId} className="flex flex-col">
+                  <CardHeader>
+                    <div className="w-full bg-black flex items-center justify-center" style={{ height: "120px" }}>
+                      <img
+                        src={listing.image}
+                        alt={listing.metadata || "NFT"}
+                        className="object-contain h-full w-full"
+                      />
+                    </div>
+                    <Link to={`/ProjectDetails/${listing.tokenContract}`}>
+                      <CardTitle className="text-lg hover:text-blue-600 transition-colors">
+                        {`${listing.tokenContract.slice(0, 6)}...${listing.tokenContract.slice(-4)}`}
+                      </CardTitle>
+                    </Link>
+                  </CardHeader>
+                  <CardContent className="flex-grow">
+                    <div className="space-y-2">
+                      <p><strong>Token ID:</strong> {listing.tokenId}</p>
+                      <p><strong>Certificate ID:</strong> {listing.certificateId}</p>
+                      <p><strong>Project ID:</strong> {listing.projectID}</p>
+                      <p><strong>Quantity (tCO2):</strong> {listing.quantity}</p>
+                      <p><strong>Price per Unit:</strong> {listing.pricePerUnit} RUSD</p>
+                      <p><strong>Total Price:</strong> {(Number(listing.pricePerUnit) * Number(listing.quantity)).toLocaleString()} RUSD</p>
+                      <p><strong>Status:</strong> 
+                        <span className={`ml-1 px-2 py-1 rounded-full text-xs font-medium ${
+                          listing.active 
+                            ? 'bg-green-100 text-green-800' 
+                            : 'bg-red-100 text-red-800'
+                        }`}>
+                          {listing.active ? "Active" : "Sold Out"}
+                        </span>
+                      </p>
+                    </div>
+                    {cardStates[listing.listingId]?.error && (
+                      <Alert variant="destructive" className="mt-4">
+                        <AlertCircle className="h-4 w-4" />
+                        <AlertDescription>{cardStates[listing.listingId].error}</AlertDescription>
+                      </Alert>
+                    )}
+                    {cardStates[listing.listingId]?.success && (
+                      <Alert className="mt-4 border-green-200 bg-green-50">
+                        <CheckCircle2 className="h-4 w-4 text-green-600" />
+                        <AlertDescription className="text-green-800">{cardStates[listing.listingId].success}</AlertDescription>
+                      </Alert>
+                    )}
+                    {listing.active ? (
+                      cardStates[listing.listingId]?.showInput ? (
+                        <div className="mt-4 space-y-2">
+                          <Label htmlFor={`quantity-${listing.listingId}`}>Quantity to Purchase</Label>
+                          <Input
+                            id={`quantity-${listing.listingId}`}
+                            type="number"
+                            step="1"
+                            min="1"
+                            max={listing.quantity}
+                            className="appearance-none"
+                            placeholder="Enter quantity"
+                            value={cardStates[listing.listingId].quantity}
+                            onChange={(e) => handleInputChange(listing.listingId, e.target.value)}
+                          />
+                          <p className="text-xs text-gray-500">
+                            Cost: {Number(listing.pricePerUnit) * Number(cardStates[listing.listingId].quantity || 1)} RUSD
+                          </p>
+                          <div className="flex space-x-2">
+                            <Button
+                              className="w-full bg-green-600 hover:bg-green-700"
+                              onClick={() => handlePurchase(listing.listingId)}
+                              disabled={cardStates[listing.listingId].isSubmitting}
+                            >
+                              {cardStates[listing.listingId].isSubmitting ? (
+                                <>
+                                  <Loader2 className="w-4 h-4 animate-spin mr-2" />
+                                  Processing...
+                                </>
+                              ) : (
+                                <>
+                                  <ArrowRight className="w-4 h-4 mr-2" />
+                                  Confirm Purchase
+                                </>
+                              )}
+                            </Button>
+                            <Button
+                              variant="outline"
+                              className="w-full"
+                              onClick={() => toggleInput(listing.listingId)}
+                              disabled={cardStates[listing.listingId].isSubmitting}
+                            >
+                              Cancel
+                            </Button>
+                          </div>
+                        </div>
+                      ) : (
+                        <Button
+                          className="mt-4 w-full bg-green-600 hover:bg-green-700"
+                          onClick={() => toggleInput(listing.listingId)}
+                          disabled={cardStates[listing.listingId]?.isSubmitting || listing.seller.toLowerCase() === walletAddress.toLowerCase()}
+                        >
+                          {listing.seller.toLowerCase() === walletAddress.toLowerCase() ? "Your Listing" : "Buy Credits"}
+                        </Button>
+                      )
+                    ) : (
+                      <Button
+                        className="mt-4 w-full bg-gray-400 cursor-not-allowed"
+                        disabled
+                      >
+                        Sold Out
+                      </Button>
+                    )}
+                  </CardContent>
+                </Card>
+              ))
+            )}
+          </div>
+
+          {/* Pagination */}
+          {!isLoading && totalPages > 1 && (
+            <div className="flex flex-col sm:flex-row items-center justify-between gap-4 mt-6 pt-4 border-t border-gray-200">
+              <div className="text-sm text-gray-600">
+                Page {currentPage} of {totalPages} • Total: {totalListings} listings
+              </div>
+              
+              <div className="flex items-center space-x-2">
+                {/* Previous Button */}
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => handlePageChange(currentPage - 1)}
+                  disabled={!hasPrevPage}
+                  className="flex items-center space-x-1"
+                >
+                  <ChevronLeft className="w-4 h-4" />
+                  <span>Previous</span>
+                </Button>
+
+                {/* Page Numbers */}
+                <div className="flex items-center space-x-1">
+                  {currentPage > 3 && (
+                    <>
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => handlePageChange(1)}
+                      >
+                        1
+                      </Button>
+                      {currentPage > 4 && <span className="px-2 text-gray-400">...</span>}
+                    </>
+                  )}
+
+                  {getPageNumbers().map((pageNumber) => (
+                    <Button
+                      key={pageNumber}
+                      variant={currentPage === pageNumber ? "default" : "outline"}
+                      size="sm"
+                      onClick={() => handlePageChange(pageNumber)}
+                      className={currentPage === pageNumber ? "bg-green-600 hover:bg-green-700" : ""}
+                    >
+                      {pageNumber}
+                    </Button>
+                  ))}
+
+                  {currentPage < totalPages - 2 && (
+                    <>
+                      {currentPage < totalPages - 3 && <span className="px-2 text-gray-400">...</span>}
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => handlePageChange(totalPages)}
+                      >
+                        {totalPages}
+                      </Button>
+                    </>
+                  )}
+                </div>
+
+                {/* Next Button */}
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => handlePageChange(currentPage + 1)}
+                  disabled={!hasNextPage}
+                  className="flex items-center space-x-1"
+                >
+                  <span>Next</span>
+                  <ChevronRight className="w-4 h-4" />
+                </Button>
+              </div>
+            </div>
+          )}
+        </CardContent>
+      </Card>
+    </div>
   );
 }

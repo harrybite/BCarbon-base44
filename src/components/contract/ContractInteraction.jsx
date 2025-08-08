@@ -1158,6 +1158,7 @@ const getUserApproveProjectBalance = async (address, page = 1, limit = 10) => {
     if (!account) throw new Error("Account is required to set governance decision");
     try {
       const amountInWei = parseEther(amount.toString()); // Convert amount to wei
+      console.log("Setting governance decision for request ID:", requestID, "Decision:", decision, "Amount:", amountInWei);
       const transaction = prepareContractCall({
         contract: thirdWebGovernanceContract,
         method: "executeApprovalForWithdrawal",

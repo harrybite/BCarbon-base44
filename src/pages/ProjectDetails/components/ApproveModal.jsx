@@ -53,7 +53,7 @@ const ApproveModal = ({ show, onClose, onApprove, creditAmount, setCreditAmount,
             <button
               className="bg-green-600 text-white px-4 py-2 rounded hover:bg-green-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
               onClick={onApprove}
-              disabled={!creditAmount || isApproving || Number(creditAmount) <= 0 || Number(creditAmount) > maxCreditAmount}
+              disabled={!creditAmount || isApproving ||  Number(creditAmount) > maxCreditAmount}
             >
               {isApproving ? "Approving..." : "Approve & Issue Credits"}
             </button>

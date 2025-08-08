@@ -51,9 +51,9 @@ const PresaleApproveModal = ({
             <p className="text-xs text-gray-500">
               Total emission reductions: {Number(project.emissionReductions)} tCO₂
             </p>
-            <p className="text-xs text-gray-500">
+            {/* <p className="text-xs text-gray-500">
               Maximum presale amount: {maxCreditAmount} tCO₂ (50% limit)
-            </p>
+            </p> */}
             <p className="text-xs text-green-600">
               Remaining for main approval: {Number(project.emissionReductions) - Number(creditAmount || 0)} tCO₂
             </p>
@@ -111,8 +111,7 @@ const PresaleApproveModal = ({
             disabled={
               !creditAmount || 
               isApproving || 
-              Number(creditAmount) <= 0 || 
-              Number(creditAmount) > maxCreditAmount
+              Number(creditAmount) <= 0
             }
           >
             {isApproving ? (

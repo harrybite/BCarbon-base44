@@ -59,6 +59,7 @@ const ProjectCard = ({ project }) => {
     isVerified: false,
     defaultIsPermanent: false,
     commentPeriodEnd: 0,
+    projectRUSDBalance: 0,
     projectDetails: '',
     // Presale related fields
     isPresale: false,
@@ -108,15 +109,15 @@ const ProjectCard = ({ project }) => {
           setIsProjectOwner(projectData.projectDetails.proposer.toLowerCase() === walletAddress?.toLowerCase());
           
           // Fetch project balance if user is project owner
-          if (projectData.projectDetails.proposer.toLowerCase() === walletAddress?.toLowerCase()) {
-            try {
-              const balance = await getProjectBalances(project);
-              setProjectBalance(balance || '0');
-            } catch (error) {
-              console.error('Error fetching project balance:', error);
-              setProjectBalance('0');
-            }
-          }
+          // if (projectData.projectDetails.proposer.toLowerCase() === walletAddress?.toLowerCase()) {
+          //   try {
+          //     const balance = await getProjectBalances(project);
+          //     setProjectBalance(balance || '0');
+          //   } catch (error) {
+          //     console.error('Error fetching project balance:', error);
+          //     setProjectBalance('0');
+          //   }
+          // }
         } catch (error) {
           console.error('Error fetching project details:', error);
         } finally {
@@ -186,6 +187,7 @@ const ProjectCard = ({ project }) => {
         if (data.ok) {
           console.log("Withdrawal request stored successfully");
         }
+        
         toast({
           title: "Withdrawal Requested",
           description: `Successfully requested withdrawal of ${amount} RUSD`,
@@ -567,7 +569,7 @@ const ProjectCard = ({ project }) => {
           </Link>
 
           {/* Request Withdrawal Button - Only for Project Owner and when no active requests */}
-          {isProjectOwner && !hasActiveWithdrawals && Number(projectBalance) > 0 && details.isApproved && (
+          {isProjectOwner && !hasActiveWithdrawals && Number(details.projectRUSDBalance) > 0 && (
             <button 
               className="w-full bg-gradient-to-r from-green-600 to-green-700 hover:from-green-700 hover:to-green-800 text-white py-3 px-4 rounded-lg font-semibold transition-all duration-200 transform hover:scale-[1.02] flex items-center justify-center space-x-2"
               onClick={() => setShowWithdrawalModal(true)}
@@ -641,7 +643,7 @@ const ProjectCard = ({ project }) => {
         onClose={() => setShowWithdrawalModal(false)}
         onRequestWithdrawal={handleRequestWithdrawal}
         projectAddress={details.projectContract}
-        projectBalance={projectBalance}
+        projectBalance={details.projectRUSDBalance}
         isRequesting={isRequesting}
         projectId={details.projectId}
       />

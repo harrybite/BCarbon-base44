@@ -279,6 +279,45 @@ export const useMarketplaceInteraction = () => {
     }
   };
 
+  //listingCounter
+
+  const listingCounter = async () => {
+    try {
+      const contract = await getProjectMarketPlaceContract();
+      const count = await contract.listingCounter();
+      return count.toString();
+    } catch (error) {
+      console.error("Failed to fetch listing counter:", error);
+      // throw new Error(`Failed to fetch listing counter: ${error.message}`);
+    }
+  };
+
+  //totalVolumeTransacted
+
+  const totalVolumeTransacted = async () => {
+    try {
+      const contract = await getProjectMarketPlaceContract();
+      const volume = await contract.totalVolumeTransacted();
+      return formatEther(volume);
+    } catch (error) {
+      console.error("Failed to fetch total volume transacted:", error);
+      // throw new Error(`Failed to fetch total volume transacted: ${error.message}`);
+    }
+  };
+
+  //totalCreditsSold
+
+  const totalCreditsSold = async () => {
+    try {
+      const contract = await getProjectMarketPlaceContract();
+      const totalSold = await contract.totalCreditsSold();
+      return totalSold.toString();
+    } catch (error) {
+      console.error("Failed to fetch total credits sold:", error);
+      // throw new Error(`Failed to fetch total credits sold: ${error.message}`);
+    }
+  };
+
   const checkRUSDAllowance = async () => {
     try {
       const contract = await getProjectERC20Contract();
@@ -295,6 +334,9 @@ export const useMarketplaceInteraction = () => {
     updateListing,
     cancelListing,
     purchase,
+    listingCounter,
+    totalVolumeTransacted,
+    totalCreditsSold,
     withdrawFees,
     getListing,
     getListings,

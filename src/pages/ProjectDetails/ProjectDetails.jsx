@@ -420,7 +420,7 @@ export default function ProjectDetails() {
 
   // Approval handlers
   const handleApprove = async () => {
-    if (!creditAmount || parseFloat(creditAmount) <= 0) {
+    if (!creditAmount) {
       toast({
         variant: "destructive",
         title: "Error",
@@ -434,7 +434,7 @@ export default function ProjectDetails() {
         toast({
           variant: "destructive",
           title: "Error",
-          description: "Please update the final token URI ",
+          description: "Project URI is not updated",
         });
       return;
     }
@@ -485,11 +485,11 @@ export default function ProjectDetails() {
 
 
 
-    const maxPresaleAmount = Math.floor(Number(project.emissionReductions) / 2);
+    const maxPresaleAmount = Number(project.emissionReductions);
     if (Number(presaleCreditAmount) > maxPresaleAmount) {
       toast({
         title: "Credit amount error",
-        description: `Presale credit amount cannot exceed ${maxPresaleAmount} tCO₂ (50% of emission reductions).`,
+        description: `Presale credit amount cannot exceed ${maxPresaleAmount} tCO₂`,
         variant: "destructive",
       });
       return;
@@ -688,7 +688,6 @@ export default function ProjectDetails() {
     try {
       // Call the blockchain function
 
-      console.log("Making governance decision:", { requestId, decision, amount, account });
       const tx = await setGovernanceDecision(requestId, amount ? Number(amount) : 0, decision,  account);
       if (tx.status === "success") {
         toast({

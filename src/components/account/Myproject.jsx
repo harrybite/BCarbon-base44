@@ -257,7 +257,7 @@ const MyProjects = () => {
               <div key={project.projectContract} className="relative">
                 <ProjectCard project={project.projectContract} />
                 <div className="mt-3 flex gap-2">
-                  {!project.tokenUri ? (
+                  {!project.tokenUri  ? (
                     <button
                       className="bg-green-500 hover:bg-green-600 text-white px-4 py-2 rounded transition-colors duration-200 flex items-center space-x-2"
                       onClick={() => {
@@ -268,7 +268,7 @@ const MyProjects = () => {
                       <Settings className="w-4 h-4" />
                       <span>Set URI</span>
                     </button>
-                  ) : (
+                  ) : project.isPresale ? (
                     <button
                       className="bg-blue-500 hover:bg-blue-600 text-white px-4 py-2 rounded transition-colors duration-200 flex items-center space-x-2"
                       onClick={() => openUpdateModal(project)}
@@ -276,7 +276,7 @@ const MyProjects = () => {
                       <Edit className="w-4 h-4" />
                       <span>Update URI</span>
                     </button>
-                  )}
+                  ) : ''}
                 </div>
               </div>
             ))}
@@ -313,7 +313,7 @@ const MyProjects = () => {
                 <input
                   type="text"
                   name="setUri"
-                  value={uriTokenOne}
+                  value={isPresale ? uriTokenThree : uriTokenOne}
                   onChange={handleUriChange}
                   placeholder="https://example.com/metadata/active.json"
                   className="w-full border border-gray-300 rounded-md px-3 py-2 focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-transparent"
