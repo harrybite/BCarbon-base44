@@ -1,5 +1,7 @@
+/* eslint-disable no-unused-vars */
 import { useState, useEffect } from "react";
 import { Input } from "@/components/ui/input";
+import { useNavigate } from "react-router-dom";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Button } from "@/components/ui/button";
 import { Search, TreePine, ChevronLeft, ChevronRight } from "lucide-react";
@@ -9,6 +11,7 @@ import ProjectCard from "../components/projects/ProjectCard";
 import ProjectStats from "../components/projects/ProjectStats";
 import { useConnectWallet } from "@/context/walletcontext";
 import { apihost } from "@/components/contract/address";
+import { useConnect } from "thirdweb/react";
 
 export default function Projects() {
   const [projects, setProjects] = useState([]);
@@ -16,6 +19,7 @@ export default function Projects() {
   const [isLoading, setIsLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState("");
   const [statusFilter, setStatusFilter] = useState("all");
+  const [pendingUrl, setPendingUrl] = useState(null);
   
   // Pagination state
   const [currentPage, setCurrentPage] = useState(1);
@@ -26,6 +30,8 @@ export default function Projects() {
   const [hasPrevPage, setHasPrevPage] = useState(false);
 
   const { walletAddress } = useConnectWallet();
+  const { connect, } = useConnect();
+  const navigate = useNavigate();
 
   useEffect(() => {
     loadProjects();
