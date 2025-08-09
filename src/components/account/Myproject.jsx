@@ -8,6 +8,7 @@ import { useConnectWallet } from '@/context/walletcontext';
 import { apihost, uriTokenOne, uriTokenThree, uriTokenTwo } from '../contract/address';
 import { Loader2, Plus, Settings, Edit, RefreshCw } from 'lucide-react';
 import { useActiveAccount } from 'thirdweb/react';
+import { jwtDecode } from 'jwt-decode';
 
 const MyProjects = () => {
   const { getUserProjects, setTokenURI } = useContractInteraction();
@@ -245,6 +246,26 @@ const handleUpdateUriSave = async () => {
   }
 };
 
+  const isUserAuthenticated = () => {
+    const token = localStorage.getItem("token");
+    if (!token) return false;
+    
+    try {
+      const decoded = jwtDecode(token);
+      // Check if token is expired
+      if (decoded.exp * 1000 < Date.now()) {
+        localStorage.removeItem("token");
+        return false;
+      }
+      return true;
+    } catch (error) {
+      localStorage.removeItem("token");
+      return false;
+    }
+  };
+
+  const isFullyAuthenticated = walletAddress && isUserAuthenticated();
+
   if (!walletAddress) {
     return (
       <div className="p-4">
@@ -284,7 +305,7 @@ const handleUpdateUriSave = async () => {
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-2 gap-4">
             {projects.map(project => (
               <div key={project.projectContract} className="relative">
-                <ProjectCard project={project.projectContract} />
+                <ProjectCard project={project.projectContract} isAuthenticated={isFullyAuthenticated}/>
                 <div className="mt-3 flex gap-2">
                   {!project.tokenUri  ? (
                     <button

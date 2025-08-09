@@ -9,6 +9,7 @@ import { Button } from '../ui/button';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../ui/select';
 import { ChevronLeft, ChevronRight, Loader2 } from 'lucide-react';
 import { useActiveAccount } from 'thirdweb/react';
+import { jwtDecode } from 'jwt-decode';
 
 const ProjectApproval = () => {
   const {
@@ -271,6 +272,26 @@ const ProjectApproval = () => {
     }
   };
 
+    const isUserAuthenticated = () => {
+      const token = localStorage.getItem("token");
+      if (!token) return false;
+      
+      try {
+        const decoded = jwtDecode(token);
+        // Check if token is expired
+        if (decoded.exp * 1000 < Date.now()) {
+          localStorage.removeItem("token");
+          return false;
+        }
+        return true;
+      } catch (error) {
+        localStorage.removeItem("token");
+        return false;
+      }
+    };
+  
+    const isFullyAuthenticated = walletAddress && isUserAuthenticated();
+
   return (
     <div className="p-4">
       {/* Header with pagination info */}
@@ -322,7 +343,7 @@ const ProjectApproval = () => {
         <div className="grid grid-cols-2 md:grid-cols-2 lg:grid-cols-2 gap-2">
           {projects.map(projectAddress => (
             <div key={projectAddress.projectContract} className='mb-3'>
-              <ProjectCard project={projectAddress.projectContract} />
+              <ProjectCard project={projectAddress.projectContract} isAuthenticated={isFullyAuthenticated}/>
               {!projectAddress.isApproved && (  // Only show buttons if not approved
                 <div className="mt-2">
                   {isOwner && (
