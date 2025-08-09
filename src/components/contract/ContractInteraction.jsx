@@ -765,7 +765,7 @@ const getUserApproveProjectBalance = async (address, page = 1, limit = 10) => {
       }
   }
 
-  const approveAndIssueCredits = async (projectAddress, creditAmount,mintPrice, account) => {
+  const approveAndIssueCredits = async (projectAddress, creditAmount, mintPrice, account) => {
     if (!account) throw new Error("Account is required to approve and issue credits");
     try {
        const mintPriceWei = parseEther(mintPrice.toString());

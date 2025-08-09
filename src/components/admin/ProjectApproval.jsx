@@ -4,12 +4,13 @@ import { useContractInteraction } from '../contract/ContractInteraction';
 import ProjectCard from '../projects/ProjectCard';
 import { useToast } from '../ui/use-toast';
 import { useConnectWallet } from '@/context/walletcontext';
-import { apihost } from '../contract/address';
+import { apihost, uriTokenThree } from '../contract/address';
 import { Button } from '../ui/button';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../ui/select';
 import { ChevronLeft, ChevronRight, Loader2 } from 'lucide-react';
 import { useActiveAccount } from 'thirdweb/react';
 import { jwtDecode } from 'jwt-decode';
+import { m } from 'framer-motion';
 
 const ProjectApproval = () => {
   const {
@@ -39,6 +40,9 @@ const ProjectApproval = () => {
   const [showApproveModal, setShowApproveModal] = useState(false);
   const [approveProjectAddress, setApproveProjectAddress] = useState(null);
   const [creditAmount, setCreditAmount] = useState('');
+  const [maxCreditAmount, setMaxCreditAmount] = useState(0);
+  const [uriToken, setUriToken] = useState('');
+  const [governancePresaleMintPrice, setGovernancePresaleMintPrice] = useState(0);
 
   const account = useActiveAccount()
 
@@ -67,7 +71,6 @@ const ProjectApproval = () => {
       }
 
       const data = await response.json();
-
 
       if (data && data.projects) {
         setProjects(data.projects || []);
@@ -136,25 +139,59 @@ const ProjectApproval = () => {
     return pages;
   };
 
-  const handleApprove = async (projectAddress, creditAmount) => {
-    // Find the project details to get emissionReductions
-    const project = projects.find(p => p.projectContract === projectAddress);
-    const emissionReductions = Number(project?.emissionReductions ?? 0);
+  const handleApprove = async () => {
+    if (!creditAmount || !governancePresaleMintPrice) {
+      toast({
+        title: "Validation Error",
+        description: "Please enter both credit amount and mint price",
+        variant: "destructive",
+      });
+      return;
+    }
+    // validate credit amount against emission reductions
 
-    if (Number(creditAmount) > Number(emissionReductions)) {
+    if (Number(creditAmount) > maxCreditAmount) {
       toast({
         title: "Credit amount error",
-        description: "Credit amount must be less than emission reductions.",
+        description: `Credit amount must be less than or equal to ${maxCreditAmount} tCO₂.`,
         variant: "destructive",
       });
       return;
     }
 
+    console.log("Project token URI:", uriToken, uriTokenThree);
+    if (uriToken === uriTokenThree) {
+      toast({
+        variant: "destructive",
+        title: "Error",
+        description: "Project URI is not updated",
+      });
+      return;
+    }
+
+    // // Find the project details to get emissionReductions
+    // const project = projects.find(p => p.projectContract === approveProjectAddress);
+    // const emissionReductions = Number(project?.emissionReductions ?? 0);
+
+    // if (Number(creditAmount) > Number(emissionReductions)) {
+    //   toast({
+    //     title: "Credit amount error",
+    //     description: "Credit amount must be less than emission reductions.",
+    //     variant: "destructive",
+    //   });
+    //   return;
+    // }
+
     try {
-      const receipt = await approveAndIssueCredits(projectAddress, creditAmount, account);
+      const receipt = await approveAndIssueCredits(
+        approveProjectAddress,
+        Number(creditAmount),
+        Number(governancePresaleMintPrice),
+        account
+      );
       if (receipt.status === "success") {
-        const data = await fetch(`${apihost}/gov/approve-project/${projectAddress}`, {
-          method: 'POST',
+        const data = await fetch(`${apihost}/project/updateprojectdetails/${approveProjectAddress}`, {
+          method: 'PUT',
           headers: {
             'Content-Type': 'application/json',
           },
@@ -166,15 +203,26 @@ const ProjectApproval = () => {
         toast({
           title: "Project Approved",
           description: `Transaction: ${receipt.hash}`,
-          variant: "success",
+          variant: "default",
         });
+        setShowApproveModal(false);
+        setCreditAmount('');
+        setGovernancePresaleMintPrice(0);
         setUpdate(update + 1); // Trigger re-fetch of projects
       } else {
-        alert(`Transaction failed!`);
+        toast({
+          title: "Transaction Failed",
+          description: "Please try again.",
+          variant: "destructive",
+        });
       }
     } catch (error) {
       console.error('Approval failed:', error);
-      alert(`Approval failed: ${error.message}`);
+      toast({
+        title: "Approval Failed",
+        description: error.message,
+        variant: "destructive",
+      });
     }
   };
 
@@ -272,25 +320,25 @@ const ProjectApproval = () => {
     }
   };
 
-    const isUserAuthenticated = () => {
-      const token = localStorage.getItem("token");
-      if (!token) return false;
-      
-      try {
-        const decoded = jwtDecode(token);
-        // Check if token is expired
-        if (decoded.exp * 1000 < Date.now()) {
-          localStorage.removeItem("token");
-          return false;
-        }
-        return true;
-      } catch (error) {
+  const isUserAuthenticated = () => {
+    const token = localStorage.getItem("token");
+    if (!token) return false;
+
+    try {
+      const decoded = jwtDecode(token);
+      // Check if token is expired
+      if (decoded.exp * 1000 < Date.now()) {
         localStorage.removeItem("token");
         return false;
       }
-    };
-  
-    const isFullyAuthenticated = walletAddress && isUserAuthenticated();
+      return true;
+    } catch (error) {
+      localStorage.removeItem("token");
+      return false;
+    }
+  };
+
+  const isFullyAuthenticated = walletAddress && isUserAuthenticated();
 
   return (
     <div className="p-4">
@@ -343,7 +391,7 @@ const ProjectApproval = () => {
         <div className="grid grid-cols-2 md:grid-cols-2 lg:grid-cols-2 gap-2">
           {projects.map(projectAddress => (
             <div key={projectAddress.projectContract} className='mb-3'>
-              <ProjectCard project={projectAddress.projectContract} isAuthenticated={isFullyAuthenticated}/>
+              <ProjectCard project={projectAddress.projectContract} isAuthenticated={isFullyAuthenticated} />
               {!projectAddress.isApproved && (  // Only show buttons if not approved
                 <div className="mt-2">
                   {isOwner && (
@@ -352,7 +400,10 @@ const ProjectApproval = () => {
                         onClick={() => {
                           setApproveProjectAddress(projectAddress.projectContract);
                           setShowApproveModal(true);
-                          setCreditAmount(projectAddress.emissionReductions);
+                          setCreditAmount(Number(projectAddress.emissionReductions) - Number(projectAddress.credits));
+                          setMaxCreditAmount(Number(projectAddress.emissionReductions) - Number(projectAddress.credits));
+                          setUriToken(projectAddress.tokenUri);
+                          setGovernancePresaleMintPrice(1); // Default mint price
                         }}
                         className={`${projectAddress.isValidated && projectAddress.isVerified
                           ? "bg-green-500 hover:bg-green-600"
@@ -362,12 +413,12 @@ const ProjectApproval = () => {
                       >
                         Approve & Issue Credits
                       </button>
-                      <button
+                      {Number(projectAddress.credits) === 0 && <button
                         onClick={() => handleReject(projectAddress.projectContract)}
                         className="bg-red-500 hover:bg-red-600 text-white px-4 py-2 rounded mr-2"
                       >
                         Reject
-                      </button>
+                      </button>}
                     </>
                   )}
 
@@ -496,34 +547,69 @@ const ProjectApproval = () => {
         </div>
       )}
 
+      {/* Updated Approve Modal */}
       {showApproveModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-40">
-          <div className="bg-white rounded-lg p-6 w-full max-w-sm shadow-lg">
-            <h2 className="text-xl font-bold mb-4">Enter Credit Amount</h2>
-            <input
-              type="number"
-              min="0"
-              className="w-full border rounded px-2 py-1 mb-4 appearance-none"
-              placeholder="Credit Amount"
-              value={creditAmount}
-              onChange={e => setCreditAmount(e.target.value)}
-            />
-            <div className="flex justify-end space-x-2">
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-50">
+          <div className="bg-white rounded-lg p-6 w-full max-w-md shadow-lg">
+            <h2 className="text-xl font-bold mb-4">Approve Project & Issue Credits</h2>
+
+            <div className="space-y-4">
+              {/* Credit Amount Input */}
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Credit Amount (tCO₂)
+                </label>
+                <input
+                  type="number"
+                  min="0"
+                  className="w-full border rounded px-3 py-2 focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-transparent"
+                  placeholder="Enter credit amount"
+                  value={creditAmount}
+                  onChange={(e) => setCreditAmount(e.target.value)}
+                />
+                <p className="text-xs text-gray-500 mt-1">
+                  Maximum: {maxCreditAmount} tCO₂
+                </p>
+              </div>
+
+              {/* Mint Price Input */}
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Mint Price (RUSD)
+                </label>
+                <input
+                  type="number"
+                  min="0"
+                  step="0.01"
+                  className="w-full border rounded px-3 py-2 focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-transparent"
+                  placeholder="Enter mint price"
+                  value={governancePresaleMintPrice}
+                  onChange={(e) => setGovernancePresaleMintPrice(e.target.value)}
+                />
+                <p className="text-xs text-gray-500 mt-1">
+                  Price per credit in RUSD
+                </p>
+              </div>
+            </div>
+
+            {/* Modal Buttons */}
+            <div className="flex justify-end space-x-3 mt-6">
               <button
-                className="bg-gray-300 text-gray-800 px-4 py-2 rounded"
-                onClick={() => setShowApproveModal(false)}
+                className="bg-gray-300 text-gray-800 px-4 py-2 rounded hover:bg-gray-400 transition-colors"
+                onClick={() => {
+                  setShowApproveModal(false);
+                  setCreditAmount('');
+                  setGovernancePresaleMintPrice(0);
+                }}
               >
                 Cancel
               </button>
               <button
-                className="bg-green-600 text-white px-4 py-2 rounded"
-                onClick={() => {
-                  handleApprove(approveProjectAddress, creditAmount);
-                  setShowApproveModal(false);
-                }}
-                disabled={!creditAmount}
+                className="bg-green-600 text-white px-4 py-2 rounded hover:bg-green-700 transition-colors disabled:bg-gray-400 disabled:cursor-not-allowed"
+                onClick={handleApprove}
+                disabled={!creditAmount || !governancePresaleMintPrice}
               >
-                Submit
+                Approve & Issue Credits
               </button>
             </div>
           </div>
