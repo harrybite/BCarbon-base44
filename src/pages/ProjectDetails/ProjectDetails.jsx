@@ -840,6 +840,7 @@ export default function ProjectDetails() {
         {userInfo && userInfo.role !== "user" && (project.proposer.toLowerCase() === walletAddress.toLowerCase() || isVVB || isOwner )&& (
           <CommentsSection 
             comments={project.comments}
+            projectContract={project.projectContract}
             comment={comment}
             role={userInfo.role}
             setComment={setComment}
