@@ -669,6 +669,19 @@ return (
           ) : (
             <div className="h-5"></div> // Spacer
           )}
+          {isAuthenticated && isProjectOwner ? (
+            <div className="flex items-center justify-between">
+              <span className="text-xs font-medium text-gray-600 flex items-center">
+                <DollarSign className="w-3 h-3 mr-2" />
+                Total claimed by issuer:
+              </span>
+              <span className="text-xs font-semibold text-gray-900">
+                {Number(details.totalClaimed).toLocaleString()} RUSD
+              </span>
+            </div>
+          ) : (
+            <div className="h-5"></div> // Spacer
+          )}
         </div>
       </div>
 
