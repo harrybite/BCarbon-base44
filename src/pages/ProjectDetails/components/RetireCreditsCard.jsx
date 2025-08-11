@@ -153,7 +153,7 @@ const RetireCreditsCard = ({
             </div>
             
             <div className="space-y-1">
-              <Label>Retired tCO<sub>2</sub>: {Number(retiredBalance).toLocaleString()}</Label>
+              <Label>Retired tCO<sub>2</sub>: {Number(retiredBalance).toLocaleString()}</Label><br />
               <Label>Allowed retired tCO<sub>2</sub>: {Number(allowedRetire).toLocaleString()}</Label>
             </div>
             

@@ -605,6 +605,7 @@ export default function ProjectDetails() {
             projectContract: project.projectContract,
             comment: comment,
             user: walletAddress,
+            role: userInfo ? userInfo.role : "Guest",
           }),
         });
         toast({
@@ -836,7 +837,7 @@ export default function ProjectDetails() {
           </div>
         )}
 
-        {userInfo && userInfo.role !== "user" && project.proposer.toLowerCase() === walletAddress.toLowerCase() && isVVB && isOwner && (
+        {userInfo && userInfo.role !== "user" && (project.proposer.toLowerCase() === walletAddress.toLowerCase() || isVVB || isOwner )&& (
           <CommentsSection 
             comments={project.comments}
             comment={comment}
