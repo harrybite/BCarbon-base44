@@ -1,11 +1,11 @@
 export const RUSD = "0x604756016db44ad0a38d2787B8e2E3563b03Ab4e"; // Replace with actual RUSD contract address
-export const GOVERNANCE_ADDRESS = '0x31730D55bD670D113B63CDB36a37BF3351190D75';
-export const MARKETPLACE_ADDRESS = '0xAd27Db604070a2b9a33d890adefBfbe12c3b9bf3';
-export const projectData = "0x54d06eCDA458ae82A6ef2F869320780Ce5906B44"
-export const projectManager = "0x6dbc8F3d5f53bd51fD64390B019053533670deE9";
-export const projectFactory = "0x7077b8336FDFF5d2a4BeB69a8Ab45558eDE2439A";
-export const BCO2DAO = "0xd4300A86F11Cef0DB6730619ACe8275E9f694318"
-export const BCO2Factory = "0x3aacc8277128d800E5F0b81F172470431c80E6dC"
+export const GOVERNANCE_ADDRESS = '0x2D494C3C279628f3F923fEA0Ee0b5e156b505029';
+export const MARKETPLACE_ADDRESS = '0xD6ecF2ffe83F627919aA0DCD00F5432221304F81';
+export const projectData = "0x3155397FA6746A60c861BB99f70c65603f1Db6c0"
+export const projectManager = "0x0500a4e08130B678A0244E9a26Ed216200D7dE70";
+export const projectFactory = "0x95A094dE9aef31Ec91660778EDBC2818470fa7fd";
+export const BCO2DAO = "0x25e3C160E6415ee9791E7465E9841465D0747CF4"
+export const BCO2Factory = "0xe47Ff9BD6B36b33144FA6473E2321b5450D5e0d5"
 
 //http://localhost:4090
 //https://bico2-backend-api.aigb.io
