@@ -314,6 +314,30 @@ export default function ProjectDetails() {
     }
     setIsMinting(true);
 
+    const allowance = await checkRUSDAllowance(project.projectContract);
+    if (BigInt(allowance) <= BigInt(0)) {
+      try {
+        const approveReceipt = await approveRUSD(project.projectContract, account);
+        if (approveReceipt.status === "reverted") {
+          toast({
+            variant: "destructive",
+            title: "Error",
+            description: `RUSD approval failed`,
+          });
+          setIsMinting(false);
+          return;
+        }
+      } catch (error) {
+        toast({
+          variant: "destructive",
+          title: "Error",
+          description: `RUSD approval failed: ${error.message}`,
+        });
+        setIsMinting(false);
+        return;
+      }
+    }
+
     try {
       const tx = await mintForIssuer(project.projectContract, parseInt(mintAmount), account);
       if (tx.status === "success") {
