@@ -16,13 +16,13 @@ const RoleActions = ({
     <div className="mb-6 mt-3">
       {isOwner ? (
         <>
-          <Button
+          {project.isPresale && <Button
             className="w-full bg-green-700 hover:bg-green-800 mb-4"
             onClick={onOpenPresaleApproveModal}
             disabled={project.isPresaleApproved}
           >
             {project.isPresaleApproved ? 'Presale Approved' : 'Approve Presale Credits'}
-          </Button>
+          </Button> }
           <Button
             className="w-full bg-blue-700 hover:bg-blue-800 mb-4 mt-3"
             onClick={onOpenApproveModal}
@@ -92,6 +92,7 @@ RoleActions.propTypes = {
     isValidated: PropTypes.bool,
     isVerified: PropTypes.bool,
     isApproved: PropTypes.bool,
+    isPresale: PropTypes.bool,
     presaleAmount: PropTypes.oneOfType([PropTypes.string, PropTypes.number]),
     isPresaleApproved: PropTypes.bool,
     tokenURI: PropTypes.string,

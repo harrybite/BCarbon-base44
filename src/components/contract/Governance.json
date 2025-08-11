@@ -741,6 +741,37 @@
 	{
 		"inputs": [
 			{
+				"internalType": "string",
+				"name": "certificateID",
+				"type": "string"
+			}
+		],
+		"name": "updateCertificateMappings",
+		"outputs": [],
+		"stateMutability": "nonpayable",
+		"type": "function"
+	},
+	{
+		"inputs": [
+			{
+				"internalType": "address",
+				"name": "projectContract",
+				"type": "address"
+			},
+			{
+				"internalType": "uint256",
+				"name": "_totalCreditsIssued",
+				"type": "uint256"
+			}
+		],
+		"name": "updateCreditMappings",
+		"outputs": [],
+		"stateMutability": "nonpayable",
+		"type": "function"
+	},
+	{
+		"inputs": [
+			{
 				"internalType": "address",
 				"name": "_newProjectData",
 				"type": "address"

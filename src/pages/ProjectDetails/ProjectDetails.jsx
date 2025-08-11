@@ -752,7 +752,7 @@ export default function ProjectDetails() {
     );
   }
 
-  const allowedRetire = Number(mintedCredits) - Number(retiredCredits);
+  // const allowedRetire = Number(mintedCredits) - Number(retiredCredits);
 
   return (
     <div className="min-h-screen py-4 px-4 sm:px-6 lg:px-8">
@@ -829,7 +829,7 @@ export default function ProjectDetails() {
               handleRetire={handleRetire}
               handleMaxRetire={handleMaxRetire}
               isRetiring={isRetiring}
-              allowedRetire={allowedRetire}
+              allowedRetire={mintBalance}
               retiredBalance={retiredBalance}
               retireNftImage={retireNftImage}
               fallbackImage={fallbackImage}

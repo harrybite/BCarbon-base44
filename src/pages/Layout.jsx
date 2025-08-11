@@ -28,17 +28,19 @@ import { useContractInteraction } from "@/components/contract/ContractInteractio
 const publicNavigationItems = [
   {
     title: "Home",
-    url: createPageUrl("Home"),
+    url: "https://www.bico2.org", // Add https:// protocol
     icon: Home,
     description: "Platform overview",
-    public: true
+    public: true,
+    external: true // Add external flag
   },
   {
     title: "Projects",
     url: createPageUrl("Projects"),
     icon: TreePine,
     description: "Carbon credit projects",
-    public: true
+    public: true,
+    external: false
   }
 ];
 
@@ -171,6 +173,12 @@ export default function Layout({ children }) {
 
   // Handler to navigate or trigger authentication
   const handleNavClick = (url, item) => {
+    // Handle external links
+    if (item.external) {
+      window.open(url, '_blank', 'noopener,noreferrer');
+      return;
+    }
+    
     // Allow public pages without authentication
     if (item.public) {
       navigate(url);
@@ -254,14 +262,14 @@ export default function Layout({ children }) {
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex justify-between items-center h-16">
             {/* Logo */}
-            <Link to="/" className="flex items-center space-x-3">
+            <div className="flex items-center space-x-3">
               <div>
                 <h1 className="text-xl font-bold text-gray-900">
                   BiCO<sub className="text-sm">2</sub>
                 </h1>
                 <p className="text-xs text-gray-500">Decentralized Carbon Credits</p>
               </div>
-            </Link>
+            </div>
 
             {/* Desktop Nav */}
             <nav className="hidden md:flex items-center space-x-1">
@@ -269,14 +277,20 @@ export default function Layout({ children }) {
                 <button
                   key={item.title}
                   onClick={() => handleNavClick(item.url, item)}
-                  className={`flex items-center space-x-2 px-4 py-2 rounded-lg transition-all duration-200 ${location.pathname === item.url
+                  className={`flex items-center space-x-2 px-4 py-2 rounded-lg transition-all duration-200 ${
+                    !item.external && location.pathname === item.url
                       ? "bg-green-100 text-green-700 shadow-sm"
                       : "text-gray-600 hover:bg-gray-50 hover:text-gray-900"
-                    }`}
+                  }`}
                   style={{ background: "none", border: "none", cursor: "pointer" }}
                 >
                   <item.icon className="w-4 h-4" />
                   <span className="font-medium">{item.title}</span>
+                  {item.external && (
+                    <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" />
+                    </svg>
+                  )}
                   {!item.public && !isAuthenticated && (
                     <span className="text-xs bg-amber-100 text-amber-700 px-1 rounded">🔒</span>
                   )}
@@ -374,16 +388,24 @@ export default function Layout({ children }) {
                           handleNavClick(item.url, item);
                           setMobileMenuOpen(false);
                         }}
-                        className={`flex items-center justify-between p-4 rounded-lg transition-all duration-200 ${location.pathname === item.url
+                        className={`flex items-center justify-between p-4 rounded-lg transition-all duration-200 ${
+                          !item.external && location.pathname === item.url
                             ? "bg-green-100 text-green-700"
                             : "text-gray-600 hover:bg-gray-50"
-                          }`}
+                        }`}
                         style={{ background: "none", border: "none", cursor: "pointer" }}
                       >
                         <div className="flex items-center space-x-3">
                           <item.icon className="w-5 h-5" />
                           <div>
-                            <span className="font-medium">{item.title}</span>
+                            <div className="flex items-center space-x-2">
+                              <span className="font-medium">{item.title}</span>
+                              {item.external && (
+                                <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" />
+                                </svg>
+                              )}
+                            </div>
                             <p className="text-xs text-gray-500">{item.description}</p>
                             {!item.public && !isAuthenticated && (
                               <span className="text-xs bg-amber-100 text-amber-700 px-1 rounded mt-1 inline-block">Login Required</span>
