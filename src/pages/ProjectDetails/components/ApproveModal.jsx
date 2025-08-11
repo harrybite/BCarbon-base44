@@ -97,7 +97,7 @@ const ApproveModal = ({
               Mint Price per Credit (RUSD)
             </label>
             <input
-              type="number"
+              type="text"
               min="0"
               step="0.01"
               className="w-full border border-gray-300 rounded px-3 py-2 focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-transparent"

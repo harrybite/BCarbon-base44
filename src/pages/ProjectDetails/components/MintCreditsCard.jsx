@@ -117,7 +117,7 @@ const MintCreditsCard = ({
               <Label htmlFor="mintAmount">Amount to Mint</Label>
               <Input
                 id="mintAmount"
-                type="number"
+                type="text"
                 step="1"
                 min="1"
                 placeholder="Enter amount"

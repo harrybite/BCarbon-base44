@@ -131,7 +131,7 @@ const RetireCreditsCard = ({
               <div className="flex space-x-2">
                 <Input
                   id="retireAmount"
-                  type="number"
+                  type="text"
                   step="1"
                   min="1"
                   placeholder="Enter amount"
