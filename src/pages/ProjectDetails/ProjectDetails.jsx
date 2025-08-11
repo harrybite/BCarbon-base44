@@ -415,33 +415,57 @@ export default function ProjectDetails() {
   };
 
   const handleMaxRetire = () => {
-    setRetireAmount(Number(mintedCredits) - Number(retiredCredits));
+    setRetireAmount(mintBalance);
   };
 
   // Approval handlers
   const handleApprove = async () => {
-    if (!creditAmount) {
+    if (!governancePresaleMintPrice) {
       toast({
         variant: "destructive",
-        title: "Error",
-        description: "Please enter a valid credit amount",
+        title: "Validation Error",
+        description: "Please enter both credit amount and mint price",
       });
       return;
     }
 
+    const maxCreditAmount = Number(project.emissionReductions) - Number(project.credits);
+    if (Number(creditAmount) > maxCreditAmount) {
+      toast({
+        variant: "destructive",
+        title: "Credit amount error",
+        description: `Credit amount must be less than or equal to ${maxCreditAmount} tCO₂.`,
+      });
+      return;
+    }
+
+    // if (Number(creditAmount) <= 0) {
+    //   toast({
+    //     variant: "destructive",
+    //     title: "Credit amount error",
+    //     description: "Credit amount must be greater than 0.",
+    //   });
+    //   return;
+    // }
+
     console.log("Project token URI:", project.tokenUri, uriTokenThree);
-    if(project.tokenUri === uriTokenThree) {
-        toast({
-          variant: "destructive",
-          title: "Error",
-          description: "Project URI is not updated",
-        });
+    if (project.tokenUri === uriTokenThree) {
+      toast({
+        variant: "destructive",
+        title: "Error",
+        description: "Project URI is not updated",
+      });
       return;
     }
 
     setIsApproving(true);
     try {
-      const tx = await approveAndIssueCredits(project.projectContract, Number(creditAmount), governancePresaleMintPrice, account);
+      const tx = await approveAndIssueCredits(
+        project.projectContract, 
+        Number(creditAmount), 
+        Number(governancePresaleMintPrice), 
+        account
+      );
       if (tx.status === "success") {
         await fetch(`${apihost}/project/updateprojectdetails/${project.projectContract}`, {
           method: 'PUT',
@@ -449,24 +473,26 @@ export default function ProjectDetails() {
         });
         toast({
           variant: "default",
-          title: "Success",
-          description: "Credits approved and issued.",
+          title: "Project Approved",
+          description: `Successfully approved ${creditAmount} tCO₂ credits`,
         });
         setTimeout(() => loadProject(project.projectContract), 2000);
         setShowApproveModal(false);
         setCreditAmount('');
+        setGovernancePresaleMintPrice(0);
       } else {
         toast({
           variant: "destructive",
-          title: "Error",
-          description: `Operation failed: ${tx.error}`,
+          title: "Transaction Failed",
+          description: "Please try again.",
         });
       }
     } catch (error) {
+      console.error('Approval failed:', error);
       toast({
         variant: "destructive",
-        title: "Error",
-        description: `Failed to approve: ${error.message}`,
+        title: "Approval Failed",
+        description: error.message,
       });
     } finally {
       setIsApproving(false);
@@ -795,11 +821,16 @@ export default function ProjectDetails() {
           project={project}
           onOpenApproveModal={() => {
             setShowApproveModal(true);
-            setCreditAmount(project.emissionReductions);
+            // Set the maximum available amount by default
+            const maxCredits = Number(project.emissionReductions) - Number(project.credits);
+            setCreditAmount(maxCredits);
+            // Set default mint price if available
+            setGovernancePresaleMintPrice(project.projectMintPrice || 1);
           }}
           onOpenPresaleApproveModal={() => {
             setShowPresaleApproveModal(true);
             setPresaleCreditAmount(Math.floor(project.emissionReductions / 2).toString());
+            setGovernancePresaleMintPrice(project.projectMintPrice || 1);
           }}
           onValidate={handleValidate}
           onVerify={handleVerify}
@@ -885,7 +916,7 @@ export default function ProjectDetails() {
             creditAmount={creditAmount}
             setCreditAmount={setCreditAmount}
             isApproving={isApproving}
-            maxCreditAmount={Number(project.emissionReductions)}
+            maxCreditAmount={Number(project.emissionReductions) - Number(project.credits)}
           />
         )}
 

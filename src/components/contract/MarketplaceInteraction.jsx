@@ -176,6 +176,7 @@ export const useMarketplaceInteraction = () => {
     }
   };
 
+
   const getListing = async (listingId) => {
     try {
       const contract = await getProjectMarketPlaceContract();
@@ -267,6 +268,8 @@ export const useMarketplaceInteraction = () => {
       console.error("Failed to approve RUSD:", error);
     }
   };
+
+
 
   const getRUSDBalance = async (address = null) => {
     try {

@@ -23,6 +23,7 @@ export default function TradeForm() {
     listingCounter,
     totalVolumeTransacted,
     totalCreditsSold, 
+    cancelListing,
   } = useMarketplaceInteraction();
   
   const { walletAddress } = useConnectWallet();
@@ -106,11 +107,11 @@ export default function TradeForm() {
       }
       
       const data = await response.json();
-      
+
       if (data.status === 'success') {
         setListings(data.listings || []);
         
-        // Update pagination state
+
         if (data.pagination) {
           setCurrentPage(data.pagination.currentPage);
           setTotalPages(data.pagination.totalPages);
@@ -352,6 +353,49 @@ export default function TradeForm() {
     }
     return number.toLocaleString();
   };
+
+
+  const cancelListingNFTs = async (listingId, _id) => {  
+    try {
+
+      const receipt = await cancelListing(listingId, account);
+
+      if (receipt.status === "success") {
+        const data = fetch(`${apihost}/user/cancel-listing/${_id}`, { 
+          method: 'PUT',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+        }); 
+        if (data.ok) {
+          console.log("Listing cancelled successfully:", data);
+        }
+        setCardStates(prev => ({
+          ...prev,
+          [listingId]: {
+            ...prev[listingId],
+            success: "Listing cancelled successfully!",
+            showInput: false
+          }
+        }));
+        toast({
+          title: "Listing Cancelled",
+          description: `Listing cancelled successfully`,
+          variant: "success",
+        });
+        setUpdate(update + 1);
+        // Refresh market stats after successful cancellation
+        fetchMarketStats();
+      }
+    } catch (error) {
+      console.error("Failed to cancel listing:", error);
+      toast({
+        variant: "destructive",
+        title: "Error",
+        description: "Failed to cancel listing: " + (error.message || "Unknown error"),
+      });
+    }
+  }
 
   return (
     <div className="w-full space-y-6">
@@ -655,13 +699,24 @@ export default function TradeForm() {
                           </div>
                         </div>
                       ) : (
+                       <>
                         <Button
-                          className="mt-4 w-full bg-green-600 hover:bg-green-700"
+                          className="mt-4 w-full bg-green-600 hover:bg-green-700 mb-2"
                           onClick={() => toggleInput(listing.listingId)}
                           disabled={cardStates[listing.listingId]?.isSubmitting || listing.seller.toLowerCase() === walletAddress.toLowerCase()}
                         >
                           {listing.seller.toLowerCase() === walletAddress.toLowerCase() ? "Your Listing" : "Buy Credits"}
                         </Button>
+
+                      { listing.seller.toLowerCase() === walletAddress.toLowerCase() &&   <Button
+                          className="mt-4 w-full bg-green-600 hover:bg-green-700"
+                          onClick={() => cancelListingNFTs(listing.listingId, listing._id, )}
+                          disabled={cardStates[listing.listingId]?.isSubmitting}
+                        >
+                          Cancel Listing
+                        </Button>
+                        }
+                        </>
                       )
                     ) : (
                       <Button
