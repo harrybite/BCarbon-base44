@@ -28,8 +28,8 @@ const ProjectOverview = ({ project }) => {
             <div className="text-sm text-gray-600">Minted Supply</div>
           </div>
           {project.isPresale ? <div className="text-center">
-            <div className="text-xl sm:text-2xl font-bold text-red-600 disabled">
-              Retire is disabled for presale projects
+            <div className="text-sm font-bold text-red-600 disabled">
+              Retire is Disabled for presale projects
             </div>
             {/* <div className="text-sm text-gray-600">Total Retired</div> */}
           </div>: 
