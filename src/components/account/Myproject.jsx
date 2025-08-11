@@ -318,7 +318,7 @@ const handleUpdateUriSave = async () => {
                       <Settings className="w-4 h-4" />
                       <span>Set URI</span>
                     </button>
-                  ) : project.isPresale ? (
+                  ) : project.isPresale && project.tokenUri !== uriTokenOne ? (
                     <button
                       className="bg-blue-500 hover:bg-blue-600 text-white px-4 py-2 rounded transition-colors duration-200 flex items-center space-x-2"
                       onClick={() => openUpdateModal(project)}

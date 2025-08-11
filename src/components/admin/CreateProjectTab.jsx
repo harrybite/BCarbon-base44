@@ -413,7 +413,7 @@ const CreateProjectTab = ({ setUpdate }) => {
                 <Input
                   id="mintPrice"
                   name="mintPrice"
-                  type="number"
+                  type="text"
                   step="0.01"
                   min="0"
                   value={formData.mintPrice}
@@ -498,7 +498,7 @@ const CreateProjectTab = ({ setUpdate }) => {
                 <Input
                   id="defaultValidity"
                   name="defaultValidity"
-                  type="number"
+                  type="text"
                   min="1"
                   max="100"
                   value={formData.defaultValidity}
@@ -583,7 +583,7 @@ const CreateProjectTab = ({ setUpdate }) => {
               <Input
                 id="emissionReductions"
                 name="emissionReductions"
-                type="number"
+                type="text"
                 min="1"
                 max="1000000000"
                 value={formData.emissionReductions}
