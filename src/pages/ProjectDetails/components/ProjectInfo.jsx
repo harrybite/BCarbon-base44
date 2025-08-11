@@ -194,6 +194,16 @@ const ProjectInfo = ({ project, methodology }) => {
               {Number(project.defaultValidity) === 0 ? '100+ years' : `${Number(project.defaultValidity)} years`}
             </span>
           </div>
+
+          {/* <div className="flex items-center" >
+            <span className="font-medium text-gray-700 w-[140px] sm:w-[180px] flex items-center">
+              <CheckCircle2 className="w-4 h-4 text-gray-400 mr-2" />
+              Total claimed by issuer:
+            </span>
+            <span className="font-semibold flex-grow text-right">
+               {Number(project.totalClaimed).toLocaleString()} RUSD
+            </span>
+          </div> */}
         </div>
       </CardContent>
     </Card>
@@ -203,6 +213,7 @@ const ProjectInfo = ({ project, methodology }) => {
 ProjectInfo.propTypes = {
   project: PropTypes.shape({
     projectId: PropTypes.oneOfType([PropTypes.string, PropTypes.number]),
+    totalClaimed: PropTypes.oneOfType([PropTypes.string, PropTypes.number]),
     isApproved: PropTypes.bool,
     certificateId: PropTypes.string,
     proposer: PropTypes.string,
