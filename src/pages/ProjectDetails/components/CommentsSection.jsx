@@ -36,7 +36,6 @@ const CommentsSection = ({ comments, comment, setComment, isCommenting, handleSu
     fetchUserRole();
   }, [projectContract]); // Changed dependency from walletAddress to comments
 
-  console.log("Comments with role:", commentsWithRole);
   return (
     <Card className="mt-8">
       <CardHeader>

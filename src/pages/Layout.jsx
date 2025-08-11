@@ -265,7 +265,7 @@ export default function Layout({ children }) {
             <div className="flex items-center space-x-3">
               <div>
                 <h1 className="text-xl font-bold text-gray-900">
-                  BiCO<sub className="text-sm">2</sub>
+                  <img src="https://www.bico2.org/_next/image?url=%2Fimg%2Flogo.png&w=96&q=75" className="h-7"/>
                 </h1>
                 <p className="text-xs text-gray-500">Decentralized Carbon Credits</p>
               </div>
