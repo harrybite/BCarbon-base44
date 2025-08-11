@@ -76,30 +76,31 @@ const MintCreditsCard = ({
           <>
             {/* Presale Status Banner */}
             {project.isPresale && (
-              <div className={`p-3 rounded-lg border ${
-                Number(project.presaleAmount) > 0 
-                  ? 'bg-purple-50 border-purple-200' 
-                  : 'bg-amber-50 border-amber-200'
-              }`}>
-                <div className="flex items-center space-x-2 mb-1">
-                  <Star className={`w-4 h-4 ${
-                    Number(project.presaleAmount) > 0 ? 'text-purple-600' : 'text-amber-600'
-                  }`} />
-                  <span className={`text-sm font-semibold ${
-                    Number(project.presaleAmount) > 0 ? 'text-purple-800' : 'text-amber-800'
-                  }`}>
-                    Presale Project
-                  </span>
-                </div>
-                <p className={`text-xs ${
-                  Number(project.presaleAmount) > 0 ? 'text-purple-700' : 'text-amber-700'
-                }`}>
-                  {Number(project.presaleAmount) > 0 
-                    ? `Presale approved for ${Number(project.presaleAmount).toLocaleString()} RUSD`
-                    : 'Presale is pending approval'
-                  }
-                </p>
-              </div>
+              <></>
+              // <div className={`p-3 rounded-lg border ${
+              //   Number(project.presaleAmount) > 0 
+              //     ? 'bg-purple-50 border-purple-200' 
+              //     : 'bg-amber-50 border-amber-200'
+              // }`}>
+              //   <div className="flex items-center space-x-2 mb-1">
+              //     <Star className={`w-4 h-4 ${
+              //       Number(project.presaleAmount) > 0 ? 'text-purple-600' : 'text-amber-600'
+              //     }`} />
+              //     <span className={`text-sm font-semibold ${
+              //       Number(project.presaleAmount) > 0 ? 'text-purple-800' : 'text-amber-800'
+              //     }`}>
+              //       Presale Project
+              //     </span>
+              //   </div>
+              //   <p className={`text-xs ${
+              //     Number(project.presaleAmount) > 0 ? 'text-purple-700' : 'text-amber-700'
+              //   }`}>
+              //     {Number(project.presaleAmount) > 0 
+              //       ? `Presale approved for ${Number(project.presaleAmount).toLocaleString()} RUSD`
+              //       : 'Presale is pending approval'
+              //     }
+              //   </p>
+              // </div>
             )}
 
             {mintNftImage && (

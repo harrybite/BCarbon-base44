@@ -524,7 +524,7 @@ export default function ProjectDetails() {
     setIsPresaleApproving(true);
     try {
 
-      const tx = await approvePresaleAndIssuePresaleCredits(project.projectContract, Number(presaleCreditAmount)-1, governancePresaleMintPrice, account);
+      const tx = await approvePresaleAndIssuePresaleCredits(project.projectContract, Number(presaleCreditAmount), governancePresaleMintPrice, account);
       if (tx.status === "success") {
         await fetch(`${apihost}/project/updateprojectdetails/${project.projectContract}`, {
           method: 'PUT',

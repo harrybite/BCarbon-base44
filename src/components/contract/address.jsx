@@ -1,6 +1,6 @@
 export const RUSD = "0x604756016db44ad0a38d2787B8e2E3563b03Ab4e"; // Replace with actual RUSD contract address
 export const GOVERNANCE_ADDRESS = '0x31730D55bD670D113B63CDB36a37BF3351190D75';
-export const MARKETPLACE_ADDRESS = '0x46edEb1803e57B2F81d366f0BE5590258E3197E0';
+export const MARKETPLACE_ADDRESS = '0xAd27Db604070a2b9a33d890adefBfbe12c3b9bf3';
 export const projectData = "0x54d06eCDA458ae82A6ef2F869320780Ce5906B44"
 export const projectManager = "0x6dbc8F3d5f53bd51fD64390B019053533670deE9";
 export const projectFactory = "0xAd76bEf9Bd63735E63Dac3980541e7338ea7F436";
