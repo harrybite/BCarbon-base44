@@ -11,9 +11,11 @@ export const BCO2Factory = "0xe47Ff9BD6B36b33144FA6473E2321b5450D5e0d5"
 //https://bico2-backend-api.aigb.io
 export const apihost = "https://bico2-backend-api.aigb.io"
 
+
 export  const uriTokenOne = 'https://ipfs.io/ipfs/bafkreihzb5t6ppevzlkkueyoo5b6pcx2n7aph623qz2mxpoitjlxjj2x4a?filename=1.json'
 export const uriTokenTwo = 'https://ipfs.io/ipfs/bafkreiaiekypittzfv322picx2pzvixqirwhcdmtwwhwslsqmtujc7ygle?filename=2.json'
 export  const uriTokenThree = 'https://ipfs.io/ipfs/bafkreib3bvfvidmgxgpwsohepcfwud2v4eg243trozlaj75s2iatiklan4?filename=3.json'
+
 
 export const chainInfo = {
   id: 7862,
