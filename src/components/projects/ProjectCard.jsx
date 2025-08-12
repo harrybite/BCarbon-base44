@@ -105,7 +105,6 @@ const ProjectCard = ({ project, isAuthenticated = false }) => {
             return;
           }
           const projectData = await projectdetails.json();
-          console.log("Project details:", projectData);
           setDetails({
             ...projectData.projectDetails,
             hasActiveWithdrawalRequests: projectData.hasActiveWithdrawalRequests || false,

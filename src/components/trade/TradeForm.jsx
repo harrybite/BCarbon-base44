@@ -8,7 +8,30 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Link } from "react-router-dom";
 import { Alert, AlertDescription } from "@/components/ui/alert";
-import { ArrowRight, AlertCircle, CheckCircle2, ChevronLeft, ChevronRight, Loader2, TrendingUp, BarChart3, DollarSign, Package } from "lucide-react";
+import { 
+  ArrowRight, 
+  AlertCircle, 
+  CheckCircle2, 
+  ChevronLeft, 
+  ChevronRight, 
+  Loader2, 
+  TrendingUp, 
+  BarChart3, 
+  DollarSign, 
+  Package,
+  Filter,
+  SortAsc,
+  SortDesc,
+  Search,
+  Eye,
+  ShoppingCart,
+  Wallet,
+  Timer,
+  Award,
+  Trash2,
+  RefreshCw,
+  Star
+} from "lucide-react";
 import { useMarketplaceInteraction } from '@/components/contract/MarketplaceInteraction';
 import { useConnectWallet } from "@/context/walletcontext";
 import { useToast } from "../ui/use-toast";
@@ -354,6 +377,18 @@ export default function TradeForm() {
     return number.toLocaleString();
   };
 
+  // Format date
+  const formatDate = (dateString) => {
+    try {
+      return new Date(dateString).toLocaleDateString('en-US', {
+        month: 'short',
+        day: 'numeric',
+        year: 'numeric'
+      });
+    } catch {
+      return 'N/A';
+    }
+  };
 
   const cancelListingNFTs = async (listingId, _id) => {  
     try {
@@ -398,299 +433,425 @@ export default function TradeForm() {
   }
 
   return (
-    <div className="w-full space-y-6">
-      {/* Marketplace Statistics Section */}
-      <Card className="bg-gradient-to-br from-green-50 to-blue-50 border-green-200">
-        <CardHeader>
-          <CardTitle className="flex items-center space-x-2">
-            <BarChart3 className="w-6 h-6 text-green-600" />
-            <span>Marketplace Statistics</span>
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={fetchMarketStats}
-              disabled={marketStats.isLoading}
-              className="ml-auto"
-            >
-              {marketStats.isLoading ? (
-                <Loader2 className="w-4 h-4 animate-spin" />
-              ) : (
-                <TrendingUp className="w-4 h-4" />
-              )}
-              Refresh
-            </Button>
-          </CardTitle>
-        </CardHeader>
-        <CardContent>
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-            {/* Total Listings */}
-            <div className="bg-white rounded-lg p-4 shadow-sm border border-gray-100">
-              <div className="flex items-center justify-between">
+    <div className="min-h-screen bg-gradient-to-br from-gray-50 via-blue-50 to-green-50 py-8 px-4 sm:px-6 lg:px-8">
+      <div className="max-w-7xl mx-auto space-y-8">
+        
+        {/* Hero Section */}
+        {/* <div className="text-center mb-12">
+          <div className="inline-flex items-center justify-center w-16 h-16 bg-gradient-to-br from-green-500 to-blue-600 rounded-full mb-6">
+            <ShoppingCart className="w-8 h-8 text-white" />
+          </div>
+          <h1 className="text-4xl md:text-5xl font-bold text-gray-900 mb-4">
+            Carbon Credit Marketplace
+          </h1>
+          <p className="text-xl text-gray-600 max-w-3xl mx-auto">
+            Trade verified carbon credit NFTs (tCO₂) from sustainable projects worldwide. 
+            Make an impact while building your portfolio.
+          </p>
+        </div> */}
+
+        {/* User Balance Card */}
+        <Card className="bg-gradient-to-r from-blue-600 to-purple-600 border-0 text-white">
+          <CardContent className="p-6">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center space-x-4">
+                <div className="w-12 h-12 bg-white/20 rounded-full flex items-center justify-center">
+                  <Wallet className="w-6 h-6 text-white" />
+                </div>
                 <div>
-                  <p className="text-sm font-medium text-gray-600 mb-1">Total Listings</p>
-                  <p className="text-2xl font-bold text-gray-900">
+                  <p className="text-white/80 text-sm font-medium">Your Balance</p>
+                  <p className="text-3xl font-bold">{Number(rusdBalance).toLocaleString()} RUSD</p>
+                </div>
+              </div>
+              <Button 
+                variant="outline" 
+                className="bg-white/10 border-white/20 text-white hover:bg-white/20"
+                onClick={() => {
+                  if (walletAddress) {
+                    fetchListings(currentPage, listingsPerPage, activeFilter, sortBy, sortOrder);
+                    fetchMarketStats();
+                  }
+                }}
+              >
+                <RefreshCw className="w-4 h-4 mr-2" />
+                Refresh
+              </Button>
+            </div>
+          </CardContent>
+        </Card>
+
+        {/* Enhanced Marketplace Statistics */}
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+          {/* Total Listings */}
+          <Card className="border-0 shadow-lg bg-white hover:shadow-xl transition-all duration-300 group">
+            <CardContent className="p-6">
+              <div className="flex items-center justify-between">
+                <div className="flex-1">
+                  <div className="flex items-center space-x-2 mb-2">
+                    <div className="w-10 h-10 bg-blue-100 rounded-full flex items-center justify-center group-hover:scale-110 transition-transform duration-300">
+                      <Package className="w-5 h-5 text-blue-600" />
+                    </div>
+                    <span className="text-sm font-medium text-gray-600">Total Listings</span>
+                  </div>
+                  <p className="text-3xl font-bold text-gray-900 mb-1">
                     {marketStats.isLoading ? (
-                      <div className="h-8 w-12 bg-gray-200 rounded animate-pulse"></div>
+                      <div className="h-8 w-16 bg-gray-200 rounded animate-pulse"></div>
                     ) : (
                       formatNumber(marketStats.totalListings)
                     )}
                   </p>
-                  <p className="text-xs text-gray-500 mt-1">All time listings created</p>
+                  <p className="text-xs text-gray-500">All time listings created</p>
                 </div>
-                <div className="w-12 h-12 bg-blue-100 rounded-full flex items-center justify-center">
-                  <Package className="w-6 h-6 text-blue-600" />
-                </div>
+                <div className="w-2 h-16 bg-gradient-to-b from-blue-400 to-blue-600 rounded-full"></div>
               </div>
-            </div>
+            </CardContent>
+          </Card>
 
-            {/* Total Volume */}
-            <div className="bg-white rounded-lg p-4 shadow-sm border border-gray-100">
+          {/* Total Volume */}
+          <Card className="border-0 shadow-lg bg-white hover:shadow-xl transition-all duration-300 group">
+            <CardContent className="p-6">
               <div className="flex items-center justify-between">
-                <div>
-                  <p className="text-sm font-medium text-gray-600 mb-1">Total Volume</p>
-                  <p className="text-2xl font-bold text-gray-900">
-                    {marketStats.isLoading ? (
-                      <div className="h-8 w-16 bg-gray-200 rounded animate-pulse"></div>
-                    ) : (
-                      `${formatNumber(marketStats.totalVolume)} RUSD`
-                    )}
-                  </p>
-                  <p className="text-xs text-gray-500 mt-1">Total value transacted</p>
-                </div>
-                <div className="w-12 h-12 bg-green-100 rounded-full flex items-center justify-center">
-                  <DollarSign className="w-6 h-6 text-green-600" />
-                </div>
-              </div>
-            </div>
-
-            {/* Total Credits Sold */}
-            <div className="bg-white rounded-lg p-4 shadow-sm border border-gray-100">
-              <div className="flex items-center justify-between">
-                <div>
-                  <p className="text-sm font-medium text-gray-600 mb-1">Credits Sold</p>
-                  <p className="text-2xl font-bold text-gray-900">
-                    {marketStats.isLoading ? (
-                      <div className="h-8 w-16 bg-gray-200 rounded animate-pulse"></div>
-                    ) : (
-                      `${formatNumber(marketStats.totalCredits)} tCO₂`
-                    )}
-                  </p>
-                  <p className="text-xs text-gray-500 mt-1">Total credits traded</p>
-                </div>
-                <div className="w-12 h-12 bg-orange-100 rounded-full flex items-center justify-center">
-                  <TrendingUp className="w-6 h-6 text-orange-600" />
-                </div>
-              </div>
-            </div>
-          </div>
-        </CardContent>
-      </Card>
-
-      {/* Main Marketplace Card */}
-      <Card className="w-full">
-        <CardHeader>
-          <CardTitle className="flex items-center space-x-2">
-            <ArrowRight className="w-5 h-5 text-green-600" />
-            <span>Carbon Credit NFT Marketplace</span>
-          </CardTitle>
-          <p className="text-sm text-gray-600">
-            Trade carbon credit NFTs (tCO2) from listed projects
-          </p>
-          
-          {/* User Balance Display */}
-          {/* <div className="mt-2 p-3 bg-blue-50 border border-blue-200 rounded-lg">
-            <div className="flex items-center justify-between">
-              <span className="text-sm font-medium text-blue-800">Your RUSD Balance:</span>
-              <span className="text-lg font-bold text-blue-900">{Number(rusdBalance).toLocaleString()} RUSD</span>
-            </div>
-          </div> */}
-          
-          {/* Filters and Controls */}
-          <div className="flex flex-col sm:flex-row gap-4 mt-4">
-            {/* Active Filter */}
-            <div className="flex items-center space-x-2">
-              <Label htmlFor="active-filter">Status:</Label>
-              <Select value={activeFilter} onValueChange={handleFilterChange}>
-                <SelectTrigger id="active-filter" className="w-[140px]">
-                  <SelectValue placeholder="Filter by status" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="all">All Listings</SelectItem>
-                  <SelectItem value="true">Active</SelectItem>
-                  <SelectItem value="false">Sold Out</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
-            
-            {/* Sort By */}
-            <div className="flex items-center space-x-2">
-              <Label htmlFor="sort-filter">Sort by:</Label>
-              <Select value={`${sortBy}-${sortOrder}`} onValueChange={(value) => {
-                const [field, order] = value.split('-');
-                handleSortChange(field, order);
-              }}>
-                <SelectTrigger id="sort-filter" className="w-[160px]">
-                  <SelectValue placeholder="Sort by" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="createdAt-desc">Newest First</SelectItem>
-                  <SelectItem value="createdAt-asc">Oldest First</SelectItem>
-                  <SelectItem value="pricePerUnit-asc">Price: Low to High</SelectItem>
-                  <SelectItem value="pricePerUnit-desc">Price: High to Low</SelectItem>
-                  <SelectItem value="quantity-desc">Quantity: High to Low</SelectItem>
-                  <SelectItem value="quantity-asc">Quantity: Low to High</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
-            
-            {/* Per Page */}
-            <div className="flex items-center space-x-2">
-              <Label htmlFor="per-page">Per page:</Label>
-              <Select value={listingsPerPage.toString()} onValueChange={handleLimitChange}>
-                <SelectTrigger id="per-page" className="w-[100px]">
-                  <SelectValue placeholder="Per page" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="6">6</SelectItem>
-                  <SelectItem value="12">12</SelectItem>
-                  <SelectItem value="24">24</SelectItem>
-                  <SelectItem value="48">48</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
-          </div>
-          
-          {/* Results Info */}
-          <div className="text-sm text-gray-600 mt-2">
-            {isLoading ? (
-              "Loading listings..."
-            ) : (
-              `Showing ${((currentPage - 1) * listingsPerPage) + 1} to ${Math.min(currentPage * listingsPerPage, totalListings)} of ${totalListings} listings`
-            )}
-          </div>
-        </CardHeader>
-
-        <CardContent className="space-y-6">
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
-            {isLoading ? (
-              Array(listingsPerPage).fill(0).map((_, index) => (
-                <Card key={index} className="flex flex-col animate-pulse">
-                  <CardHeader>
-                    <div className="h-40 bg-gray-200 rounded mb-2"></div>
-                    <div className="h-6 bg-gray-200 rounded w-3/4"></div>
-                  </CardHeader>
-                  <CardContent className="flex-grow">
-                    <div className="space-y-2">
-                      <div className="h-4 bg-gray-200 rounded w-full"></div>
-                      <div className="h-4 bg-gray-200 rounded w-full"></div>
-                      <div className="h-4 bg-gray-200 rounded w-full"></div>
-                      <div className="h-4 bg-gray-200 rounded w-full"></div>
+                <div className="flex-1">
+                  <div className="flex items-center space-x-2 mb-2">
+                    <div className="w-10 h-10 bg-green-100 rounded-full flex items-center justify-center group-hover:scale-110 transition-transform duration-300">
+                      <DollarSign className="w-5 h-5 text-green-600" />
                     </div>
-                    <div className="mt-4 h-10 bg-gray-200 rounded w-full"></div>
+                    <span className="text-sm font-medium text-gray-600">Total Volume</span>
+                  </div>
+                  <p className="text-3xl font-bold text-gray-900 mb-1">
+                    {marketStats.isLoading ? (
+                      <div className="h-8 w-20 bg-gray-200 rounded animate-pulse"></div>
+                    ) : (
+                      `${formatNumber(marketStats.totalVolume)}`
+                    )}
+                  </p>
+                  <p className="text-xs text-gray-500">RUSD transacted</p>
+                </div>
+                <div className="w-2 h-16 bg-gradient-to-b from-green-400 to-green-600 rounded-full"></div>
+              </div>
+            </CardContent>
+          </Card>
+
+          {/* Total Credits Sold */}
+          <Card className="border-0 shadow-lg bg-white hover:shadow-xl transition-all duration-300 group">
+            <CardContent className="p-6">
+              <div className="flex items-center justify-between">
+                <div className="flex-1">
+                  <div className="flex items-center space-x-2 mb-2">
+                    <div className="w-10 h-10 bg-orange-100 rounded-full flex items-center justify-center group-hover:scale-110 transition-transform duration-300">
+                      <Award className="w-5 h-5 text-orange-600" />
+                    </div>
+                    <span className="text-sm font-medium text-gray-600">Credits Sold</span>
+                  </div>
+                  <p className="text-3xl font-bold text-gray-900 mb-1">
+                    {marketStats.isLoading ? (
+                      <div className="h-8 w-20 bg-gray-200 rounded animate-pulse"></div>
+                    ) : (
+                      `${formatNumber(marketStats.totalCredits)}`
+                    )}
+                  </p>
+                  <p className="text-xs text-gray-500">tCO₂ traded</p>
+                </div>
+                <div className="w-2 h-16 bg-gradient-to-b from-orange-400 to-orange-600 rounded-full"></div>
+              </div>
+            </CardContent>
+          </Card>
+        </div>
+
+        {/* Enhanced Filters and Controls */}
+        <Card className="border-0 shadow-lg bg-white">
+          <CardHeader className="pb-4">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center space-x-3">
+                <Filter className="w-5 h-5 text-gray-600" />
+                <CardTitle className="text-xl">Filter & Sort Listings</CardTitle>
+              </div>
+              <div className="text-sm text-gray-500 bg-gray-100 px-3 py-1 rounded-full">
+                {isLoading ? "Loading..." : `${totalListings} total listings`}
+              </div>
+            </div>
+          </CardHeader>
+          <CardContent>
+            <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+              {/* Status Filter */}
+              <div className="space-y-2">
+                <Label className="text-sm font-medium text-gray-700">Status</Label>
+                <Select value={activeFilter} onValueChange={handleFilterChange}>
+                  <SelectTrigger className="w-full">
+                    <SelectValue placeholder="Filter by status" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="all">
+                      <div className="flex items-center space-x-2">
+                        <div className="w-2 h-2 bg-gray-400 rounded-full"></div>
+                        <span>All Listings</span>
+                      </div>
+                    </SelectItem>
+                    <SelectItem value="true">
+                      <div className="flex items-center space-x-2">
+                        <div className="w-2 h-2 bg-green-500 rounded-full"></div>
+                        <span>Active</span>
+                      </div>
+                    </SelectItem>
+                    <SelectItem value="false">
+                      <div className="flex items-center space-x-2">
+                        <div className="w-2 h-2 bg-red-500 rounded-full"></div>
+                        <span>Sold Out</span>
+                      </div>
+                    </SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+              
+              {/* Sort By */}
+              <div className="space-y-2">
+                <Label className="text-sm font-medium text-gray-700">Sort By</Label>
+                <Select value={`${sortBy}-${sortOrder}`} onValueChange={(value) => {
+                  const [field, order] = value.split('-');
+                  handleSortChange(field, order);
+                }}>
+                  <SelectTrigger className="w-full">
+                    <SelectValue placeholder="Sort by" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="createdAt-desc">
+                      <div className="flex items-center space-x-2">
+                        <Timer className="w-3 h-3" />
+                        <span>Newest First</span>
+                      </div>
+                    </SelectItem>
+                    <SelectItem value="createdAt-asc">
+                      <div className="flex items-center space-x-2">
+                        <Timer className="w-3 h-3" />
+                        <span>Oldest First</span>
+                      </div>
+                    </SelectItem>
+                    <SelectItem value="pricePerUnit-asc">
+                      <div className="flex items-center space-x-2">
+                        <SortAsc className="w-3 h-3" />
+                        <span>Price: Low to High</span>
+                      </div>
+                    </SelectItem>
+                    <SelectItem value="pricePerUnit-desc">
+                      <div className="flex items-center space-x-2">
+                        <SortDesc className="w-3 h-3" />
+                        <span>Price: High to Low</span>
+                      </div>
+                    </SelectItem>
+                    <SelectItem value="quantity-desc">
+                      <div className="flex items-center space-x-2">
+                        <Package className="w-3 h-3" />
+                        <span>Quantity: High to Low</span>
+                      </div>
+                    </SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+              
+              {/* Per Page */}
+              <div className="space-y-2">
+                <Label className="text-sm font-medium text-gray-700">Per Page</Label>
+                <Select value={listingsPerPage.toString()} onValueChange={handleLimitChange}>
+                  <SelectTrigger className="w-full">
+                    <SelectValue placeholder="Per page" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="6">6 items</SelectItem>
+                    <SelectItem value="12">12 items</SelectItem>
+                    <SelectItem value="24">24 items</SelectItem>
+                    <SelectItem value="48">48 items</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+
+              {/* Results Info */}
+              <div className="space-y-2">
+                <Label className="text-sm font-medium text-gray-700">Results</Label>
+                <div className="h-10 flex items-center text-sm text-gray-600 bg-gray-50 rounded-md px-3">
+                  {isLoading ? (
+                    "Loading..."
+                  ) : (
+                    `${((currentPage - 1) * listingsPerPage) + 1}-${Math.min(currentPage * listingsPerPage, totalListings)} of ${totalListings}`
+                  )}
+                </div>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+
+        {/* Enhanced Listings Grid */}
+        <div className="space-y-6">
+          {isLoading ? (
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
+              {Array(listingsPerPage).fill(0).map((_, index) => (
+                <Card key={index} className="border-0 shadow-lg animate-pulse">
+                  <div className="h-48 bg-gray-200 rounded-t-lg"></div>
+                  <CardContent className="p-6">
+                    <div className="space-y-3">
+                      <div className="h-4 bg-gray-200 rounded w-3/4"></div>
+                      <div className="h-3 bg-gray-200 rounded w-1/2"></div>
+                      <div className="space-y-2">
+                        <div className="h-3 bg-gray-200 rounded w-full"></div>
+                        <div className="h-3 bg-gray-200 rounded w-full"></div>
+                        <div className="h-3 bg-gray-200 rounded w-full"></div>
+                      </div>
+                      <div className="h-10 bg-gray-200 rounded w-full mt-4"></div>
+                    </div>
                   </CardContent>
                 </Card>
-              ))
-            ) : listings.length === 0 ? (
-              <div className="col-span-full text-center py-12">
-                <div className="w-16 h-16 bg-gray-100 rounded-full flex items-center justify-center mx-auto mb-4">
-                  <ArrowRight className="w-8 h-8 text-gray-400" />
+              ))}
+            </div>
+          ) : listings.length === 0 ? (
+            <Card className="border-0 shadow-lg bg-white">
+              <CardContent className="py-16">
+                <div className="text-center">
+                  <div className="w-20 h-20 bg-gray-100 rounded-full flex items-center justify-center mx-auto mb-6">
+                    <Search className="w-10 h-10 text-gray-400" />
+                  </div>
+                  <h3 className="text-2xl font-semibold text-gray-900 mb-2">No Listings Found</h3>
+                  <p className="text-gray-600 max-w-md mx-auto">
+                    {activeFilter === 'true' 
+                      ? "No active listings available at the moment. Check back later for new carbon credit opportunities."
+                      : activeFilter === 'false'
+                      ? "No sold out listings found with the current filters."
+                      : "No listings match your current filter criteria. Try adjusting your filters."
+                    }
+                  </p>
+                  <Button 
+                    className="mt-6"
+                    onClick={() => {
+                      setActiveFilter('all');
+                      setSortBy('createdAt');
+                      setSortOrder('desc');
+                      setCurrentPage(1);
+                      fetchListings(1, listingsPerPage, 'all', 'createdAt', 'desc');
+                    }}
+                  >
+                    <RefreshCw className="w-4 h-4 mr-2" />
+                    Reset Filters
+                  </Button>
                 </div>
-                <h3 className="text-lg font-semibold text-gray-900 mb-2">No Listings Found</h3>
-                <p className="text-gray-600">
-                  {activeFilter === 'true' 
-                    ? "No active listings available at the moment."
-                    : activeFilter === 'false'
-                    ? "No sold out listings found."
-                    : "No listings available at the moment."
-                  }
-                </p>
-              </div>
-            ) : (
-              listings.map((listing) => (
-                <Card key={listing.listingId} className="flex flex-col">
-                  <CardHeader>
-                    <div className="w-full bg-black flex items-center justify-center" style={{ height: "120px" }}>
-                      <img
-                        src={listing.image}
-                        alt={listing.metadata || "NFT"}
-                        className="object-contain h-full w-full"
-                      />
+              </CardContent>
+            </Card>
+          ) : (
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
+              {listings.map((listing) => (
+                <Card 
+                  key={listing.listingId} 
+                  className="border-0 shadow-lg bg-white hover:shadow-xl transition-all duration-300 transform hover:-translate-y-1 group"
+                >
+                  {/* Image Section */}
+                  <div className="relative overflow-hidden rounded-t-lg bg-gradient-to-br from-gray-900 to-gray-700 h-48">
+                    <img
+                      src={listing.image}
+                      alt={listing.metadata || "Carbon Credit NFT"}
+                      className="object-contain h-full w-full group-hover:scale-105 transition-transform duration-300"
+                    />
+                    <div className="absolute top-4 right-4">
+                      <span className={`px-3 py-1 rounded-full text-xs font-semibold ${
+                        listing.active 
+                          ? 'bg-green-500 text-white' 
+                          : 'bg-red-500 text-white'
+                      }`}>
+                        {listing.active ? "Active" : "Sold Out"}
+                      </span>
                     </div>
-                    <Link to={`/ProjectDetails/${listing.tokenContract}`}>
-                      <CardTitle className="text-lg hover:text-blue-600 transition-colors">
-                        {`${listing.tokenContract.slice(0, 6)}...${listing.tokenContract.slice(-4)}`}
-                      </CardTitle>
-                    </Link>
-                  </CardHeader>
-                  <CardContent className="flex-grow">
-                    <div className="space-y-2">
-                      <p><strong>Token ID:</strong> {listing.tokenId}</p>
-                      <p><strong>Certificate ID:</strong> {listing.certificateId}</p>
-                      <p><strong>Project ID:</strong> {listing.projectID}</p>
-                      <p><strong>Quantity (tCO2):</strong> {listing.quantity}</p>
-                      <p><strong>Price per Unit:</strong> {listing.pricePerUnit} RUSD</p>
-                      <p><strong>Total Price:</strong> {(Number(listing.pricePerUnit) * Number(listing.quantity)).toLocaleString()} RUSD</p>
-                      <p><strong>Status:</strong> 
-                        <span className={`ml-1 px-2 py-1 rounded-full text-xs font-medium ${
-                          listing.active 
-                            ? 'bg-green-100 text-green-800' 
-                            : 'bg-red-100 text-red-800'
-                        }`}>
-                          {listing.active ? "Active" : "Sold Out"}
+                    <div className="absolute top-4 left-4">
+                      <div className="bg-black/70 backdrop-blur-sm rounded-lg px-2 py-1">
+                        <span className="text-white text-xs font-medium">#{listing.tokenId}</span>
+                      </div>
+                    </div>
+                  </div>
+
+                  <CardContent className="p-6">
+                    {/* Header */}
+                    <div className="mb-4">
+                      <Link to={`/ProjectDetails/${listing.tokenContract}`}>
+                        <h3 className="font-bold text-lg text-gray-900 hover:text-blue-600 transition-colors group-hover:text-blue-600 mb-2">
+                          {listing.projectID || `${listing.tokenContract.slice(0, 8)}...${listing.tokenContract.slice(-6)}`}
+                        </h3>
+                      </Link>
+                      <p className="text-sm text-gray-600">Certificate ID: {listing.certificateId}</p>
+                    </div>
+
+                    {/* Key Metrics */}
+                    <div className="grid grid-cols-2 gap-4 mb-4">
+                      <div className="bg-green-50 rounded-lg p-3">
+                        <div className="text-lg font-bold text-green-700">{listing.quantity}</div>
+                        <div className="text-xs text-green-600">tCO₂ Available</div>
+                      </div>
+                      <div className="bg-blue-50 rounded-lg p-3">
+                        <div className="text-lg font-bold text-blue-700">{listing.pricePerUnit}</div>
+                        <div className="text-xs text-blue-600">RUSD per tCO₂</div>
+                      </div>
+                    </div>
+
+                    {/* Total Value */}
+                    <div className="bg-gradient-to-r from-purple-50 to-pink-50 rounded-lg p-3 mb-4">
+                      <div className="flex justify-between items-center">
+                        <span className="text-sm font-medium text-gray-700">Total Value</span>
+                        <span className="text-xs font-bold text-gray-900">
+                          {(Number(listing.pricePerUnit) * Number(listing.quantity)).toLocaleString()} RUSD
                         </span>
-                      </p>
+                      </div>
                     </div>
+
+                    {/* Alerts */}
                     {cardStates[listing.listingId]?.error && (
-                      <Alert variant="destructive" className="mt-4">
+                      <Alert variant="destructive" className="mb-4">
                         <AlertCircle className="h-4 w-4" />
                         <AlertDescription>{cardStates[listing.listingId].error}</AlertDescription>
                       </Alert>
                     )}
                     {cardStates[listing.listingId]?.success && (
-                      <Alert className="mt-4 border-green-200 bg-green-50">
+                      <Alert className="mb-4 border-green-200 bg-green-50">
                         <CheckCircle2 className="h-4 w-4 text-green-600" />
                         <AlertDescription className="text-green-800">{cardStates[listing.listingId].success}</AlertDescription>
                       </Alert>
                     )}
+
+                    {/* Action Section */}
                     {listing.active ? (
                       cardStates[listing.listingId]?.showInput ? (
-                        <div className="mt-4 space-y-2">
-                          <Label htmlFor={`quantity-${listing.listingId}`}>Quantity to Purchase</Label>
-                          <Input
-                            id={`quantity-${listing.listingId}`}
-                            type="number"
-                            step="1"
-                            min="1"
-                            max={listing.quantity}
-                            className="appearance-none"
-                            placeholder="Enter quantity"
-                            value={cardStates[listing.listingId].quantity}
-                            onChange={(e) => handleInputChange(listing.listingId, e.target.value)}
-                          />
-                          <p className="text-xs text-gray-500">
-                            Cost: {Number(listing.pricePerUnit) * Number(cardStates[listing.listingId].quantity || 1)} RUSD
-                          </p>
-                          <div className="flex space-x-2">
+                        <div className="space-y-4">
+                          <div className="space-y-2">
+                            <Label htmlFor={`quantity-${listing.listingId}`} className="text-sm font-medium">
+                              Quantity to Purchase
+                            </Label>
+                            <Input
+                              id={`quantity-${listing.listingId}`}
+                              type="number"
+                              step="1"
+                              min="1"
+                              max={listing.quantity}
+                              className="w-full"
+                              placeholder="Enter quantity"
+                              value={cardStates[listing.listingId].quantity}
+                              onChange={(e) => handleInputChange(listing.listingId, e.target.value)}
+                            />
+                            <div className="bg-blue-50 rounded-lg p-3">
+                              <div className="flex justify-between text-sm">
+                                <span className="text-blue-700">Total Cost:</span>
+                                <span className="font-bold text-blue-900">
+                                  {(Number(listing.pricePerUnit) * Number(cardStates[listing.listingId].quantity || 1)).toLocaleString()} RUSD
+                                </span>
+                              </div>
+                            </div>
+                          </div>
+                          <div className="grid grid-cols-2 gap-2">
                             <Button
-                              className="w-full bg-green-600 hover:bg-green-700"
+                              className="bg-green-600 hover:bg-green-700"
                               onClick={() => handlePurchase(listing.listingId)}
                               disabled={cardStates[listing.listingId].isSubmitting}
                             >
                               {cardStates[listing.listingId].isSubmitting ? (
-                                <>
-                                  <Loader2 className="w-4 h-4 animate-spin mr-2" />
-                                  Processing...
-                                </>
+                                <Loader2 className="w-4 h-4 animate-spin" />
                               ) : (
-                                <>
-                                  <ArrowRight className="w-4 h-4 mr-2" />
-                                  Confirm Purchase
-                                </>
+                                <ShoppingCart className="w-4 h-4" />
                               )}
                             </Button>
                             <Button
                               variant="outline"
-                              className="w-full"
                               onClick={() => toggleInput(listing.listingId)}
                               disabled={cardStates[listing.listingId].isSubmitting}
                             >
@@ -699,116 +860,133 @@ export default function TradeForm() {
                           </div>
                         </div>
                       ) : (
-                       <>
-                        <Button
-                          className="mt-4 w-full bg-green-600 hover:bg-green-700 mb-2"
-                          onClick={() => toggleInput(listing.listingId)}
-                          disabled={cardStates[listing.listingId]?.isSubmitting || listing.seller.toLowerCase() === walletAddress.toLowerCase()}
-                        >
-                          {listing.seller.toLowerCase() === walletAddress.toLowerCase() ? "Your Listing" : "Buy Credits"}
-                        </Button>
+                        <div className="space-y-2">
+                          <Button
+                            className="w-full bg-gradient-to-r from-green-600 to-green-700 hover:from-green-700 hover:to-green-800 text-white font-semibold py-3"
+                            onClick={() => toggleInput(listing.listingId)}
+                            disabled={cardStates[listing.listingId]?.isSubmitting || listing.seller.toLowerCase() === walletAddress.toLowerCase()}
+                          >
+                            {listing.seller.toLowerCase() === walletAddress.toLowerCase() ? (
+                              <>
+                                <Star className="w-4 h-4 mr-2" />
+                                Your Listing
+                              </>
+                            ) : (
+                              <>
+                                <ShoppingCart className="w-4 h-4 mr-2" />
+                                Buy Credits
+                              </>
+                            )}
+                          </Button>
 
-                      { listing.seller.toLowerCase() === walletAddress.toLowerCase() &&   <Button
-                          className="mt-4 w-full bg-green-600 hover:bg-green-700"
-                          onClick={() => cancelListingNFTs(listing.listingId, listing._id, )}
-                          disabled={cardStates[listing.listingId]?.isSubmitting}
-                        >
-                          Cancel Listing
-                        </Button>
-                        }
-                        </>
+                          {listing.seller.toLowerCase() === walletAddress.toLowerCase() && (
+                            <Button
+                              variant="outline"
+                              className="w-full border-red-200 text-red-600 hover:bg-red-50"
+                              onClick={() => cancelListingNFTs(listing.listingId, listing._id)}
+                              disabled={cardStates[listing.listingId]?.isSubmitting}
+                            >
+                              <Trash2 className="w-4 h-4 mr-2" />
+                              Cancel Listing
+                            </Button>
+                          )}
+                        </div>
                       )
                     ) : (
                       <Button
-                        className="mt-4 w-full bg-gray-400 cursor-not-allowed"
+                        className="w-full bg-gray-400 cursor-not-allowed"
                         disabled
                       >
+                        <Package className="w-4 h-4 mr-2" />
                         Sold Out
                       </Button>
                     )}
                   </CardContent>
                 </Card>
-              ))
-            )}
-          </div>
-
-          {/* Pagination */}
-          {!isLoading && totalPages > 1 && (
-            <div className="flex flex-col sm:flex-row items-center justify-between gap-4 mt-6 pt-4 border-t border-gray-200">
-              <div className="text-sm text-gray-600">
-                Page {currentPage} of {totalPages} • Total: {totalListings} listings
-              </div>
-              
-              <div className="flex items-center space-x-2">
-                {/* Previous Button */}
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={() => handlePageChange(currentPage - 1)}
-                  disabled={!hasPrevPage}
-                  className="flex items-center space-x-1"
-                >
-                  <ChevronLeft className="w-4 h-4" />
-                  <span>Previous</span>
-                </Button>
-
-                {/* Page Numbers */}
-                <div className="flex items-center space-x-1">
-                  {currentPage > 3 && (
-                    <>
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        onClick={() => handlePageChange(1)}
-                      >
-                        1
-                      </Button>
-                      {currentPage > 4 && <span className="px-2 text-gray-400">...</span>}
-                    </>
-                  )}
-
-                  {getPageNumbers().map((pageNumber) => (
-                    <Button
-                      key={pageNumber}
-                      variant={currentPage === pageNumber ? "default" : "outline"}
-                      size="sm"
-                      onClick={() => handlePageChange(pageNumber)}
-                      className={currentPage === pageNumber ? "bg-green-600 hover:bg-green-700" : ""}
-                    >
-                      {pageNumber}
-                    </Button>
-                  ))}
-
-                  {currentPage < totalPages - 2 && (
-                    <>
-                      {currentPage < totalPages - 3 && <span className="px-2 text-gray-400">...</span>}
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        onClick={() => handlePageChange(totalPages)}
-                      >
-                        {totalPages}
-                      </Button>
-                    </>
-                  )}
-                </div>
-
-                {/* Next Button */}
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={() => handlePageChange(currentPage + 1)}
-                  disabled={!hasNextPage}
-                  className="flex items-center space-x-1"
-                >
-                  <span>Next</span>
-                  <ChevronRight className="w-4 h-4" />
-                </Button>
-              </div>
+              ))}
             </div>
           )}
-        </CardContent>
-      </Card>
+        </div>
+
+        {/* Enhanced Pagination */}
+        {!isLoading && totalPages > 1 && (
+          <Card className="border-0 shadow-lg bg-white">
+            <CardContent className="p-6">
+              <div className="flex flex-col sm:flex-row items-center justify-between gap-4">
+                <div className="text-sm text-gray-600">
+                  Showing <span className="font-medium">{((currentPage - 1) * listingsPerPage) + 1}</span> to{' '}
+                  <span className="font-medium">{Math.min(currentPage * listingsPerPage, totalListings)}</span> of{' '}
+                  <span className="font-medium">{totalListings}</span> listings
+                </div>
+                
+                <div className="flex items-center space-x-2">
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => handlePageChange(currentPage - 1)}
+                    disabled={!hasPrevPage}
+                    className="flex items-center space-x-1"
+                  >
+                    <ChevronLeft className="w-4 h-4" />
+                    <span>Previous</span>
+                  </Button>
+
+                  <div className="flex items-center space-x-1">
+                    {currentPage > 3 && (
+                      <>
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={() => handlePageChange(1)}
+                        >
+                          1
+                        </Button>
+                        {currentPage > 4 && <span className="px-2 text-gray-400">...</span>}
+                      </>
+                    )}
+
+                    {getPageNumbers().map((pageNumber) => (
+                      <Button
+                        key={pageNumber}
+                        variant={currentPage === pageNumber ? "default" : "outline"}
+                        size="sm"
+                        onClick={() => handlePageChange(pageNumber)}
+                        className={currentPage === pageNumber ? "bg-green-600 hover:bg-green-700" : ""}
+                      >
+                        {pageNumber}
+                      </Button>
+                    ))}
+
+                    {currentPage < totalPages - 2 && (
+                      <>
+                        {currentPage < totalPages - 3 && <span className="px-2 text-gray-400">...</span>}
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={() => handlePageChange(totalPages)}
+                        >
+                          {totalPages}
+                        </Button>
+                      </>
+                    )}
+                  </div>
+
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => handlePageChange(currentPage + 1)}
+                    disabled={!hasNextPage}
+                    className="flex items-center space-x-1"
+                  >
+                    <span>Next</span>
+                    <ChevronRight className="w-4 h-4" />
+                  </Button>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+        )}
+      </div>
     </div>
   );
 }

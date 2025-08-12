@@ -364,12 +364,12 @@ const BuyerTab = () => {
                   {project.tokenId === 1 ? <div className="absolute top-3 right-3">
                     <Badge className="bg-green-500 hover:bg-green-600 text-white border-0">
                       <Coins className="w-3 h-3 mr-1" />
-                      Active
+                       {Number(project.balanceMinted).toLocaleString()} tCO₂ Minted
                     </Badge>
                   </div> : <div className="absolute top-3 right-3">
                     <Badge className="bg-red-500 hover:bg-red-600 text-white border-0">
                       <Coins className="w-3 h-3 mr-1" />
-                      Retired
+                      {Number(project.balanceRetired).toLocaleString()} tCO₂ Retired
                     </Badge>
                   </div>}
                 </div>
@@ -398,7 +398,7 @@ const BuyerTab = () => {
 
                   {/* Balance Cards */}
                   <div className="grid grid-cols-2 gap-3 mb-4">
-                    {project.balanceMinted && (
+                    {/* {project.balanceMinted && (
                       <div className="bg-green-50 border border-green-200 rounded-lg p-3">
                         <div className="flex items-center justify-center space-x-1 text-green-700">
                           <Coins className="w-4 h-4" />
@@ -411,9 +411,9 @@ const BuyerTab = () => {
                           <div className="text-xs text-green-600">tCO₂</div>
                         </div>
                       </div>
-                    )}
+                    )} */}
                     
-                    {project.balanceRetired && (
+                    {/* {project.balanceRetired && (
                       <div className="bg-orange-50 border border-orange-200 rounded-lg p-3">
                         <div className="flex items-center justify-center space-x-1 text-orange-700">
                           <Recycle className="w-4 h-4" />
@@ -426,7 +426,7 @@ const BuyerTab = () => {
                           <div className="text-xs text-orange-600">tCO₂</div>
                         </div>
                       </div>
-                    )}
+                    )} */}
                   </div>
 
                   {/* Action Buttons */}
