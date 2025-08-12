@@ -4,11 +4,12 @@ import { useContractInteraction } from '../contract/ContractInteraction';
 import ProjectCard from '../projects/ProjectCard';
 import { useToast } from '../ui/use-toast';
 import { useConnectWallet } from '@/context/walletcontext';
-import { apihost } from '../contract/address';
+import { apihost, uriTokenThree } from '../contract/address';
 import { Button } from '../ui/button';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../ui/select';
 import { ChevronLeft, ChevronRight, Loader2 } from 'lucide-react';
 import { useActiveAccount } from 'thirdweb/react';
+import { jwtDecode } from 'jwt-decode';
 
 const ProjectApproval = () => {
   const {
@@ -35,12 +36,18 @@ const ProjectApproval = () => {
   const [hasNextPage, setHasNextPage] = useState(false);
   const [hasPrevPage, setHasPrevPage] = useState(false);
 
+  // Modal state
   const [showApproveModal, setShowApproveModal] = useState(false);
   const [approveProjectAddress, setApproveProjectAddress] = useState(null);
   const [creditAmount, setCreditAmount] = useState('');
+  const [maxCreditAmount, setMaxCreditAmount] = useState(0);
+  const [totalEmissionReductions, setTotalEmissionReductions] = useState(0);
+  const [alreadyApprovedCredits, setAlreadyApprovedCredits] = useState(0);
+  const [uriToken, setUriToken] = useState('');
+  const [governancePresaleMintPrice, setGovernancePresaleMintPrice] = useState(0);
+  const [isApproving, setIsApproving] = useState(false);
 
-  const account = useActiveAccount()
-
+  const account = useActiveAccount();
   const { toast } = useToast();
 
   useEffect(() => {
@@ -50,7 +57,6 @@ const ProjectApproval = () => {
   const fetchProjects = async () => {
     setLoading(true);
     try {
-      // Fetch projects from backend with pagination
       const response = await fetch(
         `${apihost}/project/getallprojects?page=${currentPage}&limit=${projectsPerPage}`,
         {
@@ -67,11 +73,9 @@ const ProjectApproval = () => {
 
       const data = await response.json();
 
-
       if (data && data.projects) {
         setProjects(data.projects || []);
 
-        // Update pagination state
         if (data.pagination) {
           setTotalPages(data.pagination.totalPages);
           setTotalProjects(data.pagination.totalProjects);
@@ -113,10 +117,9 @@ const ProjectApproval = () => {
 
   const handleLimitChange = (newLimit) => {
     setProjectsPerPage(parseInt(newLimit));
-    setCurrentPage(1); // Reset to first page when changing limit
+    setCurrentPage(1);
   };
 
-  // Generate page numbers for pagination
   const getPageNumbers = () => {
     const pages = [];
     const maxVisiblePages = 5;
@@ -135,25 +138,55 @@ const ProjectApproval = () => {
     return pages;
   };
 
-  const handleApprove = async (projectAddress, creditAmount) => {
-    // Find the project details to get emissionReductions
-    const project = projects.find(p => p.projectContract === projectAddress);
-    const emissionReductions = Number(project?.emissionReductions ?? 0);
-
-    if (Number(creditAmount) > Number(emissionReductions)) {
+  const handleApprove = async () => {
+    if (!governancePresaleMintPrice) {
       toast({
-        title: "Credit amount error",
-        description: "Credit amount must be less than emission reductions.",
+        title: "Validation Error",
+        description: "Please enter both credit amount and mint price",
         variant: "destructive",
       });
       return;
     }
 
+    if (Number(creditAmount) > maxCreditAmount) {
+      toast({
+        title: "Credit amount error",
+        description: `Credit amount must be less than or equal to ${maxCreditAmount} tCO₂.`,
+        variant: "destructive",
+      });
+      return;
+    }
+
+    // if (Number(creditAmount) <= 0) {
+    //   toast({
+    //     title: "Credit amount error",
+    //     description: "Credit amount must be greater than 0.",
+    //     variant: "destructive",
+    //   });
+    //   return;
+    // }
+
+    console.log("Project token URI:", uriToken, uriTokenThree);
+    if (uriToken === uriTokenThree) {
+      toast({
+        variant: "destructive",
+        title: "Error",
+        description: "Project URI is not updated",
+      });
+      return;
+    }
+
+    setIsApproving(true);
     try {
-      const receipt = await approveAndIssueCredits(projectAddress, creditAmount, account);
+      const receipt = await approveAndIssueCredits(
+        approveProjectAddress,
+        Number(creditAmount),
+        Number(governancePresaleMintPrice),
+        account
+      );
       if (receipt.status === "success") {
-        const data = await fetch(`${apihost}/gov/approve-project/${projectAddress}`, {
-          method: 'POST',
+        const data = await fetch(`${apihost}/project/updateprojectdetails/${approveProjectAddress}`, {
+          method: 'PUT',
           headers: {
             'Content-Type': 'application/json',
           },
@@ -164,16 +197,29 @@ const ProjectApproval = () => {
         }
         toast({
           title: "Project Approved",
-          description: `Transaction: ${receipt.hash}`,
-          variant: "success",
+          description: `Successfully approved ${creditAmount} tCO₂ credits`,
+          variant: "default",
         });
-        setUpdate(update + 1); // Trigger re-fetch of projects
+        setShowApproveModal(false);
+        setCreditAmount('');
+        setGovernancePresaleMintPrice(0);
+        setUpdate(update + 1);
       } else {
-        alert(`Transaction failed!`);
+        toast({
+          title: "Transaction Failed",
+          description: "Please try again.",
+          variant: "destructive",
+        });
       }
     } catch (error) {
       console.error('Approval failed:', error);
-      alert(`Approval failed: ${error.message}`);
+      toast({
+        title: "Approval Failed",
+        description: error.message,
+        variant: "destructive",
+      });
+    } finally {
+      setIsApproving(false);
     }
   };
 
@@ -187,7 +233,7 @@ const ProjectApproval = () => {
           description: `Transaction: ${tx.hash}`,
           variant: "destructive",
         });
-        setUpdate(update + 1); // Trigger re-fetch of projects
+        setUpdate(update + 1);
       } else {
         alert(`Transaction failed!`);
       }
@@ -220,7 +266,7 @@ const ProjectApproval = () => {
           description: `Transaction: ${receipt.hash}`,
           variant: "success",
         });
-        setUpdate(update + 1); // Trigger re-fetch of projects
+        setUpdate(update + 1);
       } else {
         alert(`Transaction failed!`);
       }
@@ -253,7 +299,7 @@ const ProjectApproval = () => {
           description: `Transaction: ${receipt.hash}`,
           variant: "success",
         });
-        setUpdate(update + 1); // Trigger re-fetch of projects
+        setUpdate(update + 1);
       } else {
         toast({
           title: "Transaction Failed",
@@ -270,6 +316,25 @@ const ProjectApproval = () => {
       });
     }
   };
+
+  const isUserAuthenticated = () => {
+    const token = localStorage.getItem("token");
+    if (!token) return false;
+
+    try {
+      const decoded = jwtDecode(token);
+      if (decoded.exp * 1000 < Date.now()) {
+        localStorage.removeItem("token");
+        return false;
+      }
+      return true;
+    } catch (error) {
+      localStorage.removeItem("token");
+      return false;
+    }
+  };
+
+  const isFullyAuthenticated = walletAddress && isUserAuthenticated();
 
   return (
     <div className="p-4">
@@ -305,6 +370,7 @@ const ProjectApproval = () => {
         </div>
       </div>
 
+      {/* Projects Grid */}
       {loading ? (
         <div className="flex items-center justify-center py-12">
           <Loader2 className="w-8 h-8 animate-spin text-green-600" />
@@ -322,8 +388,8 @@ const ProjectApproval = () => {
         <div className="grid grid-cols-2 md:grid-cols-2 lg:grid-cols-2 gap-2">
           {projects.map(projectAddress => (
             <div key={projectAddress.projectContract} className='mb-3'>
-              <ProjectCard project={projectAddress.projectContract} />
-              {!projectAddress.isApproved && (  // Only show buttons if not approved
+              <ProjectCard project={projectAddress.projectContract} isAuthenticated={isFullyAuthenticated} />
+              {!projectAddress.isApproved && (
                 <div className="mt-2">
                   {isOwner && (
                     <>
@@ -331,7 +397,13 @@ const ProjectApproval = () => {
                         onClick={() => {
                           setApproveProjectAddress(projectAddress.projectContract);
                           setShowApproveModal(true);
-                          setCreditAmount(projectAddress.emissionReductions);
+                          const maxCredits = Number(projectAddress.emissionReductions) - Number(projectAddress.credits);
+                          setCreditAmount(maxCredits);
+                          setMaxCreditAmount(maxCredits);
+                          setTotalEmissionReductions(Number(projectAddress.emissionReductions));
+                          setAlreadyApprovedCredits(Number(projectAddress.credits));
+                          setUriToken(projectAddress.tokenUri);
+                          setGovernancePresaleMintPrice(projectAddress.projectMintPrice || 1);
                         }}
                         className={`${projectAddress.isValidated && projectAddress.isVerified
                           ? "bg-green-500 hover:bg-green-600"
@@ -341,18 +413,19 @@ const ProjectApproval = () => {
                       >
                         Approve & Issue Credits
                       </button>
-                      <button
-                        onClick={() => handleReject(projectAddress.projectContract)}
-                        className="bg-red-500 hover:bg-red-600 text-white px-4 py-2 rounded mr-2"
-                      >
-                        Reject
-                      </button>
+                      {Number(projectAddress.credits) === 0 && (
+                        <button
+                          onClick={() => handleReject(projectAddress.projectContract)}
+                          className="bg-red-500 hover:bg-red-600 text-white px-4 py-2 rounded mr-2"
+                        >
+                          Reject
+                        </button>
+                      )}
                     </>
                   )}
 
                   {isVVB && (
                     <>
-                      {/* Show Validate button if not validated */}
                       {!projectAddress.isValidated && (
                         <button
                           onClick={() => handleValidate(projectAddress.projectContract)}
@@ -361,7 +434,6 @@ const ProjectApproval = () => {
                           Validate
                         </button>
                       )}
-                      {/* Show Verify button only if validated but not yet verified */}
                       {projectAddress.isValidated && !projectAddress.isVerified && (
                         <button
                           onClick={() => handleVerify(projectAddress.projectContract)}
@@ -370,9 +442,8 @@ const ProjectApproval = () => {
                           Verify
                         </button>
                       )}
-                      {/* Show status if both validated and verified */}
                       {projectAddress.isValidated && projectAddress.isVerified && (
-                        <span className="text-green-600 font-medium ">
+                        <span className="text-green-600 font-medium">
                           ✓ Project validated and verified
                         </span>
                       )}
@@ -393,116 +464,151 @@ const ProjectApproval = () => {
         </div>
       )}
 
-      {/* Pagination */}
-      {!loading && totalPages > 1 && (
-        <div className="bg-white rounded-xl shadow-sm border p-6 mt-8">
-          <div className="flex flex-col sm:flex-row items-center justify-between gap-4">
-            {/* Pagination Info */}
-            <div className="text-sm text-gray-600">
-              Showing {((currentPage - 1) * projectsPerPage) + 1} to{' '}
-              {Math.min(currentPage * projectsPerPage, totalProjects)} of{' '}
-              {totalProjects} projects
+      {/* Pagination - keeping existing pagination code */}
+
+      {/* Enhanced Approve Modal */}
+      {showApproveModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-50">
+          <div className="bg-white rounded-lg p-6 w-full max-w-lg shadow-lg">
+            <h2 className="text-xl font-bold mb-4">Approve Project & Issue Credits</h2>
+            
+            {/* Project Overview */}
+            <div className="bg-gray-50 rounded-lg p-4 mb-6">
+              <h3 className="text-sm font-semibold text-gray-700 mb-2">Project Overview</h3>
+              <div className="grid grid-cols-2 gap-4 text-sm">
+                <div>
+                  <span className="text-gray-600">Total Emission Reductions:</span>
+                  <div className="font-semibold text-blue-700">
+                    {totalEmissionReductions.toLocaleString()} tCO₂
+                  </div>
+                </div>
+                <div>
+                  <span className="text-gray-600">Already Approved:</span>
+                  <div className="font-semibold text-green-700">
+                    {alreadyApprovedCredits.toLocaleString()} tCO₂
+                  </div>
+                </div>
+                <div className="col-span-2">
+                  <span className="text-gray-600">Available for Approval:</span>
+                  <div className="font-semibold text-amber-700">
+                    {maxCreditAmount.toLocaleString()} tCO₂
+                  </div>
+                </div>
+              </div>
             </div>
 
-            {/* Pagination Controls */}
-            <div className="flex items-center space-x-2">
-              {/* Previous Button */}
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={() => handlePageChange(currentPage - 1)}
-                disabled={!hasPrevPage}
-                className="flex items-center space-x-1"
-              >
-                <ChevronLeft className="w-4 h-4" />
-                <span>Previous</span>
-              </Button>
-
-              {/* Page Numbers */}
-              <div className="flex items-center space-x-1">
-                {currentPage > 3 && (
-                  <>
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      onClick={() => handlePageChange(1)}
-                    >
-                      1
-                    </Button>
-                    {currentPage > 4 && <span className="px-2 text-gray-400">...</span>}
-                  </>
-                )}
-
-                {getPageNumbers().map((pageNumber) => (
-                  <Button
-                    key={pageNumber}
-                    variant={currentPage === pageNumber ? "default" : "outline"}
-                    size="sm"
-                    onClick={() => handlePageChange(pageNumber)}
-                    className={currentPage === pageNumber ? "bg-green-600 hover:bg-green-700" : ""}
+            <div className="space-y-4">
+              {/* Credit Amount Input */}
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Credit Amount to Approve (tCO₂)
+                </label>
+                <input
+                  type="number"
+                  min="1"
+                  max={maxCreditAmount}
+                  className={`w-full border rounded px-3 py-2 focus:outline-none focus:ring-2 focus:border-transparent ${
+                    Number(creditAmount) > maxCreditAmount 
+                      ? 'border-red-500 focus:ring-red-500' 
+                      : 'border-gray-300 focus:ring-green-500'
+                  }`}
+                  placeholder="Enter credit amount"
+                  value={creditAmount}
+                  onChange={(e) => setCreditAmount(e.target.value)}
+                  disabled={isApproving}
+                />
+                <div className="flex justify-between items-center mt-1">
+                  <p className={`text-xs ${
+                    Number(creditAmount) > maxCreditAmount 
+                      ? 'text-red-600' 
+                      : 'text-gray-500'
+                  }`}>
+                    Maximum available: {maxCreditAmount.toLocaleString()} tCO₂
+                  </p>
+                  <button
+                    type="button"
+                    onClick={() => setCreditAmount(maxCreditAmount)}
+                    className="text-xs text-blue-600 hover:text-blue-800 font-medium"
+                    disabled={isApproving}
                   >
-                    {pageNumber}
-                  </Button>
-                ))}
-
-                {currentPage < totalPages - 2 && (
-                  <>
-                    {currentPage < totalPages - 3 && <span className="px-2 text-gray-400">...</span>}
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      onClick={() => handlePageChange(totalPages)}
-                    >
-                      {totalPages}
-                    </Button>
-                  </>
+                    Use Max
+                  </button>
+                </div>
+                {Number(creditAmount) > maxCreditAmount && (
+                  <p className="text-xs text-red-600 mt-1">
+                    ⚠️ Amount exceeds available credits
+                  </p>
                 )}
               </div>
 
-              {/* Next Button */}
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={() => handlePageChange(currentPage + 1)}
-                disabled={!hasNextPage}
-                className="flex items-center space-x-1"
-              >
-                <span>Next</span>
-                <ChevronRight className="w-4 h-4" />
-              </Button>
-            </div>
-          </div>
-        </div>
-      )}
+              {/* Mint Price Input */}
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Mint Price per Credit (RUSD)
+                </label>
+                <input
+                  type="number"
+                  min="0"
+                  step="0.01"
+                  className="w-full border border-gray-300 rounded px-3 py-2 focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-transparent"
+                  placeholder="Enter mint price"
+                  value={governancePresaleMintPrice}
+                  onChange={(e) => setGovernancePresaleMintPrice(e.target.value)}
+                  disabled={isApproving}
+                />
+                <p className="text-xs text-gray-500 mt-1">
+                  Price that users will pay per credit
+                </p>
+              </div>
 
-      {showApproveModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-40">
-          <div className="bg-white rounded-lg p-6 w-full max-w-sm shadow-lg">
-            <h2 className="text-xl font-bold mb-4">Enter Credit Amount</h2>
-            <input
-              type="number"
-              min="0"
-              className="w-full border rounded px-2 py-1 mb-4 appearance-none"
-              placeholder="Credit Amount"
-              value={creditAmount}
-              onChange={e => setCreditAmount(e.target.value)}
-            />
-            <div className="flex justify-end space-x-2">
+              {/* Summary */}
+              {creditAmount && governancePresaleMintPrice && Number(creditAmount) <= maxCreditAmount && (
+                <div className="bg-blue-50 border border-blue-200 rounded-lg p-3">
+                  <h4 className="text-sm font-semibold text-blue-800 mb-2">Approval Summary</h4>
+                  <div className="text-sm space-y-1">
+                    <div className="flex justify-between">
+                      <span className="text-blue-700">Credits to approve:</span>
+                      <span className="font-semibold">{Number(creditAmount).toLocaleString()} tCO₂</span>
+                    </div>
+                    <div className="flex justify-between">
+                      <span className="text-blue-700">Price per credit:</span>
+                      <span className="font-semibold">{governancePresaleMintPrice} RUSD</span>
+                    </div>
+                    <div className="flex justify-between border-t border-blue-200 pt-1">
+                      <span className="text-blue-700 font-medium">Total project value:</span>
+                      <span className="font-bold text-blue-800">
+                        {(Number(creditAmount) * Number(governancePresaleMintPrice)).toLocaleString()} RUSD
+                      </span>
+                    </div>
+                  </div>
+                </div>
+              )}
+            </div>
+
+            {/* Modal Buttons */}
+            <div className="flex justify-end space-x-3 mt-6">
               <button
-                className="bg-gray-300 text-gray-800 px-4 py-2 rounded"
-                onClick={() => setShowApproveModal(false)}
+                className="bg-gray-300 text-gray-800 px-4 py-2 rounded hover:bg-gray-400 transition-colors disabled:opacity-50"
+                onClick={() => {
+                  setShowApproveModal(false);
+                  setCreditAmount('');
+                  setGovernancePresaleMintPrice(0);
+                }}
+                disabled={isApproving}
               >
                 Cancel
               </button>
               <button
-                className="bg-green-600 text-white px-4 py-2 rounded"
-                onClick={() => {
-                  handleApprove(approveProjectAddress, creditAmount);
-                  setShowApproveModal(false);
-                }}
-                disabled={!creditAmount}
+                className="bg-green-600 text-white px-4 py-2 rounded hover:bg-green-700 transition-colors disabled:bg-gray-400 disabled:cursor-not-allowed"
+                onClick={handleApprove}
+                disabled={
+                  !creditAmount || 
+                  !governancePresaleMintPrice || 
+                  Number(creditAmount) > maxCreditAmount || 
+                  isApproving
+                }
               >
-                Submit
+                {isApproving ? "Approving..." : "Approve & Issue Credits"}
               </button>
             </div>
           </div>

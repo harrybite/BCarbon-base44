@@ -27,12 +27,18 @@ const ProjectOverview = ({ project }) => {
             </div>
             <div className="text-sm text-gray-600">Minted Supply</div>
           </div>
+          {project.isPresale ? <div className="text-center">
+            <div className="text-sm font-bold text-red-600 disabled">
+              Retire is Disabled for presale projects
+            </div>
+            {/* <div className="text-sm text-gray-600">Total Retired</div> */}
+          </div>: 
           <div className="text-center">
             <div className="text-xl sm:text-2xl font-bold text-red-600">
               {project.totalRetired ? Number(project.totalRetired).toLocaleString() : '0'} tCO<sub>2</sub>
             </div>
             <div className="text-sm text-gray-600">Total Retired</div>
-          </div>
+          </div>}
           <div className="text-center">
             <div className="text-xl sm:text-2xl font-bold text-blue-600">
               {project.projectMintPrice ? `${project.projectMintPrice} RUSD` : '0 RUSD'}
@@ -51,6 +57,7 @@ ProjectOverview.propTypes = {
     totalSupply: PropTypes.oneOfType([PropTypes.string, PropTypes.number]),
     totalRetired: PropTypes.oneOfType([PropTypes.string, PropTypes.number]),
     projectMintPrice: PropTypes.oneOfType([PropTypes.string, PropTypes.number]),
+    isPresale: PropTypes.bool,
   }).isRequired,
 };
 

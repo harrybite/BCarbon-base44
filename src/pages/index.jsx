@@ -48,9 +48,12 @@ function PagesContent() {
     <Layout currentPageName={currentPage}>
       <ScrollToTop />
       <Routes>
-        <Route path="/" element={<Home />} />
-        <Route path="/Home" element={<Home />} />
+        {/* <Route path="/" element={<Home />} />
+        <Route path="/Home" element={<Home />} /> */}
+         <Route path="/" element={<Projects />} />
+         <Route path="/Home" element={<Projects />} />
         <Route path="/Projects" element={<Projects />} />
+       
 
         <Route path="/ProjectDetails/:projectContract" element={<ProjectDetails />} />
         <Route path="/Trade" element={<Trade />} />
@@ -59,7 +62,7 @@ function PagesContent() {
         <Route path="/MyAccount" element={<MyAccount />} />
         {/* login and ragistration */}
         <Route path="/login" element={<Login />} />
-        <Route path="/ragister" element={<Register />} />
+        <Route path="/register" element={<Register />} />
         {/* Optional: redirect unknown paths */}
         <Route path="*" element={<Navigate to="/" replace />} />
       </Routes>

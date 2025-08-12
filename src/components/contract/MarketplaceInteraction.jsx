@@ -176,6 +176,7 @@ export const useMarketplaceInteraction = () => {
     }
   };
 
+
   const getListing = async (listingId) => {
     try {
       const contract = await getProjectMarketPlaceContract();
@@ -268,6 +269,8 @@ export const useMarketplaceInteraction = () => {
     }
   };
 
+
+
   const getRUSDBalance = async (address = null) => {
     try {
       const contract = await getProjectERC20Contract();
@@ -276,6 +279,45 @@ export const useMarketplaceInteraction = () => {
     } catch (error) {
       // throw new Error(`Failed to fetch RUSD balance: ${error.message}`);
       console.error("Failed to fetch RUSD balance:", error);
+    }
+  };
+
+  //listingCounter
+
+  const listingCounter = async () => {
+    try {
+      const contract = await getProjectMarketPlaceContract();
+      const count = await contract.listingCounter();
+      return count.toString();
+    } catch (error) {
+      console.error("Failed to fetch listing counter:", error);
+      // throw new Error(`Failed to fetch listing counter: ${error.message}`);
+    }
+  };
+
+  //totalVolumeTransacted
+
+  const totalVolumeTransacted = async () => {
+    try {
+      const contract = await getProjectMarketPlaceContract();
+      const volume = await contract.totalVolumeTransacted();
+      return formatEther(volume);
+    } catch (error) {
+      console.error("Failed to fetch total volume transacted:", error);
+      // throw new Error(`Failed to fetch total volume transacted: ${error.message}`);
+    }
+  };
+
+  //totalCreditsSold
+
+  const totalCreditsSold = async () => {
+    try {
+      const contract = await getProjectMarketPlaceContract();
+      const totalSold = await contract.totalCreditsSold();
+      return totalSold.toString();
+    } catch (error) {
+      console.error("Failed to fetch total credits sold:", error);
+      // throw new Error(`Failed to fetch total credits sold: ${error.message}`);
     }
   };
 
@@ -295,6 +337,9 @@ export const useMarketplaceInteraction = () => {
     updateListing,
     cancelListing,
     purchase,
+    listingCounter,
+    totalVolumeTransacted,
+    totalCreditsSold,
     withdrawFees,
     getListing,
     getListings,

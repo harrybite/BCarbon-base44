@@ -350,11 +350,12 @@ const getUserApproveProjectBalance = async (address, page = 1, limit = 10) => {
             nfts.push({
               projectContract: project.projectContract,
               balanceRetired: balanceRetired.toString(),
-              metadata: metadata,
-              tokenURI: tokenURI,
               tokenId: project.tokenId,
               certificateId: project.certificateId,
               projectID: project.projectID,
+              metadata: metadata,
+              tokenURI: tokenURI,
+
             });
           } catch (metadataError) {
             console.error('Error fetching metadata:', metadataError);
@@ -362,11 +363,12 @@ const getUserApproveProjectBalance = async (address, page = 1, limit = 10) => {
             nfts.push({
               projectContract: project.projectContract,
               balanceRetired: balanceRetired.toString(),
-              metadata: { name: 'Unknown Project', description: 'Metadata unavailable' },
-              tokenURI: tokenURI,
               tokenId: project.tokenId,
               certificateId: project.certificateId,
               projectID: project.projectID,
+              metadata: { name: 'Unknown Project', description: 'Metadata unavailable' },
+              tokenURI: tokenURI,
+
             });
           }
         }
@@ -763,7 +765,7 @@ const getUserApproveProjectBalance = async (address, page = 1, limit = 10) => {
       }
   }
 
-  const approveAndIssueCredits = async (projectAddress, creditAmount,mintPrice, account) => {
+  const approveAndIssueCredits = async (projectAddress, creditAmount, mintPrice, account) => {
     if (!account) throw new Error("Account is required to approve and issue credits");
     try {
        const mintPriceWei = parseEther(mintPrice.toString());
@@ -1156,6 +1158,7 @@ const getUserApproveProjectBalance = async (address, page = 1, limit = 10) => {
     if (!account) throw new Error("Account is required to set governance decision");
     try {
       const amountInWei = parseEther(amount.toString()); // Convert amount to wei
+      console.log("Setting governance decision for request ID:", requestID, "Decision:", decision, "Amount:", amountInWei);
       const transaction = prepareContractCall({
         contract: thirdWebGovernanceContract,
         method: "executeApprovalForWithdrawal",

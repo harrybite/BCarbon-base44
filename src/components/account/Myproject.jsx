@@ -5,9 +5,10 @@ import CreateProjectTab from '../admin/CreateProjectTab';
 import ProjectCard from '../projects/ProjectCard';
 import { useToast } from '../ui/use-toast';
 import { useConnectWallet } from '@/context/walletcontext';
-import { apihost } from '../contract/address';
+import { apihost, uriTokenOne, uriTokenThree, uriTokenTwo } from '../contract/address';
 import { Loader2, Plus, Settings, Edit, RefreshCw } from 'lucide-react';
 import { useActiveAccount } from 'thirdweb/react';
+import { jwtDecode } from 'jwt-decode';
 
 const MyProjects = () => {
   const { getUserProjects, setTokenURI } = useContractInteraction();
@@ -27,9 +28,7 @@ const MyProjects = () => {
   const [isPresale, setIsPresale] = useState(false);
   const account = useActiveAccount()
 
-  const uriTokenOne = 'https://ipfs.io/ipfs/bafkreihzb5t6ppevzlkkueyoo5b6pcx2n7aph623qz2mxpoitjlxjj2x4a?filename=1.json'
-  const uriTokenTwo = 'https://ipfs.io/ipfs/bafkreiaiekypittzfv322picx2pzvixqirwhcdmtwwhwslsqmtujc7ygle?filename=2.json'
-  const uriTokenThree = 'https://ipfs.io/ipfs/bafkreib3bvfvidmgxgpwsohepcfwud2v4eg243trozlaj75s2iatiklan4?filename=3.json'
+
 
   console.log("Wallet Address:", walletAddress);
   
@@ -161,62 +160,111 @@ const MyProjects = () => {
     }
   };
 
-  const handleUpdateUriSave = async () => {
-    if (!selectedProject || !updateUriForm.newUri.trim()) {
-      toast({
-        title: "Validation Error",
-        description: "Please provide a valid URI",
-        variant: "destructive",
-      });
-      return;
-    }
+const handleUpdateUriSave = async () => {
+  if (!selectedProject || !updateUriForm.newUri.trim()) {
+    toast({
+      title: "Validation Error",
+      description: "Please provide a valid URI",
+      variant: "destructive",
+    });
+    return;
+  }
 
-    setUpdatingUri(true);
-    try {
-      // Get current retired URI from the project or use default
-      const currentRetiredUri = uriTokenTwo;
-      
-      const receipt = await setTokenURI(
-        selectedProject.projectContract,
-        updateUriForm.newUri,
-        currentRetiredUri,
-        account
-      );
-      
-      if (receipt.status === 'success') {
-        // Update project details in database
-        const response = await fetch(`${apihost}/project/updateprojectdetails/${selectedProject.projectContract}`, {
+  setUpdatingUri(true);
+  try {
+    // Get current retired URI from the project or use default
+    const currentRetiredUri = uriTokenTwo;
+    
+    const receipt = await setTokenURI(
+      selectedProject.projectContract,
+      updateUriForm.newUri,
+      currentRetiredUri,
+      account
+    );
+    
+    if (receipt.status === 'success') {
+      // Update project details in database
+      const response = await fetch(`${apihost}/project/updateprojectdetails/${selectedProject.projectContract}`, {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+      }); 
+      const data = await response.json();
+      if (data.success) {
+        console.log('Project updated successfully:', data);
+      }
+
+      // **NEW: Update listing NFT images after URI update**
+      try {
+        const updateListingResponse = await fetch(`${apihost}/user/update-listing-nft-image/${selectedProject.projectContract}`, {
           method: 'PUT',
           headers: {
             'Content-Type': 'application/json',
           },
-        }); 
-        const data = await response.json();
-        if (data.success) {
-          console.log('Project updated successfully:', data);
-        }
+        });
         
+        const updateListingData = await updateListingResponse.json();
+        if (updateListingData.success) {
+          console.log('Listing NFT images updated successfully:', updateListingData);
+          toast({
+            title: "Complete Update",
+            description: `URI and listing images updated successfully!`,
+            variant: "default",
+          });
+        } else {
+          console.error('Failed to update listing images:', updateListingData.message);
+          toast({
+            title: "Partial Update",
+            description: "URI updated but listing images may not be current. Please refresh.",
+            variant: "default",
+          });
+        }
+      } catch (listingError) {
+        console.error('Error updating listing images:', listingError);
         toast({
-          title: "URI Updated Successfully",
-          description: `Non-retired token URI has been updated successfully!`,
+          title: "Partial Update", 
+          description: "URI updated but listing images may not be current.",
           variant: "default",
         });
-        setUpdate(prev => prev + 1);
-        closeUpdateModal();
-      } else {
-        throw new Error('Transaction failed');
       }
+      
+      setUpdate(prev => prev + 1);
+      closeUpdateModal();
+    } else {
+      throw new Error('Transaction failed');
+    }
+  } catch (error) {
+    console.error('Error updating URI:', error);
+    toast({
+      title: "Error",
+      description: `Failed to update token URI: ${error.message}`,
+      variant: "destructive",
+    });
+  } finally {
+    setUpdatingUri(false);
+  }
+};
+
+  const isUserAuthenticated = () => {
+    const token = localStorage.getItem("token");
+    if (!token) return false;
+    
+    try {
+      const decoded = jwtDecode(token);
+      // Check if token is expired
+      if (decoded.exp * 1000 < Date.now()) {
+        localStorage.removeItem("token");
+        return false;
+      }
+      return true;
     } catch (error) {
-      console.error('Error updating URI:', error);
-      toast({
-        title: "Error",
-        description: `Failed to update token URI: ${error.message}`,
-        variant: "destructive",
-      });
-    } finally {
-      setUpdatingUri(false);
+      localStorage.removeItem("token");
+      return false;
     }
   };
+
+  const isFullyAuthenticated = walletAddress && isUserAuthenticated();
 
   if (!walletAddress) {
     return (
@@ -257,9 +305,9 @@ const MyProjects = () => {
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-2 gap-4">
             {projects.map(project => (
               <div key={project.projectContract} className="relative">
-                <ProjectCard project={project.projectContract} />
+                <ProjectCard project={project.projectContract} isAuthenticated={isFullyAuthenticated}/>
                 <div className="mt-3 flex gap-2">
-                  {!project.tokenUri ? (
+                  {!project.tokenUri  ? (
                     <button
                       className="bg-green-500 hover:bg-green-600 text-white px-4 py-2 rounded transition-colors duration-200 flex items-center space-x-2"
                       onClick={() => {
@@ -270,7 +318,7 @@ const MyProjects = () => {
                       <Settings className="w-4 h-4" />
                       <span>Set URI</span>
                     </button>
-                  ) : (
+                  ) : project.isPresale && project.tokenUri !== uriTokenOne ? (
                     <button
                       className="bg-blue-500 hover:bg-blue-600 text-white px-4 py-2 rounded transition-colors duration-200 flex items-center space-x-2"
                       onClick={() => openUpdateModal(project)}
@@ -278,7 +326,7 @@ const MyProjects = () => {
                       <Edit className="w-4 h-4" />
                       <span>Update URI</span>
                     </button>
-                  )}
+                  ) : ''}
                 </div>
               </div>
             ))}
@@ -315,7 +363,7 @@ const MyProjects = () => {
                 <input
                   type="text"
                   name="setUri"
-                  value={uriTokenOne}
+                  value={isPresale ? uriTokenThree : uriTokenOne}
                   onChange={handleUriChange}
                   placeholder="https://example.com/metadata/active.json"
                   className="w-full border border-gray-300 rounded-md px-3 py-2 focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-transparent"

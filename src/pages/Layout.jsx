@@ -24,25 +24,34 @@ import { useConnectWallet } from "@/context/walletcontext";
 import { apihost } from "@/components/contract/address";
 import { useContractInteraction } from "@/components/contract/ContractInteraction";
 
-// Base navigation items (always visible)
-const baseNavigationItems = [
+// Base navigation items (always visible - no authentication required)
+const publicNavigationItems = [
   {
     title: "Home",
-    url: createPageUrl("Home"),
+    url: "https://www.bico2.org", // Add https:// protocol
     icon: Home,
-    description: "Platform overview"
+    description: "Platform overview",
+    public: true,
+    external: true // Add external flag
   },
   {
     title: "Projects",
     url: createPageUrl("Projects"),
     icon: TreePine,
-    description: "Carbon credit projects"
-  },
+    description: "Carbon credit projects",
+    public: true,
+    external: false
+  }
+];
+
+// Authenticated navigation items (require login + wallet)
+const authenticatedNavigationItems = [
   {
     title: "Trade",
     url: createPageUrl("Trade"),
     icon: TrendingUp,
-    description: "Trade carbon credits"
+    description: "Trade carbon credits",
+    public: false
   }
 ];
 
@@ -58,7 +67,7 @@ const myAccountItem = {
   title: "My Account",
   url: createPageUrl("MyAccount"),
   icon: User,
-  description: "Manage your account and BCO₂ assets"
+  description: "Manage your account and BiCO₂ assets"
 };
 
 // Admin/VVB only navigation item
@@ -93,25 +102,26 @@ export default function Layout({ children }) {
       userInfo = null;
     }
   }
+  
+  // Check if user is authenticated (both wallet + login)
+  const isAuthenticated = walletAddress && userInfo;
+  
   // Check if user is admin or VVB
   const isAdminOrVVB = userInfo && (userInfo.role === "gov" || userInfo.role === "vvb");
 
-  // Create navigation items based on user role
+  // Create navigation items based on user authentication and role
   const getNavigationItems = () => {
-    let items = [...baseNavigationItems];
+    let items = [...publicNavigationItems];
     
-    // Add role-specific navigation items
-    if (userInfo) {
+    // Add authenticated-only items if user is authenticated
+    if (isAuthenticated) {
+      items = [...items, ...authenticatedNavigationItems];
+      
+      // Add role-specific navigation items
       if (userInfo.role === "issuer") {
-        // Show "Create Project" for Issuer
         items.push(createProjectItem);
       } else if (userInfo.role === "user") {
-        // Show "My Account" for User
         items.push(myAccountItem);
-      } else if (userInfo.role === "gov" || userInfo.role === "vvb") {
-        // Show both Create Project and My Account for Gov/VVB (as before)
-        // items.push(createProjectItem);
-        // items.push(myAccountItem);
       }
     }
     
@@ -142,10 +152,9 @@ export default function Layout({ children }) {
 
   // Handle account changes - but only after initial load
   useEffect(() => {
-    // Give some time for wallet to initialize on page load
     const initTimer = setTimeout(() => {
       setInitialLoad(false);
-    }, 2000); // Wait 2 seconds before considering account changes
+    }, 2000);
 
     return () => clearTimeout(initTimer);
   }, []);
@@ -153,7 +162,6 @@ export default function Layout({ children }) {
   // Only handle account changes after initial load period
   useEffect(() => {
     if (!initialLoad && account?.address !== walletAddress) {
-      // Only logout if there was a previous wallet address and now it's different
       if (walletAddress && account?.address && account.address !== walletAddress) {
         console.log("Wallet address changed, logging out");
         localStorage.removeItem("token");
@@ -163,22 +171,36 @@ export default function Layout({ children }) {
     }
   }, [account?.address, walletAddress, initialLoad, navigate]);
 
-  // Handler to trigger wallet connect and redirect
-  const handleNavClick = (url) => {
+  // Handler to navigate or trigger authentication
+  const handleNavClick = (url, item) => {
+    // Handle external links
+    if (item.external) {
+      window.open(url, '_blank', 'noopener,noreferrer');
+      return;
+    }
+    
+    // Allow public pages without authentication
+    if (item.public) {
+      navigate(url);
+      return;
+    }
+    
+    // For protected pages, require authentication
     if (!walletAddress) {
       connect(async () => {
-        // instantiate wallet
         const wallet = createWallet("io.metamask");
-        // connect wallet
         await wallet.connect({
           thirdwebclient,
           chain: bscTestnet
         });
-        // return the wallet
         return wallet;
       })
       setPendingUrl(url);
+    } else if (!userInfo) {
+      // Wallet connected but not logged in
+      navigate("/login");
     } else {
+      // Fully authenticated
       navigate(url);
     }
   };
@@ -186,14 +208,18 @@ export default function Layout({ children }) {
   // Listen for wallet connection and redirect if pending
   useEffect(() => {
     if (walletAddress && pendingUrl) {
-      navigate(pendingUrl);
-      setPendingUrl(null);
+      if (userInfo) {
+        navigate(pendingUrl);
+        setPendingUrl(null);
+      } else {
+        navigate("/login");
+        setPendingUrl(null);
+      }
     }
-  }, [walletAddress, pendingUrl, navigate]);
+  }, [walletAddress, pendingUrl, navigate, userInfo]);
 
-  // Poll token validation every 30 seconds (reduced frequency)
+  // Poll token validation every 30 seconds
   useEffect(() => {
-    // Don't start polling immediately, wait for initial load
     if (initialLoad) return;
 
     const interval = setInterval(async () => {
@@ -207,24 +233,20 @@ export default function Layout({ children }) {
           },
         });
         if (res.status === 401) {
-          // Token invalid or expired
           console.log("Token expired, logging out");
           localStorage.removeItem("token");
           navigate("/login");
         }
       } catch (err) {
-        // Only logout on network errors if we're sure the token is invalid
-        // Don't logout on temporary network issues
         console.log("Network error during token validation:", err.message);
       }
-    }, 30000); // Check every 30 seconds instead of 5
+    }, 30000);
 
     return () => clearInterval(interval);
   }, [navigate, initialLoad]);
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-green-50 via-white to-blue-50">
-      {/* Theme Variables */}
       <style>{`
         :root {
           --primary-green: #16a34a;
@@ -240,36 +262,38 @@ export default function Layout({ children }) {
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex justify-between items-center h-16">
             {/* Logo */}
-            <Link to="/" className="flex items-center space-x-3">
-              <div className="w-10 h-10 bg-gradient-to-br from-green-500 to-green-600 rounded-xl flex items-center justify-center shadow-lg">
-                <img
-                  src="https://i.postimg.cc/mkJMjhYT/BCO2-Logo-01.png"
-                  alt="BCO2 Logo"
-                  className="w-8 h-8 object-contain"
-                />
-              </div>
+            <div className="flex items-center space-x-3">
               <div>
                 <h1 className="text-xl font-bold text-gray-900">
-                  BCO<sub className="text-sm">2</sub>
+                  <img src="https://www.bico2.org/_next/image?url=%2Fimg%2Flogo.png&w=96&q=75" className="h-7"/>
                 </h1>
                 <p className="text-xs text-gray-500">Decentralized Carbon Credits</p>
               </div>
-            </Link>
+            </div>
 
             {/* Desktop Nav */}
             <nav className="hidden md:flex items-center space-x-1">
-              {navigationItems.map(({ title, url, icon: Icon }) => (
+              {navigationItems.map((item) => (
                 <button
-                  key={title}
-                  onClick={() => handleNavClick(url)}
-                  className={`flex items-center space-x-2 px-4 py-2 rounded-lg transition-all duration-200 ${location.pathname === url
+                  key={item.title}
+                  onClick={() => handleNavClick(item.url, item)}
+                  className={`flex items-center space-x-2 px-4 py-2 rounded-lg transition-all duration-200 ${
+                    !item.external && location.pathname === item.url
                       ? "bg-green-100 text-green-700 shadow-sm"
                       : "text-gray-600 hover:bg-gray-50 hover:text-gray-900"
-                    }`}
+                  }`}
                   style={{ background: "none", border: "none", cursor: "pointer" }}
                 >
-                  <Icon className="w-4 h-4" />
-                  <span className="font-medium">{title}</span>
+                  <item.icon className="w-4 h-4" />
+                  <span className="font-medium">{item.title}</span>
+                  {item.external && (
+                    <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" />
+                    </svg>
+                  )}
+                  {!item.public && !isAuthenticated && (
+                    <span className="text-xs bg-amber-100 text-amber-700 px-1 rounded">🔒</span>
+                  )}
                 </button>
               ))}
             </nav>
@@ -335,6 +359,7 @@ export default function Layout({ children }) {
                   Login
                 </Button>
               )}
+              
               {/* Mobile Nav */}
               <Sheet open={mobileMenuOpen} onOpenChange={setMobileMenuOpen}>
                 <SheetTrigger asChild>
@@ -344,7 +369,6 @@ export default function Layout({ children }) {
                 </SheetTrigger>
                 <SheetContent side="right" className="w-80">
                   <div className="flex flex-col space-y-4 mt-8">
-                    {/* Mobile Login Button */}
                     {!userInfo && (
                       <Button
                         variant="outline"
@@ -357,24 +381,35 @@ export default function Layout({ children }) {
                         Login
                       </Button>
                     )}
-                    {navigationItems.map(({ title, url, icon: Icon, description }) => (
+                    {navigationItems.map((item) => (
                       <button
-                        key={title}
+                        key={item.title}
                         onClick={() => {
-                          handleNavClick(url);
+                          handleNavClick(item.url, item);
                           setMobileMenuOpen(false);
                         }}
-                        className={`flex items-center justify-between p-4 rounded-lg transition-all duration-200 ${location.pathname === url
+                        className={`flex items-center justify-between p-4 rounded-lg transition-all duration-200 ${
+                          !item.external && location.pathname === item.url
                             ? "bg-green-100 text-green-700"
                             : "text-gray-600 hover:bg-gray-50"
-                          }`}
+                        }`}
                         style={{ background: "none", border: "none", cursor: "pointer" }}
                       >
                         <div className="flex items-center space-x-3">
-                          <Icon className="w-5 h-5" />
+                          <item.icon className="w-5 h-5" />
                           <div>
-                            <span className="font-medium">{title}</span>
-                            <p className="text-xs text-gray-500">{description}</p>
+                            <div className="flex items-center space-x-2">
+                              <span className="font-medium">{item.title}</span>
+                              {item.external && (
+                                <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" />
+                                </svg>
+                              )}
+                            </div>
+                            <p className="text-xs text-gray-500">{item.description}</p>
+                            {!item.public && !isAuthenticated && (
+                              <span className="text-xs bg-amber-100 text-amber-700 px-1 rounded mt-1 inline-block">Login Required</span>
+                            )}
                           </div>
                         </div>
                         <ChevronRight className="w-4 h-4" />
@@ -398,7 +433,7 @@ export default function Layout({ children }) {
             <div className="flex items-center space-x-2">
               <Leaf className="w-5 h-5 text-green-600" />
               <p className="text-gray-600">
-                BCO<sub>2</sub> - Decentralized Carbon Credits Platform
+                BiCO<sub>2</sub> - Decentralized Carbon Credits Platform
               </p>
             </div>
             <div className="flex items-center space-x-4 mt-4 md:mt-0">

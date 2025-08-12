@@ -3,7 +3,7 @@ import { useParams } from "react-router-dom";
 import { Link } from "react-router-dom";
 import { createPageUrl } from "@/utils";
 import { useContractInteraction } from "../../components/contract/ContractInteraction";
-import { apihost, methodology } from "@/components/contract/address";
+import { apihost, methodology, uriTokenThree } from "@/components/contract/address";
 import { useToast } from "@/components/ui/use-toast";
 import { useConnectWallet } from "@/context/walletcontext";
 import { useActiveAccount } from "thirdweb/react";
@@ -140,6 +140,7 @@ export default function ProjectDetails() {
           setWithdrawalRequests(withdrawalData.withdrawalRequests || []);
           data.projectRUSDBalance = withdrawalData.project.projectRUSDBalance || 0; 
           data.isPresale = withdrawalData.project.isPresale// Update project RUSD balance
+          data.presaleAmount = withdrawalData.project.presaleAmount || 0; // Update presale amount
           setProject(data);
         }
       } catch (error) {
@@ -313,6 +314,30 @@ export default function ProjectDetails() {
     }
     setIsMinting(true);
 
+    const allowance = await checkRUSDAllowance(project.projectContract);
+    if (BigInt(allowance) <= BigInt(0)) {
+      try {
+        const approveReceipt = await approveRUSD(project.projectContract, account);
+        if (approveReceipt.status === "reverted") {
+          toast({
+            variant: "destructive",
+            title: "Error",
+            description: `RUSD approval failed`,
+          });
+          setIsMinting(false);
+          return;
+        }
+      } catch (error) {
+        toast({
+          variant: "destructive",
+          title: "Error",
+          description: `RUSD approval failed: ${error.message}`,
+        });
+        setIsMinting(false);
+        return;
+      }
+    }
+
     try {
       const tx = await mintForIssuer(project.projectContract, parseInt(mintAmount), account);
       if (tx.status === "success") {
@@ -414,23 +439,57 @@ export default function ProjectDetails() {
   };
 
   const handleMaxRetire = () => {
-    setRetireAmount(Number(mintedCredits) - Number(retiredCredits));
+    setRetireAmount(mintBalance);
   };
 
   // Approval handlers
   const handleApprove = async () => {
-    if (!creditAmount || parseFloat(creditAmount) <= 0) {
+    if (!governancePresaleMintPrice) {
+      toast({
+        variant: "destructive",
+        title: "Validation Error",
+        description: "Please enter both credit amount and mint price",
+      });
+      return;
+    }
+
+    const maxCreditAmount = Number(project.emissionReductions) - Number(project.credits);
+    if (Number(creditAmount) > maxCreditAmount) {
+      toast({
+        variant: "destructive",
+        title: "Credit amount error",
+        description: `Credit amount must be less than or equal to ${maxCreditAmount} tCO₂.`,
+      });
+      return;
+    }
+
+    // if (Number(creditAmount) <= 0) {
+    //   toast({
+    //     variant: "destructive",
+    //     title: "Credit amount error",
+    //     description: "Credit amount must be greater than 0.",
+    //   });
+    //   return;
+    // }
+
+    console.log("Project token URI:", project.tokenUri, uriTokenThree);
+    if (project.tokenUri === uriTokenThree) {
       toast({
         variant: "destructive",
         title: "Error",
-        description: "Please enter a valid credit amount",
+        description: "Project URI is not updated",
       });
       return;
     }
 
     setIsApproving(true);
     try {
-      const tx = await approveAndIssueCredits(project.projectContract, Number(creditAmount), governancePresaleMintPrice, account);
+      const tx = await approveAndIssueCredits(
+        project.projectContract, 
+        Number(creditAmount), 
+        Number(governancePresaleMintPrice), 
+        account
+      );
       if (tx.status === "success") {
         await fetch(`${apihost}/project/updateprojectdetails/${project.projectContract}`, {
           method: 'PUT',
@@ -438,24 +497,26 @@ export default function ProjectDetails() {
         });
         toast({
           variant: "default",
-          title: "Success",
-          description: "Credits approved and issued.",
+          title: "Project Approved",
+          description: `Successfully approved ${creditAmount} tCO₂ credits`,
         });
         setTimeout(() => loadProject(project.projectContract), 2000);
         setShowApproveModal(false);
         setCreditAmount('');
+        setGovernancePresaleMintPrice(0);
       } else {
         toast({
           variant: "destructive",
-          title: "Error",
-          description: `Operation failed: ${tx.error}`,
+          title: "Transaction Failed",
+          description: "Please try again.",
         });
       }
     } catch (error) {
+      console.error('Approval failed:', error);
       toast({
         variant: "destructive",
-        title: "Error",
-        description: `Failed to approve: ${error.message}`,
+        title: "Approval Failed",
+        description: error.message,
       });
     } finally {
       setIsApproving(false);
@@ -472,11 +533,13 @@ export default function ProjectDetails() {
       return;
     }
 
-    const maxPresaleAmount = Math.floor(Number(project.emissionReductions) / 2);
+
+
+    const maxPresaleAmount = Number(project.emissionReductions);
     if (Number(presaleCreditAmount) > maxPresaleAmount) {
       toast({
         title: "Credit amount error",
-        description: `Presale credit amount cannot exceed ${maxPresaleAmount} tCO₂ (50% of emission reductions).`,
+        description: `Presale credit amount cannot exceed ${maxPresaleAmount} tCO₂`,
         variant: "destructive",
       });
       return;
@@ -592,6 +655,7 @@ export default function ProjectDetails() {
             projectContract: project.projectContract,
             comment: comment,
             user: walletAddress,
+            role: userInfo ? userInfo.role : "Guest",
           }),
         });
         toast({
@@ -675,7 +739,6 @@ export default function ProjectDetails() {
     try {
       // Call the blockchain function
 
-      console.log("Making governance decision:", { requestId, decision, amount, account });
       const tx = await setGovernanceDecision(requestId, amount ? Number(amount) : 0, decision,  account);
       if (tx.status === "success") {
         toast({
@@ -739,7 +802,7 @@ export default function ProjectDetails() {
     );
   }
 
-  const allowedRetire = Number(mintedCredits) - Number(retiredCredits);
+  // const allowedRetire = Number(mintedCredits) - Number(retiredCredits);
 
   return (
     <div className="min-h-screen py-4 px-4 sm:px-6 lg:px-8">
@@ -782,11 +845,16 @@ export default function ProjectDetails() {
           project={project}
           onOpenApproveModal={() => {
             setShowApproveModal(true);
-            setCreditAmount(project.emissionReductions);
+            // Set the maximum available amount by default
+            const maxCredits = Number(project.emissionReductions) - Number(project.credits);
+            setCreditAmount(maxCredits);
+            // Set default mint price if available
+            setGovernancePresaleMintPrice(project.projectMintPrice || 1);
           }}
           onOpenPresaleApproveModal={() => {
             setShowPresaleApproveModal(true);
             setPresaleCreditAmount(Math.floor(project.emissionReductions / 2).toString());
+            setGovernancePresaleMintPrice(project.projectMintPrice || 1);
           }}
           onValidate={handleValidate}
           onVerify={handleVerify}
@@ -816,7 +884,7 @@ export default function ProjectDetails() {
               handleRetire={handleRetire}
               handleMaxRetire={handleMaxRetire}
               isRetiring={isRetiring}
-              allowedRetire={allowedRetire}
+              allowedRetire={mintBalance}
               retiredBalance={retiredBalance}
               retireNftImage={retireNftImage}
               fallbackImage={fallbackImage}
@@ -824,9 +892,10 @@ export default function ProjectDetails() {
           </div>
         )}
 
-        {userInfo && userInfo.role !== "user" && (
+        {userInfo && userInfo.role !== "user" && (project.proposer.toLowerCase() === walletAddress.toLowerCase() || isVVB || isOwner )&& (
           <CommentsSection 
             comments={project.comments}
+            projectContract={project.projectContract}
             comment={comment}
             role={userInfo.role}
             setComment={setComment}
@@ -871,7 +940,7 @@ export default function ProjectDetails() {
             creditAmount={creditAmount}
             setCreditAmount={setCreditAmount}
             isApproving={isApproving}
-            maxCreditAmount={Number(project.emissionReductions)}
+            maxCreditAmount={Number(project.emissionReductions) - Number(project.credits)}
           />
         )}
 

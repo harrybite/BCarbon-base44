@@ -413,7 +413,7 @@ const CreateProjectTab = ({ setUpdate }) => {
                 <Input
                   id="mintPrice"
                   name="mintPrice"
-                  type="number"
+                  type="text"
                   step="0.01"
                   min="0"
                   value={formData.mintPrice}
@@ -498,7 +498,7 @@ const CreateProjectTab = ({ setUpdate }) => {
                 <Input
                   id="defaultValidity"
                   name="defaultValidity"
-                  type="number"
+                  type="text"
                   min="1"
                   max="100"
                   value={formData.defaultValidity}
@@ -583,7 +583,7 @@ const CreateProjectTab = ({ setUpdate }) => {
               <Input
                 id="emissionReductions"
                 name="emissionReductions"
-                type="number"
+                type="text"
                 min="1"
                 max="1000000000"
                 value={formData.emissionReductions}
@@ -665,13 +665,13 @@ const CreateProjectTab = ({ setUpdate }) => {
 
             {/* Map */}
             <div className="relative">
-              <div className={`${isFullScreen ? 'fixed inset-0 z-50 bg-white' : 'w-full h-80 border rounded-lg overflow-hidden'}`}>
+              <div className={`${isFullScreen ? 'fixed inset-0 bg-white' : 'w-full h-80 border rounded-lg overflow-hidden'}`}>
                 <MapContainer
                   center={coordinatesList[0].lat && coordinatesList[0].lng 
                     ? [Number(coordinatesList[0].lat), Number(coordinatesList[0].lng)] 
                     : [51.505, -0.09]}
                   zoom={13}
-                  style={{ height: '100%', width: '100%' }}
+                  style={{ height: '100%', width: '100%', zIndex: 0 }}
                 >
                   <TileLayer
                     url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
