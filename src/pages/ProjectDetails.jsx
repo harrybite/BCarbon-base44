@@ -42,6 +42,7 @@ import { useConnectWallet } from "@/context/walletcontext";
 import { useActiveAccount } from "thirdweb/react";
 import { Textarea } from "@/components/ui/textarea";
 import { jwtDecode } from "jwt-decode";
+import axios from "axios";
 
 export default function ProjectDetails() {
   const { projectContract } = useParams();
@@ -305,16 +306,12 @@ export default function ProjectDetails() {
     try {
       const tx = await approveAndIssueCredits(project.projectContract, Number(creditAmount), account);
       if (tx.status === "success") {
-        const data = await fetch(`${apihost}/project/updateprojectdetails/${project.projectContract}`, {
-          method: 'PUT',
-          headers: {
-            'Content-Type': 'application/json',
-          },
-        });
-        if (data.ok) {
-          const result = await data.json();
-          console.log("Approval result:", result);
-        }
+         const { data: result } = await axios.put(
+        `${apihost}/project/updateprojectdetails/${project.projectContract}`,
+        {}, // empty body
+        { headers: { 'Content-Type': 'application/json' } }
+      );
+      console.log("Approval result:", result);
         toast({
           variant: "default",
           title: "Success",
@@ -331,6 +328,7 @@ export default function ProjectDetails() {
         });
       }
     } catch (error) {
+      console.error("Approval error:", error);
       toast({
         variant: "destructive",
         title: "Error",
@@ -1530,7 +1528,7 @@ export default function ProjectDetails() {
                     {console.log("Comment:", c)}
                     <div className="flex justify-between text-sm text-gray-500 mb-1">
                       <span className="font-medium">
-                        {c.commenter && `${c.commenter.slice(0, 6)}...${c.commenter.slice(-4)}`}
+                        {c.commenter && `${c.commenter.slice(0, 6)}...${c.commenter.slice(-4)}`} <span className="text-gray-400">({userInfo.role})</span>
                       </span>
                     </div>
                     <p className="text-gray-800">{c.comment}</p>

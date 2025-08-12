@@ -2,10 +2,10 @@
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { createPageUrl } from "@/utils";
-import { 
-  TreePine, 
-  TrendingUp, 
-  Shield, 
+import {
+  TreePine,
+  TrendingUp,
+  Shield,
   Globe,
   Leaf,
   Zap,
@@ -14,16 +14,31 @@ import {
 import WalletConnection from "../components/wallet/WalletConnection";
 import { useContractInteraction } from "@/components/contract/ContractInteraction";
 import { useNavigate } from "react-router-dom";
+import { createWallet } from "thirdweb/wallets";
+import { thirdwebclient } from "@/thirwebClient";
+import { bscTestnet } from "thirdweb/chains";
+import { useConnect } from "thirdweb/react";
 
 export default function Home() {
-  const { isConnected, connectWallet, userAddress } = useContractInteraction()
-   const navigate = useNavigate();
+  const { isConnected, userAddress } = useContractInteraction()
+  const navigate = useNavigate();
+  const { connect, } = useConnect();
 
-    // Helper to handle button click
+  // Helper to handle button click
   const handleProtectedNavigate = async (url) => {
     if (!userAddress) {
       try {
-        await connectWallet();
+        connect(async () => {
+          // instantiate wallet
+          const wallet = createWallet("io.metamask");
+          // connect wallet
+          await wallet.connect({
+            client: thirdwebclient,
+            chain: bscTestnet
+          });
+          // return the wallet
+          return wallet;
+        })
       } catch (err) {
         console.error('Connection failed:', err);
         return; // Optionally handle error
@@ -83,14 +98,14 @@ export default function Home() {
               </span>
             </h1>
             <p className="text-xl text-gray-600 max-w-3xl mx-auto mb-8">
-              Trade, mint, and retire carbon credits on the blockchain. 
-              Join the future of carbon offsetting with BCO<sub>2</sub> - 
+              Trade, mint, and retire carbon credits on the blockchain.
+              Join the future of carbon offsetting with BiCO<sub>2</sub> -
               where transparency meets sustainability.
             </p>
           </div>
 
           {/* CTA Buttons */}
-        <div className="flex flex-col sm:flex-row gap-4 justify-center mb-16">
+          <div className="flex flex-col sm:flex-row gap-4 justify-center mb-16">
             <Button
               size="lg"
               className="bg-green-600 hover:bg-green-700 text-white px-8 py-3"
@@ -130,10 +145,10 @@ export default function Home() {
         <div className="max-w-7xl mx-auto">
           <div className="text-center mb-16">
             <h2 className="text-3xl md:text-4xl font-bold text-gray-900 mb-4">
-              Why Choose BCO<sub>2</sub>?
+              Why Choose BiCO<sub>2</sub>?
             </h2>
             <p className="text-xl text-gray-600 max-w-3xl mx-auto">
-              Our platform combines the power of blockchain technology with 
+              Our platform combines the power of blockchain technology with
               real-world environmental impact
             </p>
           </div>
@@ -205,7 +220,7 @@ export default function Home() {
             Ready to Make an Impact?
           </h2>
           <p className="text-xl text-green-100 mb-8">
-            Join thousands of users already trading carbon credits on BCO<sub>2</sub>
+            Join thousands of users already trading carbon credits on BiCO<sub>2</sub>
           </p>
           {!isConnected && (
             <div className="max-w-md mx-auto">

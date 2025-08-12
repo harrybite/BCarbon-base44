@@ -1,7 +1,7 @@
 /* eslint-disable no-unused-vars */
 import { useEffect, useState } from "react";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { User, Briefcase, ShoppingBag, BadgeCheck } from "lucide-react";
+import { User, Briefcase, ShoppingBag, BadgeCheck, FileText } from "lucide-react";
 import IssuerTab from "../components/account/IssuerTab";
 import BuyerTab from "../components/account/BuyerTab";
 import WalletConnection from "../components/wallet/WalletConnection";
@@ -10,13 +10,11 @@ import CertificatesTab from "@/components/account/CertificateTab";
 import MyProjects from "@/components/account/Myproject";
 import { useNavigate } from 'react-router-dom';
 import { useContractInteraction } from "@/components/contract/ContractInteraction";
-import {  useToast } from "@/components/ui/use-toast";
+import { useToast } from "@/components/ui/use-toast";
 import { jwtDecode } from "jwt-decode";
 import MyRequest from "@/components/account/MyRequest";
 
-
 export default function MyAccount() {
-
   const { walletAddress } = useConnectWallet();
   const { toast } = useToast();
   const navigate = useNavigate();
@@ -24,7 +22,7 @@ export default function MyAccount() {
   const [isVVB, setIsVVB] = useState(false);
   const { checkIsOwner, checkAuthorizedVVB } = useContractInteraction();
 
-    useEffect(() => {
+  useEffect(() => {
     // Check wallet connection
     if (!walletAddress || walletAddress === '0x0000000000000000000000000000000000000000') {
       toast({
@@ -61,57 +59,72 @@ export default function MyAccount() {
     checkAccess();
   }, [walletAddress]);
 
-    let userInfo = null;
-    const token = typeof window !== "undefined" ? localStorage.getItem("token") : null;
-    if (token) {
-      try {
-        userInfo = jwtDecode(token);
-      } catch (e) {
-        userInfo = null;
-      }
+  let userInfo = null;
+  const token = typeof window !== "undefined" ? localStorage.getItem("token") : null;
+  if (token) {
+    try {
+      userInfo = jwtDecode(token);
+    } catch (e) {
+      userInfo = null;
     }
+  }
 
-    // Determine which tabs to show based on user role
-    const getTabsToShow = () => {
-      if (!userInfo) return { showCreateProject: false, showMyProject: false };
-      
-      const isIssuer = userInfo.role === "issuer";
-      const isUser = userInfo.role === "user";
-      const isGovOrVVB = userInfo.role === "gov" || userInfo.role === "vvb";
-      
-      return {
-        showCreateProject: isIssuer || isGovOrVVB, // Show for Issuer, Gov, VVB
-        showMyProject: isIssuer || isGovOrVVB, // Show for Issuer, Gov, VVB
-      };
+  // Determine which tabs to show based on user role
+  const getTabsToShow = () => {
+    if (!userInfo) return { 
+      showCreateProject: false, 
+      showMyProject: false, 
+      showCertificates: false, 
+      showWithdrawalRequests: false 
     };
-
-    const { showCreateProject, showMyProject } = getTabsToShow();
-
-    // Determine default tab based on available tabs
-    const getDefaultTab = () => {
-      if (showCreateProject) return "issuer";
-      if (showMyProject) return "myproject";
-      return "buyer"; // Always available
+    
+    const isIssuer = userInfo.role === "issuer";
+    const isUser = userInfo.role === "user";
+    const isGovOrVVB = userInfo.role === "gov" || userInfo.role === "vvb";
+    
+    return {
+      showCreateProject: isIssuer || isGovOrVVB, // Show for Issuer, Gov, VVB
+      showMyProject: isIssuer || isGovOrVVB, // Show for Issuer, Gov, VVB
+      showCertificates: isUser, // Show certificates tab only for users
+      showWithdrawalRequests: isIssuer, // Show withdrawal requests only for issuers
     };
+  };
 
-    // Calculate grid columns based on visible tabs with responsive design
-    const getGridCols = () => {
-      let count = 2; // Always show buyer and certificate tabs
-      if (showCreateProject) count++;
-      if (showMyProject) count++;
-      
-      // Use responsive grid classes that work better across different screen sizes
-      switch (count) {
-        case 2:
-          return "grid-cols-1 sm:grid-cols-2";
-        case 3:
-          return "grid-cols-1 sm:grid-cols-2 lg:grid-cols-3";
-        case 4:
-          return "grid-cols-1 sm:grid-cols-2 lg:grid-cols-4";
-        default:
-          return "grid-cols-1 sm:grid-cols-2";
-      }
-    };
+  const { showCreateProject, showMyProject, showCertificates, showWithdrawalRequests } = getTabsToShow();
+
+  // Determine default tab based on available tabs
+  const getDefaultTab = () => {
+    if (showCreateProject) return "issuer";
+    if (showMyProject) return "myproject";
+    if (showWithdrawalRequests) return "requests";
+    if (showCertificates) return "certificate";
+    return "buyer"; // Always available
+  };
+
+  // Calculate grid columns based on visible tabs with responsive design
+  const getGridCols = () => {
+    let count = 1; // Always show buyer tab
+    if (showCreateProject) count++;
+    if (showMyProject) count++;
+    if (showCertificates) count++;
+    if (showWithdrawalRequests) count++;
+    
+    // Use responsive grid classes that work better across different screen sizes
+    switch (count) {
+      case 1:
+        return "grid-cols-1";
+      case 2:
+        return "grid-cols-1 sm:grid-cols-2";
+      case 3:
+        return "grid-cols-1 sm:grid-cols-2 lg:grid-cols-3";
+      case 4:
+        return "grid-cols-1 sm:grid-cols-2 lg:grid-cols-4";
+      case 5:
+        return "grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5";
+      default:
+        return "grid-cols-1 sm:grid-cols-2";
+    }
+  };
 
   if (!walletAddress) {
     return (
@@ -159,17 +172,19 @@ export default function MyAccount() {
               <span>My tCO<sub>2</sub> Holdings</span>
             </TabsTrigger>
 
-            {/* Uncomment if you want to enable Certificates tab */}
-
-            <TabsTrigger value="requests" className="flex items-center space-x-2">
-              <ShoppingBag className="w-4 h-4" />
-              <span>My Withdrawl Requests</span>
-            </TabsTrigger>
+            {showWithdrawalRequests && (
+              <TabsTrigger value="requests" className="flex items-center space-x-2">
+                <FileText className="w-4 h-4" />
+                <span>My Withdrawal Requests</span>
+              </TabsTrigger>
+            )}
             
-            {/* <TabsTrigger value="certificate" className="flex items-center space-x-2">
-              <BadgeCheck className="w-4 h-4" />
-              <span> Certificates</span>
-            </TabsTrigger> */}
+            {showCertificates && (
+              <TabsTrigger value="certificate" className="flex items-center space-x-2">
+                <BadgeCheck className="w-4 h-4" />
+                <span>Certificates</span>
+              </TabsTrigger>
+            )}
           </TabsList>
 
           {showCreateProject && (
@@ -180,7 +195,7 @@ export default function MyAccount() {
 
           {showMyProject && (
             <TabsContent value="myproject">
-              <MyProjects/>
+              <MyProjects />
             </TabsContent>
           )}
 
@@ -188,13 +203,17 @@ export default function MyAccount() {
             <BuyerTab walletAddress={walletAddress} />
           </TabsContent>
           
-          {/* <TabsContent value="certificate">
-            <CertificatesTab  />
-          </TabsContent> */}
+          {showCertificates && (
+            <TabsContent value="certificate">
+              <CertificatesTab />
+            </TabsContent>
+          )}
 
+          {showWithdrawalRequests && (
             <TabsContent value="requests">
-            <MyRequest/>
-          </TabsContent>
+              <MyRequest />
+            </TabsContent>
+          )}
         </Tabs>
       </div>
     </div>
