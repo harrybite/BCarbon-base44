@@ -12,7 +12,8 @@ import {
   Leaf,
   ChevronRight,
   Menu,
-  User
+  User,
+  UserCircle
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
@@ -28,11 +29,11 @@ import { useContractInteraction } from "@/components/contract/ContractInteractio
 const publicNavigationItems = [
   {
     title: "Home",
-    url: "https://www.bico2.org", // Add https:// protocol
+    url: "https://www.bico2.org",
     icon: Home,
     description: "Platform overview",
     public: true,
-    external: true // Add external flag
+    external: true
   },
   {
     title: "Projects",
@@ -55,21 +56,6 @@ const authenticatedNavigationItems = [
   }
 ];
 
-// Role-specific navigation items
-const createProjectItem = {
-  title: "Create Project",
-  url: createPageUrl("MyAccount"),
-  icon: User,
-  description: "Create and manage your carbon credit projects"
-};
-
-const myAccountItem = {
-  title: "My Account",
-  url: createPageUrl("MyAccount"),
-  icon: User,
-  description: "Manage your account and BiCO₂ assets"
-};
-
 // Admin/VVB only navigation item
 const adminNavigationItem = {
   title: "Administration",
@@ -84,7 +70,9 @@ export default function Layout({ children }) {
   const navigate = useNavigate();
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [userMenuOpen, setUserMenuOpen] = useState(false);
+  const [profileMenuOpen, setProfileMenuOpen] = useState(false);
   const userMenuRef = useRef(null);
+  const profileMenuRef = useRef(null);
   const { walletAddress } = useConnectWallet();
   const [pendingUrl, setPendingUrl] = useState(null);
   const [initialLoad, setInitialLoad] = useState(true);
@@ -109,20 +97,13 @@ export default function Layout({ children }) {
   // Check if user is admin or VVB
   const isAdminOrVVB = userInfo && (userInfo.role === "gov" || userInfo.role === "vvb");
 
-  // Create navigation items based on user authentication and role
+  // Create navigation items based on user authentication and role (removed My Account from here)
   const getNavigationItems = () => {
     let items = [...publicNavigationItems];
     
     // Add authenticated-only items if user is authenticated
     if (isAuthenticated) {
       items = [...items, ...authenticatedNavigationItems];
-      
-      // Add role-specific navigation items
-      if (userInfo.role === "issuer") {
-        items.push(createProjectItem);
-      } else if (userInfo.role === "user") {
-        items.push(myAccountItem);
-      }
     }
     
     // Add admin item for admin/VVB roles
@@ -135,20 +116,23 @@ export default function Layout({ children }) {
 
   const navigationItems = getNavigationItems();
 
-  // Close dropdown if clicked outside
+  // Close dropdowns if clicked outside
   useEffect(() => {
     function handleClickOutside(event) {
       if (userMenuRef.current && !userMenuRef.current.contains(event.target)) {
         setUserMenuOpen(false);
       }
+      if (profileMenuRef.current && !profileMenuRef.current.contains(event.target)) {
+        setProfileMenuOpen(false);
+      }
     }
-    if (userMenuOpen) {
+    if (userMenuOpen || profileMenuOpen) {
       document.addEventListener("mousedown", handleClickOutside);
     } else {
       document.removeEventListener("mousedown", handleClickOutside);
     }
     return () => document.removeEventListener("mousedown", handleClickOutside);
-  }, [userMenuOpen]);
+  }, [userMenuOpen, profileMenuOpen]);
 
   // Handle account changes - but only after initial load
   useEffect(() => {
@@ -166,6 +150,7 @@ export default function Layout({ children }) {
         console.log("Wallet address changed, logging out");
         localStorage.removeItem("token");
         setUserMenuOpen(false);
+        setProfileMenuOpen(false);
         navigate("/login");
       }
     }
@@ -298,8 +283,9 @@ export default function Layout({ children }) {
               ))}
             </nav>
 
-            {/* Wallet & User Dropdown */}
-            <div className="flex items-center space-x-4 relative">
+            {/* Wallet & Profile Section */}
+            <div className="flex items-center space-x-3">
+              {/* Wallet Connect Button */}
               <ConnectButton
                 client={thirdwebclient}
                 wallets={[
@@ -308,49 +294,103 @@ export default function Layout({ children }) {
                 chain={bscTestnet}
                 data-testid="tw-connect-btn"
               />
-              {userInfo ? (
-                <div
-                  className="relative"
-                  ref={userMenuRef}
-                >
+
+              {/* Profile Icon (only show when authenticated) */}
+              {isAuthenticated && (
+                <div className="relative" ref={profileMenuRef}>
                   <button
-                    className="flex items-center px-4 py-2 rounded-lg bg-green-100 text-green-700 font-medium transition-all duration-200 focus:outline-none hover:bg-green-200"
-                    style={{ minWidth: 90 }}
-                    onClick={() => setUserMenuOpen((v) => !v)}
-                    aria-haspopup="true"
-                    aria-expanded={userMenuOpen}
+                    onClick={() => setProfileMenuOpen(!profileMenuOpen)}
+                    className="w-10 h-10 bg-gradient-to-br from-blue-500 to-purple-600 rounded-full flex items-center justify-center text-white hover:from-blue-600 hover:to-purple-700 transition-all duration-200 shadow-lg hover:shadow-xl transform hover:scale-105"
+                    aria-label="My Account"
                   >
-                    <span className="mr-2">
-                      {userInfo.role === "user" && "User"}
-                      {userInfo.role === "issuer" && "Issuer"}
-                      {userInfo.role === "vvb" && "VVB"}
-                      {userInfo.role === "gov" && "Gov"}
-                    </span>
-                    <svg className={`w-4 h-4 transition-transform duration-200 ${userMenuOpen ? "rotate-180" : ""}`} fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" d="M19 9l-7 7-7-7" />
-                    </svg>
+                    <UserCircle className="w-6 h-6" />
                   </button>
+
+                  {/* Profile Dropdown */}
                   <div
-                    className={`transition-all duration-200 ease-in-out ${userMenuOpen ? "opacity-100 scale-100 pointer-events-auto" : "opacity-0 scale-95 pointer-events-none"} absolute left-1/2 -translate-x-1/2 mt-2 w-64 bg-white border border-gray-200 rounded shadow-lg z-50`}
-                    style={{ minWidth: 220 }}
+                    className={`absolute right-0 mt-2 w-64 bg-white border border-gray-200 rounded-xl shadow-xl z-50 transition-all duration-200 ${
+                      profileMenuOpen 
+                        ? "opacity-100 scale-100 pointer-events-auto" 
+                        : "opacity-0 scale-95 pointer-events-none"
+                    }`}
                   >
-                    <div className="px-4 py-3 text-gray-700 text-sm border-b flex items-center gap-2">
-                      <User className="w-4 h-4 text-green-600" />
-                      <span className="truncate">{userInfo.email || userInfo.walletAddress}</span>
+                    {/* User Info Header */}
+                    <div className="px-4 py-3 border-b border-gray-100 bg-gradient-to-r from-blue-50 to-purple-50 rounded-t-xl">
+                      <div className="flex items-center space-x-3">
+                        <div className="w-10 h-10 bg-gradient-to-br from-blue-500 to-purple-600 rounded-full flex items-center justify-center text-white">
+                          <User className="w-5 h-5" />
+                        </div>
+                        <div className="flex-1 min-w-0">
+                          <p className="text-sm font-medium text-gray-900 truncate">
+                            {userInfo.email || "User"}
+                          </p>
+                          <p className="text-xs text-gray-500 capitalize">
+                            {userInfo.role} Account
+                          </p>
+                          <p className="text-xs text-gray-400 font-mono truncate">
+                            {walletAddress && `${walletAddress.slice(0, 6)}...${walletAddress.slice(-4)}`}
+                          </p>
+                        </div>
+                      </div>
                     </div>
-                    <button
-                      className="w-full text-left px-4 py-2 text-red-600 hover:bg-gray-50 text-sm transition-colors"
-                      onClick={() => {
-                        localStorage.removeItem("token");
-                        setUserMenuOpen(false);
-                        navigate("/login");
-                      }}
-                    >
-                      Logout
-                    </button>
+
+                    {/* Menu Items */}
+                    <div className="py-2">
+                      <button
+                        onClick={() => {
+                          navigate("/MyAccount");
+                          setProfileMenuOpen(false);
+                        }}
+                        className="w-full flex items-center px-4 py-3 text-sm text-gray-700 hover:bg-gray-50 transition-colors"
+                      >
+                        <User className="w-4 h-4 mr-3 text-blue-500" />
+                        <div className="text-left">
+                          <div className="font-medium">My Account</div>
+                          <div className="text-xs text-gray-500">Manage projects & credits</div>
+                        </div>
+                      </button>
+
+                      {isAdminOrVVB && (
+                        <button
+                          onClick={() => {
+                            navigate("/Administration");
+                            setProfileMenuOpen(false);
+                          }}
+                          className="w-full flex items-center px-4 py-3 text-sm text-gray-700 hover:bg-gray-50 transition-colors"
+                        >
+                          <Settings className="w-4 h-4 mr-3 text-purple-500" />
+                          <div className="text-left">
+                            <div className="font-medium">Administration</div>
+                            <div className="text-xs text-gray-500">Admin controls</div>
+                          </div>
+                        </button>
+                      )}
+
+                      <div className="border-t border-gray-100 my-1"></div>
+
+                      <button
+                        onClick={() => {
+                          localStorage.removeItem("token");
+                          setProfileMenuOpen(false);
+                          navigate("/login");
+                        }}
+                        className="w-full flex items-center px-4 py-3 text-sm text-red-600 hover:bg-red-50 transition-colors"
+                      >
+                        <svg className="w-4 h-4 mr-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" />
+                        </svg>
+                        <div className="text-left">
+                          <div className="font-medium">Logout</div>
+                          <div className="text-xs text-red-400">Sign out of account</div>
+                        </div>
+                      </button>
+                    </div>
                   </div>
                 </div>
-              ) : (
+              )}
+
+              {/* Login Button (only show when not authenticated) */}
+              {!userInfo && (
                 <Button
                   variant="outline"
                   className="hidden md:inline-flex"
@@ -369,6 +409,25 @@ export default function Layout({ children }) {
                 </SheetTrigger>
                 <SheetContent side="right" className="w-80">
                   <div className="flex flex-col space-y-4 mt-8">
+                    {/* User Info in Mobile Menu */}
+                    {userInfo && (
+                      <div className="bg-gradient-to-r from-blue-50 to-purple-50 rounded-xl p-4 mb-4">
+                        <div className="flex items-center space-x-3">
+                          <div className="w-12 h-12 bg-gradient-to-br from-blue-500 to-purple-600 rounded-full flex items-center justify-center text-white">
+                            <User className="w-6 h-6" />
+                          </div>
+                          <div className="flex-1 min-w-0">
+                            <p className="text-sm font-medium text-gray-900 truncate">
+                              {userInfo.email || "User"}
+                            </p>
+                            <p className="text-xs text-gray-500 capitalize">
+                              {userInfo.role} Account
+                            </p>
+                          </div>
+                        </div>
+                      </div>
+                    )}
+
                     {!userInfo && (
                       <Button
                         variant="outline"
@@ -381,6 +440,31 @@ export default function Layout({ children }) {
                         Login
                       </Button>
                     )}
+
+                    {/* My Account Link in Mobile Menu */}
+                    {userInfo && (
+                      <button
+                        onClick={() => {
+                          navigate("/MyAccount");
+                          setMobileMenuOpen(false);
+                        }}
+                        className="flex items-center justify-between p-4 rounded-lg transition-all duration-200 bg-blue-50 text-blue-700"
+                        style={{ background: "none", border: "none", cursor: "pointer" }}
+                      >
+                        <div className="flex items-center space-x-3">
+                          <User className="w-5 h-5" />
+                          <div>
+                            <div className="flex items-center space-x-2">
+                              <span className="font-medium">My Account</span>
+                            </div>
+                            <p className="text-xs text-blue-600">Manage your account and BiCO₂ assets</p>
+                          </div>
+                        </div>
+                        <ChevronRight className="w-4 h-4" />
+                      </button>
+                    )}
+
+                    {/* Navigation Items */}
                     {navigationItems.map((item) => (
                       <button
                         key={item.title}
@@ -415,6 +499,27 @@ export default function Layout({ children }) {
                         <ChevronRight className="w-4 h-4" />
                       </button>
                     ))}
+
+                    {/* Logout in Mobile Menu */}
+                    {userInfo && (
+                      <button
+                        onClick={() => {
+                          localStorage.removeItem("token");
+                          setMobileMenuOpen(false);
+                          navigate("/login");
+                        }}
+                        className="flex items-center justify-between p-4 rounded-lg transition-all duration-200 text-red-600 hover:bg-red-50"
+                        style={{ background: "none", border: "none", cursor: "pointer" }}
+                      >
+                        <div className="flex items-center space-x-3">
+                          <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" />
+                          </svg>
+                          <span className="font-medium">Logout</span>
+                        </div>
+                        <ChevronRight className="w-4 h-4" />
+                      </button>
+                    )}
                   </div>
                 </SheetContent>
               </Sheet>
