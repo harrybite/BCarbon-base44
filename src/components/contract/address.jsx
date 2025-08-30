@@ -9,7 +9,7 @@ export const BCO2Factory = "0xe47Ff9BD6B36b33144FA6473E2321b5450D5e0d5"
 
 //http://localhost:4090
 //https://bico2-backend-api.aigb.io
-export const apihost = "https://bico2-backend-api.aigb.io"
+export const apihost = "http://localhost:4090"
 
 
 export  const uriTokenOne = 'https://ipfs.io/ipfs/bafkreihzb5t6ppevzlkkueyoo5b6pcx2n7aph623qz2mxpoitjlxjj2x4a?filename=1.json'

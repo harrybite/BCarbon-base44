@@ -10,6 +10,8 @@ import Administration from "./Administration";
 import MyAccount from "./MyAccount";
 import ValidateCertificate from "./ValidateCertificate";
 import Login from './Login.jsx';
+import ForgotPassword from './forgotpassword';
+
 import Register from './Ragister.jsx';
 
 // Page mapping
@@ -63,6 +65,7 @@ function PagesContent() {
         {/* login and ragistration */}
         <Route path="/login" element={<Login />} />
         <Route path="/register" element={<Register />} />
+        <Route path="/forgot-password" element={<ForgotPassword />} />
         {/* Optional: redirect unknown paths */}
         <Route path="*" element={<Navigate to="/" replace />} />
       </Routes>

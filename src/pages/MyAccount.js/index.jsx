@@ -9,12 +9,13 @@ import { jwtDecode } from "jwt-decode";
 import WalletConnection from "../components/wallet/WalletConnection";
 import SideMenuAccount from "./sidemanu";
 
-// Import all the tab components
+
 import IssuerTab from "../components/account/IssuerTab";
 import BuyerTab from "../components/account/BuyerTab";
 import CertificatesTab from "@/components/account/CertificateTab";
 import MyProjects from "@/components/account/Myproject";
 import MyRequest from "@/components/account/MyRequest";
+import { useUserInfo } from "@/context/userInfo";
 
 // Import UI components
 import { Card, CardContent } from "@/components/ui/card";
@@ -38,7 +39,7 @@ import {
   Calendar,
   Shield
 } from "lucide-react";
-import { useUserInfo } from "@/context/userInfo";
+
 
 export default function MyAccount() {
   const { walletAddress } = useConnectWallet();
@@ -49,8 +50,6 @@ export default function MyAccount() {
   const [isVVB, setIsVVB] = useState(false);
   const { checkIsOwner, checkAuthorizedVVB } = useContractInteraction();
   const { userInfo: userInformation } = useUserInfo();
-
-  console.log("User Info from Context:", userInformation);
 
   useEffect(() => {
     // Check wallet connection
