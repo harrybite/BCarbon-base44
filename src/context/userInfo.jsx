@@ -53,6 +53,7 @@ export const UserInfoProvider = ({ children }) => {
   const contextValue = {
     userInfo,
     setUserInfo,
+    isAuthenticated: userInfo && userInfo.userId === "" ? false : true,
     reloadUserInfo,
     logout,
   };

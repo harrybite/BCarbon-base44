@@ -7,7 +7,7 @@ import Projects from "./Projects";
 import ProjectDetails from "./ProjectDetails/ProjectDetails.jsx";
 import Trade from "./Trade";
 import Administration from "./Administration";
-import MyAccount from "./MyAccount";
+import MyAccount from "../pages/MyAccount/index.jsx";
 import ValidateCertificate from "./ValidateCertificate";
 import Login from './Login.jsx';
 import ForgotPassword from './forgotpassword';

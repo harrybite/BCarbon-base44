@@ -31,25 +31,14 @@ import {
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { jwtDecode } from "jwt-decode";
+import { useUserInfo } from "@/context/userInfo";
 
-const SideMenuAccount = ({ children }) => {
-  const [activeSection, setActiveSection] = useState('overview');
-
-  // Get user info from token
-  let userInfo = null;
-  const token = typeof window !== "undefined" ? localStorage.getItem("token") : null;
-  if (token) {
-    try {
-      userInfo = jwtDecode(token);
-    } catch (e) {
-      userInfo = null;
-    }
-  }
+const SideMenuAccount = ({ children, activeSection, setActiveSection }) => {
+  const { userInfo } = useUserInfo();
 
   // Get role-specific menu items
   const getMenuItems = () => {
-    if (!userInfo) return [];
+    if (!userInfo?.roles) return [];
 
     const baseItems = [
       {
@@ -57,14 +46,14 @@ const SideMenuAccount = ({ children }) => {
         label: 'Account Overview',
         icon: User,
         description: 'Your account summary',
-        roles: ['user', 'issuer', 'gov', 'vvb']
+        roles: ['user', 'issuer', 'gov', 'validation', 'verification']
       },
       {
         id: 'holdings',
         label: 'My tCO₂ Holdings',
         icon: ShoppingBag,
         description: 'Carbon credits you own',
-        roles: ['user', 'issuer', 'gov', 'vvb']
+        roles: ['user', 'issuer', 'gov', 'validation', 'verification']
       }
     ];
 
@@ -115,27 +104,27 @@ const SideMenuAccount = ({ children }) => {
         roles: ['issuer', 'gov']
       },
 
-      // VVB specific
+      // Validation/Verification specific
       {
         id: 'validation-queue',
         label: 'Validation Queue',
         icon: CheckCircle2,
         description: 'Projects pending validation',
-        roles: ['vvb', 'gov']
+        roles: ['validation', 'gov']
       },
       {
         id: 'verification-history',
         label: 'Verification History',
         icon: Clock,
-        description: 'Past validation activities',
-        roles: ['vvb', 'gov']
+        description: 'Past verification activities',
+        roles: ['verification', 'gov']
       },
       {
         id: 'vvb-analytics',
         label: 'VVB Analytics',
         icon: Target,
-        description: 'Validation statistics',
-        roles: ['vvb', 'gov']
+        description: 'Validation/Verification statistics',
+        roles: ['validation', 'verification', 'gov']
       },
 
       // Gov specific
@@ -167,7 +156,7 @@ const SideMenuAccount = ({ children }) => {
         label: 'Notifications',
         icon: Bell,
         description: 'Alerts and updates',
-        roles: ['user', 'issuer', 'gov', 'vvb']
+        roles: ['user', 'issuer', 'gov', 'validation', 'verification']
       },
       {
         id: 'payment-methods',
@@ -179,13 +168,13 @@ const SideMenuAccount = ({ children }) => {
     ];
 
     return [...baseItems, ...roleSpecificItems].filter(item => 
-      item.roles.includes(userInfo.role)
+      item.roles.some(role => userInfo.roles.includes(role))
     );
   };
 
   // Get role-specific styling
   const getRoleInfo = () => {
-    if (!userInfo) return { 
+    if (!userInfo?.roles || userInfo.roles.length === 0) return { 
       color: 'gray', 
       badge: 'User', 
       description: 'General User',
@@ -193,7 +182,9 @@ const SideMenuAccount = ({ children }) => {
       bgGradient: 'from-gray-50 to-gray-100'
     };
     
-    switch (userInfo.role) {
+    const primaryRole = userInfo.roles[0];
+    
+    switch (primaryRole) {
       case 'issuer':
         return { 
           color: 'blue', 
@@ -218,13 +209,21 @@ const SideMenuAccount = ({ children }) => {
           gradient: 'from-purple-500 to-purple-600',
           bgGradient: 'from-purple-50 to-purple-100'
         };
-      case 'vvb':
+      case 'validation':
         return { 
           color: 'orange', 
-          badge: 'VVB Authority', 
-          description: 'Validation and verification body',
+          badge: 'Validation Body', 
+          description: 'Validate carbon credit projects',
           gradient: 'from-orange-500 to-orange-600',
           bgGradient: 'from-orange-50 to-orange-100'
+        };
+      case 'verification':
+        return { 
+          color: 'teal', 
+          badge: 'Verification Body', 
+          description: 'Verify carbon credit project implementation',
+          gradient: 'from-teal-500 to-teal-600',
+          bgGradient: 'from-teal-50 to-teal-100'
         };
       default:
         return { 
@@ -256,10 +255,13 @@ const SideMenuAccount = ({ children }) => {
               <h2 className="text-xl font-bold text-gray-900 truncate">
                 {userInfo?.name || userInfo?.email || 'User Account'}
               </h2>
-              <Badge className={`bg-${roleInfo.color}-100 text-${roleInfo.color}-800 border-${roleInfo.color}-200 mt-1`}>
-                <Shield className="w-3 h-3 mr-1" />
-                {roleInfo.badge}
-              </Badge>
+              <div className="flex flex-wrap gap-1 mt-1">
+                {userInfo?.roles?.map(role => (
+                  <Badge key={role} className={`bg-${roleInfo.color}-100 text-${roleInfo.color}-800 border-${roleInfo.color}-200 text-xs capitalize`}>
+                    {role}
+                  </Badge>
+                ))}
+              </div>
               <p className="text-sm text-gray-600 mt-2">{roleInfo.description}</p>
             </div>
           </div>
@@ -305,16 +307,6 @@ const SideMenuAccount = ({ children }) => {
           </nav>
         </div>
 
-        {/* Footer */}
-        <div className="absolute bottom-0 left-0 right-0 p-4 border-t border-gray-200 bg-white">
-          <div className="flex items-center justify-between text-sm text-gray-500">
-            <div className="flex items-center space-x-2">
-              <Leaf className="w-4 h-4 text-green-500" />
-              <span>BiCO₂ Platform</span>
-            </div>
-            <div className="w-2 h-2 bg-green-500 rounded-full animate-pulse"></div>
-          </div>
-        </div>
       </div>
 
       {/* Main Content Area */}
@@ -348,28 +340,7 @@ const SideMenuAccount = ({ children }) => {
 
           {/* Dynamic Content */}
           <div className="space-y-6">
-            {children ? children : (
-              <Card className="border-0 shadow-lg">
-                <CardContent className="p-8">
-                  <div className="text-center py-12">
-                    <div className={`w-20 h-20 bg-gradient-to-br ${roleInfo.gradient} rounded-full flex items-center justify-center mx-auto mb-6 shadow-lg`}>
-                      <Zap className="w-10 h-10 text-white" />
-                    </div>
-                    <h3 className="text-2xl font-semibold text-gray-900 mb-2">
-                      Welcome to {activeSection.split('-').map(word => 
-                        word.charAt(0).toUpperCase() + word.slice(1)
-                      ).join(' ')}
-                    </h3>
-                    <p className="text-gray-600 max-w-md mx-auto mb-6">
-                      This section is under development. Content for {userInfo?.role} role will be available soon.
-                    </p>
-                    <Button className={`bg-gradient-to-r ${roleInfo.gradient} hover:shadow-lg transition-all duration-200`}>
-                      Explore Features
-                    </Button>
-                  </div>
-                </CardContent>
-              </Card>
-            )}
+            {children}
           </div>
         </div>
       </div>

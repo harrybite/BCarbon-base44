@@ -232,7 +232,7 @@ const BuyerTab = () => {
         {/* Header Section */}
         <div className="mb-8">
           <div className="flex items-center justify-between mb-6">
-            <div className="flex items-center space-x-4">
+            {/* <div className="flex items-center space-x-4">
               <div className="w-12 h-12 bg-gradient-to-br from-green-500 to-green-600 rounded-xl flex items-center justify-center">
                 <Package className="w-6 h-6 text-white" />
               </div>
@@ -240,7 +240,7 @@ const BuyerTab = () => {
                 <h1 className="text-3xl font-bold text-gray-900">Carbon Credit Portfolio</h1>
                 <p className="text-gray-600 mt-1">Manage and trade your carbon credit NFTs</p>
               </div>
-            </div>
+            </div> */}
             
             {/* Quick Stats */}
             <div className="hidden md:flex space-x-4">

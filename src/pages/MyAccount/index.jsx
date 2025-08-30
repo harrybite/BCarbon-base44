@@ -5,20 +5,28 @@ import { useConnectWallet } from "@/context/walletcontext";
 import { useNavigate } from 'react-router-dom';
 import { useContractInteraction } from "@/components/contract/ContractInteraction";
 import { useToast } from "@/components/ui/use-toast";
-import { jwtDecode } from "jwt-decode";
-import WalletConnection from "../components/wallet/WalletConnection";
+import { useUserInfo } from "@/context/userInfo";
+import WalletConnection from "./../../components/wallet/WalletConnection";
 import SideMenuAccount from "./sidemanu";
 
+// Import tabs for different roles
+import UserTabs from "./components/Tabs/userTabs";
+import IssuerTabs from "./components/Tabs/issuerTabs";
+import ValidatorTabs from "./components/Tabs/validatorTabs";
+import VerifierTabs from "./components/Tabs/verifierTabs";
+import GovTabs from "./components/Tabs/GovTabs";
 
-import IssuerTab from "../components/account/IssuerTab";
-import BuyerTab from "../components/account/BuyerTab";
+// Import existing components
+import IssuerTab from "@/components/account/IssuerTab";
+import BuyerTab from "@/components/account/BuyerTab";
 import CertificatesTab from "@/components/account/CertificateTab";
 import MyProjects from "@/components/account/Myproject";
 import MyRequest from "@/components/account/MyRequest";
-import { useUserInfo } from "@/context/userInfo";
 
 // Import UI components
 import { Card, CardContent } from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
+import { Badge } from "@/components/ui/badge";
 import { 
   User, 
   BarChart3, 
@@ -37,9 +45,10 @@ import {
   Award,
   Wallet,
   Calendar,
-  Shield
+  Shield,
+  Zap,
+  AlertCircle
 } from "lucide-react";
-
 
 export default function MyAccount() {
   const { walletAddress } = useConnectWallet();
@@ -49,19 +58,22 @@ export default function MyAccount() {
   const [isOwner, setIsOwner] = useState(false);
   const [isVVB, setIsVVB] = useState(false);
   const { checkIsOwner, checkAuthorizedVVB } = useContractInteraction();
-  const { userInfo: userInformation } = useUserInfo();
+  const { userInfo, isAuthenticated } = useUserInfo();
 
+  // Check authentication
   useEffect(() => {
-    // Check wallet connection
-    if (!walletAddress || walletAddress === '0x0000000000000000000000000000000000000000') {
+    if (!isAuthenticated) {
       toast({
-        title: 'Wallet Not Connected',
-        description: 'Please connect your wallet.',
+        title: 'Authentication Required',
+        description: 'Please log in to access your account.',
         variant: 'destructive',
       });
+      navigate('/login');
       return;
     }
-    
+  }, [isAuthenticated, navigate, toast]);
+
+  useEffect(() => {    
     // Check owner and authorized VVB
     const checkAccess = async () => {
       try {
@@ -92,18 +104,12 @@ export default function MyAccount() {
     checkAccess();
   }, [walletAddress]);
 
-  let userInfo = null;
-  const token = typeof window !== "undefined" ? localStorage.getItem("token") : null;
-  if (token) {
-    try {
-      userInfo = jwtDecode(token);
-    } catch (e) {
-      userInfo = null;
-    }
-  }
-
-  // Render content based on active section
+  // Render content based on active section and user role
   const renderContent = () => {
+    if (!userInfo) {
+      return <div>Loading user information...</div>;
+    }
+
     switch (activeSection) {
       case 'overview':
         return <AccountOverview userInfo={userInfo} walletAddress={walletAddress} />;
@@ -112,7 +118,7 @@ export default function MyAccount() {
       case 'certificates':
         return <CertificatesTab />;
       case 'portfolio':
-        return <PortfolioAnalytics />;
+        return <UserTabs activeTab="portfolio" />;
       case 'create-project':
         return <IssuerTab walletAddress={walletAddress} />;
       case 'my-projects':
@@ -120,19 +126,19 @@ export default function MyAccount() {
       case 'withdrawal-requests':
         return <MyRequest />;
       case 'project-analytics':
-        return <ProjectAnalytics />;
+        return <IssuerTabs activeTab="analytics" />;
       case 'validation-queue':
-        return <ValidationQueue />;
+        return <ValidatorTabs activeTab="queue" />;
       case 'verification-history':
-        return <VerificationHistory />;
+        return <VerifierTabs activeTab="history" />;
       case 'vvb-analytics':
-        return <VVBAnalytics />;
+        return <ValidatorTabs activeTab="analytics" />;
       case 'platform-overview':
-        return <PlatformOverview />;
+        return <GovTabs activeTab="overview" />;
       case 'user-management':
-        return <UserManagement />;
+        return <GovTabs activeTab="users" />;
       case 'system-settings':
-        return <SystemSettings />;
+        return <GovTabs activeTab="settings" />;
       case 'notifications':
         return <NotificationsPanel />;
       case 'payment-methods':
@@ -141,6 +147,23 @@ export default function MyAccount() {
         return <AccountOverview userInfo={userInfo} walletAddress={walletAddress} />;
     }
   };
+
+  if (!isAuthenticated) {
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-gray-50 via-blue-50 to-green-50 py-8 px-4 sm:px-6 lg:px-8 flex items-center justify-center">
+        <Card className="w-full max-w-md">
+          <CardContent className="p-8 text-center">
+            <AlertCircle className="w-16 h-16 text-red-500 mx-auto mb-4" />
+            <h2 className="text-2xl font-bold text-gray-900 mb-2">Authentication Required</h2>
+            <p className="text-gray-600 mb-6">Please log in to access your account.</p>
+            <Button onClick={() => navigate('/login')} className="w-full">
+              Go to Login
+            </Button>
+          </CardContent>
+        </Card>
+      </div>
+    );
+  }
 
   if (!walletAddress) {
     return (
@@ -157,7 +180,7 @@ export default function MyAccount() {
   );
 }
 
-// Account Overview Component
+// Updated Account Overview Component
 const AccountOverview = ({ userInfo, walletAddress }) => {
   const getRoleInfo = () => {
     if (!userInfo) return { 
@@ -166,7 +189,10 @@ const AccountOverview = ({ userInfo, walletAddress }) => {
       gradient: 'from-gray-500 to-gray-600'
     };
     
-    switch (userInfo.role) {
+    // Handle multiple roles - get primary role
+    const primaryRole = Array.isArray(userInfo.roles) ? userInfo.roles[0] : userInfo.role;
+    
+    switch (primaryRole) {
       case 'issuer':
         return { 
           color: 'blue', 
@@ -185,11 +211,17 @@ const AccountOverview = ({ userInfo, walletAddress }) => {
           badge: 'Governance', 
           gradient: 'from-purple-500 to-purple-600'
         };
-      case 'vvb':
+      case 'validation':
         return { 
           color: 'orange', 
-          badge: 'VVB Authority', 
+          badge: 'Validation Body', 
           gradient: 'from-orange-500 to-orange-600'
+        };
+      case 'verification':
+        return { 
+          color: 'teal', 
+          badge: 'Verification Body', 
+          gradient: 'from-teal-500 to-teal-600'
         };
       default:
         return { 
@@ -205,13 +237,15 @@ const AccountOverview = ({ userInfo, walletAddress }) => {
   return (
     <div className="space-y-6">
       {/* Stats Grid */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
         <Card className="border-0 shadow-lg bg-gradient-to-br from-green-50 to-green-100 hover:shadow-xl transition-all duration-300">
           <CardContent className="p-6">
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-sm font-medium text-green-600">Active Status</p>
-                <p className="text-2xl font-bold text-green-900">Online</p>
+                <p className="text-sm font-medium text-green-600">KYC Status</p>
+                <p className="text-2xl font-bold text-green-900">
+                  {userInfo?.isKYCCompleted ? 'Verified' : 'Pending'}
+                </p>
               </div>
               <div className="w-12 h-12 bg-green-500 rounded-xl flex items-center justify-center">
                 <Shield className="w-6 h-6 text-white" />
@@ -225,7 +259,9 @@ const AccountOverview = ({ userInfo, walletAddress }) => {
             <div className="flex items-center justify-between">
               <div>
                 <p className="text-sm font-medium text-blue-600">Wallet Status</p>
-                <p className="text-2xl font-bold text-blue-900">Connected</p>
+                <p className="text-2xl font-bold text-blue-900">
+                  {walletAddress ? 'Connected' : 'Disconnected'}
+                </p>
               </div>
               <div className="w-12 h-12 bg-blue-500 rounded-xl flex items-center justify-center">
                 <Wallet className="w-6 h-6 text-white" />
@@ -248,19 +284,21 @@ const AccountOverview = ({ userInfo, walletAddress }) => {
           </CardContent>
         </Card>
 
-        <Card className="border-0 shadow-lg bg-gradient-to-br from-orange-50 to-orange-100 hover:shadow-xl transition-all duration-300">
+        {/* <Card className="border-0 shadow-lg bg-gradient-to-br from-orange-50 to-orange-100 hover:shadow-xl transition-all duration-300">
           <CardContent className="p-6">
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-sm font-medium text-orange-600">Member Since</p>
-                <p className="text-2xl font-bold text-orange-900">{new Date().getFullYear()}</p>
+                <p className="text-sm font-medium text-orange-600">Organization</p>
+                <p className="text-lg font-bold text-orange-900 truncate">
+                  {userInfo?.organizationName || 'Not Set'}
+                </p>
               </div>
               <div className="w-12 h-12 bg-orange-500 rounded-xl flex items-center justify-center">
                 <Calendar className="w-6 h-6 text-white" />
               </div>
             </div>
           </CardContent>
-        </Card>
+        </Card> */}
       </div>
 
       {/* Account Details */}
@@ -270,15 +308,31 @@ const AccountOverview = ({ userInfo, walletAddress }) => {
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
             <div className="space-y-4">
               <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Name</label>
+                <div className="text-lg text-gray-900">{userInfo?.name || 'Not provided'}</div>
+              </div>
+              <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">Email Address</label>
                 <div className="text-lg text-gray-900">{userInfo?.email || 'Not provided'}</div>
               </div>
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Account Role</label>
-                <div className="text-lg text-gray-900 capitalize">{userInfo?.role || 'User'}</div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Account Role(s)</label>
+                <div className="text-lg text-gray-900">
+                  {Array.isArray(userInfo?.roles) && userInfo.roles.length > 0
+                    ? userInfo.roles.map(role => (
+                        <Badge key={role} className="mr-2 mb-1 capitalize">
+                          {role}
+                        </Badge>
+                      ))
+                    : (userInfo?.role || 'User')}
+                </div>
               </div>
             </div>
             <div className="space-y-4">
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Organization</label>
+                <div className="text-lg text-gray-900">{userInfo?.organizationName || 'Not provided'}</div>
+              </div>
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">Wallet Address</label>
                 <div className="text-lg text-gray-900 font-mono">
@@ -294,21 +348,27 @@ const AccountOverview = ({ userInfo, walletAddress }) => {
         </CardContent>
       </Card>
 
-      {/* Quick Actions */}
-      <Card className="border-0 shadow-lg">
+      {/* Quick Actions based on roles */}
+      {/* <Card className="border-0 shadow-lg">
         <CardContent className="p-8">
           <h2 className="text-2xl font-bold text-gray-900 mb-6">Quick Actions</h2>
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-            {userInfo?.role === 'user' && (
+            {userInfo?.roles?.includes('user') && (
               <button className="flex items-center space-x-3 p-4 bg-green-50 rounded-xl hover:bg-green-100 transition-colors">
                 <TrendingUp className="w-6 h-6 text-green-600" />
                 <span className="font-medium text-green-800">Trade Credits</span>
               </button>
             )}
-            {userInfo?.role === 'issuer' && (
+            {userInfo?.roles?.includes('issuer') && (
               <button className="flex items-center space-x-3 p-4 bg-blue-50 rounded-xl hover:bg-blue-100 transition-colors">
                 <Package className="w-6 h-6 text-blue-600" />
                 <span className="font-medium text-blue-800">Create Project</span>
+              </button>
+            )}
+            {(userInfo?.roles?.includes('validation') || userInfo?.roles?.includes('verification')) && (
+              <button className="flex items-center space-x-3 p-4 bg-orange-50 rounded-xl hover:bg-orange-100 transition-colors">
+                <CheckCircle2 className="w-6 h-6 text-orange-600" />
+                <span className="font-medium text-orange-800">Review Projects</span>
               </button>
             )}
             <button className="flex items-center space-x-3 p-4 bg-purple-50 rounded-xl hover:bg-purple-100 transition-colors">
@@ -317,84 +377,12 @@ const AccountOverview = ({ userInfo, walletAddress }) => {
             </button>
           </div>
         </CardContent>
-      </Card>
+      </Card> */}
     </div>
   );
 };
 
 // Placeholder components for other sections
-const PortfolioAnalytics = () => (
-  <Card className="border-0 shadow-lg">
-    <CardContent className="p-8">
-      <h2 className="text-2xl font-bold text-gray-900 mb-4">Portfolio Analytics</h2>
-      <p className="text-gray-600">Coming soon - Advanced portfolio analytics and insights.</p>
-    </CardContent>
-  </Card>
-);
-
-const ProjectAnalytics = () => (
-  <Card className="border-0 shadow-lg">
-    <CardContent className="p-8">
-      <h2 className="text-2xl font-bold text-gray-900 mb-4">Project Analytics</h2>
-      <p className="text-gray-600">Coming soon - Detailed project performance metrics.</p>
-    </CardContent>
-  </Card>
-);
-
-const ValidationQueue = () => (
-  <Card className="border-0 shadow-lg">
-    <CardContent className="p-8">
-      <h2 className="text-2xl font-bold text-gray-900 mb-4">Validation Queue</h2>
-      <p className="text-gray-600">Coming soon - Projects pending validation.</p>
-    </CardContent>
-  </Card>
-);
-
-const VerificationHistory = () => (
-  <Card className="border-0 shadow-lg">
-    <CardContent className="p-8">
-      <h2 className="text-2xl font-bold text-gray-900 mb-4">Verification History</h2>
-      <p className="text-gray-600">Coming soon - Past validation activities.</p>
-    </CardContent>
-  </Card>
-);
-
-const VVBAnalytics = () => (
-  <Card className="border-0 shadow-lg">
-    <CardContent className="p-8">
-      <h2 className="text-2xl font-bold text-gray-900 mb-4">VVB Analytics</h2>
-      <p className="text-gray-600">Coming soon - Validation statistics and metrics.</p>
-    </CardContent>
-  </Card>
-);
-
-const PlatformOverview = () => (
-  <Card className="border-0 shadow-lg">
-    <CardContent className="p-8">
-      <h2 className="text-2xl font-bold text-gray-900 mb-4">Platform Overview</h2>
-      <p className="text-gray-600">Coming soon - System-wide statistics and insights.</p>
-    </CardContent>
-  </Card>
-);
-
-const UserManagement = () => (
-  <Card className="border-0 shadow-lg">
-    <CardContent className="p-8">
-      <h2 className="text-2xl font-bold text-gray-900 mb-4">User Management</h2>
-      <p className="text-gray-600">Coming soon - Manage platform users and permissions.</p>
-    </CardContent>
-  </Card>
-);
-
-const SystemSettings = () => (
-  <Card className="border-0 shadow-lg">
-    <CardContent className="p-8">
-      <h2 className="text-2xl font-bold text-gray-900 mb-4">System Settings</h2>
-      <p className="text-gray-600">Coming soon - Platform configuration options.</p>
-    </CardContent>
-  </Card>
-);
-
 const NotificationsPanel = () => (
   <Card className="border-0 shadow-lg">
     <CardContent className="p-8">
