@@ -151,20 +151,20 @@ const SideMenuAccount = ({ children, activeSection, setActiveSection }) => {
       },
 
       // Common advanced features
-      {
-        id: 'notifications',
-        label: 'Notifications',
-        icon: Bell,
-        description: 'Alerts and updates',
-        roles: ['user', 'issuer', 'gov', 'validation', 'verification']
-      },
-      {
-        id: 'payment-methods',
-        label: 'Payment Methods',
-        icon: CreditCard,
-        description: 'Manage payment options',
-        roles: ['user', 'issuer']
-      }
+      // {
+      //   id: 'notifications',
+      //   label: 'Notifications',
+      //   icon: Bell,
+      //   description: 'Alerts and updates',
+      //   roles: ['user', 'issuer', 'gov', 'validation', 'verification']
+      // },
+      // {
+      //   id: 'payment-methods',
+      //   label: 'Payment Methods',
+      //   icon: CreditCard,
+      //   description: 'Manage payment options',
+      //   roles: ['user', 'issuer']
+      // }
     ];
 
     return [...baseItems, ...roleSpecificItems].filter(item => 
@@ -240,13 +240,13 @@ const SideMenuAccount = ({ children, activeSection, setActiveSection }) => {
   const roleInfo = getRoleInfo();
 
   return (
-    <div className="flex min-h-screen bg-gradient-to-br from-gray-50 via-blue-50 to-green-50">
+    <div className="flex h-screen  from-gray-50 via-blue-50 to-green-50">
       
-      {/* Side Menu */}
-      <div className="w-80 bg-white border-r border-gray-200 shadow-xl">
+      {/* Fixed Side Menu */}
+      <div className="w-80 bg-white border-r border-gray-200 shadow-xl flex flex-col h-full">
         
-        {/* User Profile Header */}
-        <div className={`bg-gradient-to-r ${roleInfo.bgGradient} p-6 border-b border-gray-200`}>
+        {/* User Profile Header - Fixed */}
+        <div className={`bg-gradient-to-r ${roleInfo.bgGradient} p-6 border-b border-gray-200 flex-shrink-0`}>
           <div className="flex items-center space-x-4">
             <div className={`w-16 h-16 bg-gradient-to-br ${roleInfo.gradient} rounded-2xl flex items-center justify-center shadow-lg`}>
               <UserCircle className="w-10 h-10 text-white" />
@@ -267,8 +267,8 @@ const SideMenuAccount = ({ children, activeSection, setActiveSection }) => {
           </div>
         </div>
 
-        {/* Menu Items */}
-        <div className="py-4">
+        {/* Scrollable Menu Items */}
+        <div className="flex-1 overflow-y-auto py-4">
           <nav className="space-y-2 px-4">
             {menuItems.map((item) => {
               const Icon = item.icon;
@@ -307,40 +307,52 @@ const SideMenuAccount = ({ children, activeSection, setActiveSection }) => {
           </nav>
         </div>
 
+        {/* Footer - Fixed at Bottom */}
+        <div className="flex-shrink-0 p-4 border-t border-gray-200 bg-white">
+          <div className="flex items-center justify-between text-sm text-gray-500">
+            <div className="flex items-center space-x-2">
+              <Leaf className="w-4 h-4 text-green-500" />
+              <span>BiCO₂ Platform</span>
+            </div>
+            <div className="w-2 h-2 bg-green-500 rounded-full animate-pulse"></div>
+          </div>
+        </div>
       </div>
 
-      {/* Main Content Area */}
-      <div className="flex-1 overflow-y-auto">
-        <div className="p-8">
-          
-          {/* Content Header */}
-          <div className="mb-8">
-            <div className="flex items-center space-x-4">
-              {(() => {
-                const activeItem = menuItems.find(item => item.id === activeSection);
-                const Icon = activeItem?.icon || User;
-                return (
-                  <>
-                    <div className={`w-12 h-12 bg-gradient-to-br ${roleInfo.gradient} rounded-xl flex items-center justify-center shadow-lg`}>
-                      <Icon className="w-6 h-6 text-white" />
-                    </div>
-                    <div>
-                      <h1 className="text-3xl font-bold text-gray-900">
-                        {activeItem?.label || 'Account Overview'}
-                      </h1>
-                      <p className="text-gray-600">
-                        {activeItem?.description || 'Manage your account settings and data'}
-                      </p>
-                    </div>
-                  </>
-                );
-              })()}
-            </div>
+      {/* Main Content Area - Scrollable */}
+      <div className="flex-1 flex flex-col h-full">
+        
+        {/* Content Header - Fixed */}
+        {/* <div className="flex-shrink-0 bg-white border-b border-gray-200 px-8 py-6">
+          <div className="flex items-center space-x-4">
+            {(() => {
+              const activeItem = menuItems.find(item => item.id === activeSection);
+              const Icon = activeItem?.icon || User;
+              return (
+                <>
+                  <div className={`w-12 h-12 bg-gradient-to-br ${roleInfo.gradient} rounded-xl flex items-center justify-center shadow-lg`}>
+                    <Icon className="w-6 h-6 text-white" />
+                  </div>
+                  <div>
+                    <h1 className="text-3xl font-bold text-gray-900">
+                      {activeItem?.label || 'Account Overview'}
+                    </h1>
+                    <p className="text-gray-600">
+                      {activeItem?.description || 'Manage your account settings and data'}
+                    </p>
+                  </div>
+                </>
+              );
+            })()}
           </div>
+        </div> */}
 
-          {/* Dynamic Content */}
-          <div className="space-y-6">
-            {children}
+        {/* Scrollable Content Area */}
+        <div className="flex-1 overflow-y-auto">
+          <div className="p-8">
+            <div className="space-y-6">
+              {children}
+            </div>
           </div>
         </div>
       </div>

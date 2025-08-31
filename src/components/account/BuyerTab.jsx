@@ -231,31 +231,7 @@ const BuyerTab = () => {
       <div className="max-w-7xl mx-auto">
         {/* Header Section */}
         <div className="mb-8">
-          <div className="flex items-center justify-between mb-6">
-            {/* <div className="flex items-center space-x-4">
-              <div className="w-12 h-12 bg-gradient-to-br from-green-500 to-green-600 rounded-xl flex items-center justify-center">
-                <Package className="w-6 h-6 text-white" />
-              </div>
-              <div>
-                <h1 className="text-3xl font-bold text-gray-900">Carbon Credit Portfolio</h1>
-                <p className="text-gray-600 mt-1">Manage and trade your carbon credit NFTs</p>
-              </div>
-            </div> */}
-            
-            {/* Quick Stats */}
-            <div className="hidden md:flex space-x-4">
-              {/* <div className="bg-white rounded-lg p-4 shadow-sm border">
-                <div className="text-2xl font-bold text-green-600">{totalNFTs}</div>
-                <div className="text-sm text-gray-600">Total NFTs</div>
-              </div> */}
-              {/* <div className="bg-white rounded-lg p-4 shadow-sm border">
-                <div className="text-2xl font-bold text-blue-600">
-                  {projects.reduce((sum, p) => sum + Number(p.balanceMinted || 0), 0)}
-                </div>
-                <div className="text-sm text-gray-600">Total Credits</div>
-              </div> */}
-            </div>
-          </div>
+
 
           {/* Wallet Connection Check */}
           {!walletAddress && (
@@ -276,7 +252,7 @@ const BuyerTab = () => {
         </div>
 
         {/* Controls Section */}
-        {walletAddress && (
+        {/* {walletAddress && (
           <Card className="mb-6">
             <CardContent className="p-6">
               <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
@@ -307,7 +283,7 @@ const BuyerTab = () => {
               </div>
             </CardContent>
           </Card>
-        )}
+        )} */}
 
         {/* Loading State */}
         {loading && (

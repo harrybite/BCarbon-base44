@@ -230,6 +230,9 @@ export default function Layout({ children }) {
     return () => clearInterval(interval);
   }, [navigate, initialLoad]);
 
+  // Check if current page is MyAccount to hide footer
+  const isMyAccountPage = location.pathname === '/MyAccount';
+
   return (
     <div className="min-h-screen bg-gradient-to-br from-green-50 via-white to-blue-50">
       <style>{`
@@ -242,179 +245,84 @@ export default function Layout({ children }) {
         }
       `}</style>
 
-      {/* Header */}
-      <header className="bg-white/80 backdrop-blur-xl border-b border-green-100 sticky top-0 z-50">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="flex justify-between items-center h-16">
-            {/* Logo */}
-            <div className="flex items-center space-x-3">
-              <div>
-                <h1 className="text-xl font-bold text-gray-900">
-                  <img src="https://www.bico2.org/_next/image?url=%2Fimg%2Flogo.png&w=96&q=75" className="h-7"/>
-                </h1>
-                <p className="text-xs text-gray-500">Decentralized Carbon Credits</p>
-              </div>
-            </div>
-
-            {/* Desktop Nav */}
-            <nav className="hidden md:flex items-center space-x-1">
-              {navigationItems.map((item) => (
-                <button
-                  key={item.title}
-                  onClick={() => handleNavClick(item.url, item)}
-                  className={`flex items-center space-x-2 px-4 py-2 rounded-lg transition-all duration-200 ${
-                    !item.external && location.pathname === item.url
-                      ? "bg-green-100 text-green-700 shadow-sm"
-                      : "text-gray-600 hover:bg-gray-50 hover:text-gray-900"
-                  }`}
-                  style={{ background: "none", border: "none", cursor: "pointer" }}
-                >
-                  <item.icon className="w-4 h-4" />
-                  <span className="font-medium">{item.title}</span>
-                  {item.external && (
-                    <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" />
-                    </svg>
-                  )}
-                  {!item.public && !isAuthenticated && (
-                    <span className="text-xs bg-amber-100 text-amber-700 px-1 rounded">🔒</span>
-                  )}
-                </button>
-              ))}
-            </nav>
-
-            {/* Wallet & Profile Section */}
-            <div className="flex items-center space-x-3">
-              {/* Wallet Connect Button */}
-              <ConnectButton
-                client={thirdwebclient}
-                wallets={[
-                  createWallet("io.metamask"),
-                ]}
-                chain={bscTestnet}
-                data-testid="tw-connect-btn"
-              />
-
-              {/* Profile Icon (only show when authenticated) */}
-              {isAuthenticated && (
-                <div className="relative" ref={profileMenuRef}>
-                  <button
-                    onClick={() => setProfileMenuOpen(!profileMenuOpen)}
-                    className="w-10 h-10 bg-gradient-to-br from-blue-500 to-purple-600 rounded-full flex items-center justify-center text-white hover:from-blue-600 hover:to-purple-700 transition-all duration-200 shadow-lg hover:shadow-xl transform hover:scale-105"
-                    aria-label="My Account"
-                  >
-                    <UserCircle className="w-6 h-6" />
-                  </button>
-
-                  {/* Profile Dropdown */}
-                  <div
-                    className={`absolute right-0 mt-2 w-64 bg-white border border-gray-200 rounded-xl shadow-xl z-50 transition-all duration-200 ${
-                      profileMenuOpen 
-                        ? "opacity-100 scale-100 pointer-events-auto" 
-                        : "opacity-0 scale-95 pointer-events-none"
-                    }`}
-                  >
-                    {/* User Info Header */}
-                    <div className="px-4 py-3 border-b border-gray-100 bg-gradient-to-r from-blue-50 to-purple-50 rounded-t-xl">
-                      <div className="flex items-center space-x-3">
-                        <div className="w-10 h-10 bg-gradient-to-br from-blue-500 to-purple-600 rounded-full flex items-center justify-center text-white">
-                          <User className="w-5 h-5" />
-                        </div>
-                        <div className="flex-1 min-w-0">
-                          <p className="text-sm font-medium text-gray-900 truncate">
-                            {userInfo.email || "User"}
-                          </p>
-                          <p className="text-xs text-gray-500 capitalize">
-                            {userInfo.role} Account
-                          </p>
-                          <p className="text-xs text-gray-400 font-mono truncate">
-                            {walletAddress && `${walletAddress.slice(0, 6)}...${walletAddress.slice(-4)}`}
-                          </p>
-                        </div>
-                      </div>
-                    </div>
-
-                    {/* Menu Items */}
-                    <div className="py-2">
-                      <button
-                        onClick={() => {
-                          navigate("/MyAccount");
-                          setProfileMenuOpen(false);
-                        }}
-                        className="w-full flex items-center px-4 py-3 text-sm text-gray-700 hover:bg-gray-50 transition-colors"
-                      >
-                        <User className="w-4 h-4 mr-3 text-blue-500" />
-                        <div className="text-left">
-                          <div className="font-medium">My Account</div>
-                          <div className="text-xs text-gray-500">Manage projects & credits</div>
-                        </div>
-                      </button>
-
-                      {isAdminOrVVB && (
-                        <button
-                          onClick={() => {
-                            navigate("/Administration");
-                            setProfileMenuOpen(false);
-                          }}
-                          className="w-full flex items-center px-4 py-3 text-sm text-gray-700 hover:bg-gray-50 transition-colors"
-                        >
-                          <Settings className="w-4 h-4 mr-3 text-purple-500" />
-                          <div className="text-left">
-                            <div className="font-medium">Administration</div>
-                            <div className="text-xs text-gray-500">Admin controls</div>
-                          </div>
-                        </button>
-                      )}
-
-                      <div className="border-t border-gray-100 my-1"></div>
-
-                      <button
-                        onClick={() => {
-                          localStorage.removeItem("token");
-                          setProfileMenuOpen(false);
-                          navigate("/login");
-                        }}
-                        className="w-full flex items-center px-4 py-3 text-sm text-red-600 hover:bg-red-50 transition-colors"
-                      >
-                        <svg className="w-4 h-4 mr-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" />
-                        </svg>
-                        <div className="text-left">
-                          <div className="font-medium">Logout</div>
-                          <div className="text-xs text-red-400">Sign out of account</div>
-                        </div>
-                      </button>
-                    </div>
-                  </div>
+      {/* Header - Hide on MyAccount page */}
+      {(
+        <header className="bg-white/80 backdrop-blur-xl border-b border-green-100 sticky top-0 z-50">
+          <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+            <div className="flex justify-between items-center h-16">
+              {/* Logo */}
+              <div className="flex items-center space-x-3">
+                <div>
+                  <h1 className="text-xl font-bold text-gray-900">
+                    <img src="https://www.bico2.org/_next/image?url=%2Fimg%2Flogo.png&w=96&q=75" className="h-7"/>
+                  </h1>
+                  <p className="text-xs text-gray-500">Decentralized Carbon Credits</p>
                 </div>
-              )}
+              </div>
 
-              {/* Login Button (only show when not authenticated) */}
-              {!userInfo && (
-                <Button
-                  variant="outline"
-                  className="hidden md:inline-flex"
-                  onClick={() => navigate("/login")}
-                >
-                  Login
-                </Button>
-              )}
-              
-              {/* Mobile Nav */}
-              <Sheet open={mobileMenuOpen} onOpenChange={setMobileMenuOpen}>
-                <SheetTrigger asChild>
-                  <Button variant="ghost" size="icon" className="md:hidden">
-                    <Menu className="w-5 h-5" />
-                  </Button>
-                </SheetTrigger>
-                <SheetContent side="right" className="w-80">
-                  <div className="flex flex-col space-y-4 mt-8">
-                    {/* User Info in Mobile Menu */}
-                    {userInfo && (
-                      <div className="bg-gradient-to-r from-blue-50 to-purple-50 rounded-xl p-4 mb-4">
+              {/* Desktop Nav */}
+              <nav className="hidden md:flex items-center space-x-1">
+                {navigationItems.map((item) => (
+                  <button
+                    key={item.title}
+                    onClick={() => handleNavClick(item.url, item)}
+                    className={`flex items-center space-x-2 px-4 py-2 rounded-lg transition-all duration-200 ${
+                      !item.external && location.pathname === item.url
+                        ? "bg-green-100 text-green-700 shadow-sm"
+                        : "text-gray-600 hover:bg-gray-50 hover:text-gray-900"
+                    }`}
+                    style={{ background: "none", border: "none", cursor: "pointer" }}
+                  >
+                    <item.icon className="w-4 h-4" />
+                    <span className="font-medium">{item.title}</span>
+                    {item.external && (
+                      <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" />
+                      </svg>
+                    )}
+                    {!item.public && !isAuthenticated && (
+                      <span className="text-xs bg-amber-100 text-amber-700 px-1 rounded">🔒</span>
+                    )}
+                  </button>
+                ))}
+              </nav>
+
+              {/* Wallet & Profile Section */}
+              <div className="flex items-center space-x-3">
+                {/* Wallet Connect Button */}
+                <ConnectButton
+                  client={thirdwebclient}
+                  wallets={[
+                    createWallet("io.metamask"),
+                  ]}
+                  chain={bscTestnet}
+                  data-testid="tw-connect-btn"
+                />
+
+                {/* Profile Icon (only show when authenticated) */}
+                {isAuthenticated && (
+                  <div className="relative" ref={profileMenuRef}>
+                    <button
+                      onClick={() => setProfileMenuOpen(!profileMenuOpen)}
+                      className="w-10 h-10 bg-gradient-to-br from-blue-500 to-purple-600 rounded-full flex items-center justify-center text-white hover:from-blue-600 hover:to-purple-700 transition-all duration-200 shadow-lg hover:shadow-xl transform hover:scale-105"
+                      aria-label="My Account"
+                    >
+                      <UserCircle className="w-6 h-6" />
+                    </button>
+
+                    {/* Profile Dropdown */}
+                    <div
+                      className={`absolute right-0 mt-2 w-64 bg-white border border-gray-200 rounded-xl shadow-xl z-50 transition-all duration-200 ${
+                        profileMenuOpen 
+                          ? "opacity-100 scale-100 pointer-events-auto" 
+                          : "opacity-0 scale-95 pointer-events-none"
+                      }`}
+                    >
+                      {/* User Info Header */}
+                      <div className="px-4 py-3 border-b border-gray-100 bg-gradient-to-r from-blue-50 to-purple-50 rounded-t-xl">
                         <div className="flex items-center space-x-3">
-                          <div className="w-12 h-12 bg-gradient-to-br from-blue-500 to-purple-600 rounded-full flex items-center justify-center text-white">
-                            <User className="w-6 h-6" />
+                          <div className="w-10 h-10 bg-gradient-to-br from-blue-500 to-purple-600 rounded-full flex items-center justify-center text-white">
+                            <User className="w-5 h-5" />
                           </div>
                           <div className="flex-1 min-w-0">
                             <p className="text-sm font-medium text-gray-900 truncate">
@@ -423,131 +331,230 @@ export default function Layout({ children }) {
                             <p className="text-xs text-gray-500 capitalize">
                               {userInfo.role} Account
                             </p>
+                            <p className="text-xs text-gray-400 font-mono truncate">
+                              {walletAddress && `${walletAddress.slice(0, 6)}...${walletAddress.slice(-4)}`}
+                            </p>
                           </div>
                         </div>
                       </div>
-                    )}
 
-                    {!userInfo && (
-                      <Button
-                        variant="outline"
-                        className="mb-2"
-                        onClick={() => {
-                          setMobileMenuOpen(false);
-                          navigate("/login");
-                        }}
-                      >
-                        Login
-                      </Button>
-                    )}
-
-                    {/* My Account Link in Mobile Menu */}
-                    {userInfo && (
-                      <button
-                        onClick={() => {
-                          navigate("/MyAccount");
-                          setMobileMenuOpen(false);
-                        }}
-                        className="flex items-center justify-between p-4 rounded-lg transition-all duration-200 bg-blue-50 text-blue-700"
-                        style={{ background: "none", border: "none", cursor: "pointer" }}
-                      >
-                        <div className="flex items-center space-x-3">
-                          <User className="w-5 h-5" />
-                          <div>
-                            <div className="flex items-center space-x-2">
-                              <span className="font-medium">My Account</span>
-                            </div>
-                            <p className="text-xs text-blue-600">Manage your account and BiCO₂ assets</p>
+                      {/* Menu Items */}
+                      <div className="py-2">
+                        <button
+                          onClick={() => {
+                            navigate("/MyAccount");
+                            setProfileMenuOpen(false);
+                          }}
+                          className="w-full flex items-center px-4 py-3 text-sm text-gray-700 hover:bg-gray-50 transition-colors"
+                        >
+                          <User className="w-4 h-4 mr-3 text-blue-500" />
+                          <div className="text-left">
+                            <div className="font-medium">My Account</div>
+                            <div className="text-xs text-gray-500">Manage projects & credits</div>
                           </div>
-                        </div>
-                        <ChevronRight className="w-4 h-4" />
-                      </button>
-                    )}
+                        </button>
 
-                    {/* Navigation Items */}
-                    {navigationItems.map((item) => (
-                      <button
-                        key={item.title}
-                        onClick={() => {
-                          handleNavClick(item.url, item);
-                          setMobileMenuOpen(false);
-                        }}
-                        className={`flex items-center justify-between p-4 rounded-lg transition-all duration-200 ${
-                          !item.external && location.pathname === item.url
-                            ? "bg-green-100 text-green-700"
-                            : "text-gray-600 hover:bg-gray-50"
-                        }`}
-                        style={{ background: "none", border: "none", cursor: "pointer" }}
-                      >
-                        <div className="flex items-center space-x-3">
-                          <item.icon className="w-5 h-5" />
-                          <div>
-                            <div className="flex items-center space-x-2">
-                              <span className="font-medium">{item.title}</span>
-                              {item.external && (
-                                <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" />
-                                </svg>
-                              )}
+                        {isAdminOrVVB && (
+                          <button
+                            onClick={() => {
+                              navigate("/Administration");
+                              setProfileMenuOpen(false);
+                            }}
+                            className="w-full flex items-center px-4 py-3 text-sm text-gray-700 hover:bg-gray-50 transition-colors"
+                          >
+                            <Settings className="w-4 h-4 mr-3 text-purple-500" />
+                            <div className="text-left">
+                              <div className="font-medium">Administration</div>
+                              <div className="text-xs text-gray-500">Admin controls</div>
                             </div>
-                            <p className="text-xs text-gray-500">{item.description}</p>
-                            {!item.public && !isAuthenticated && (
-                              <span className="text-xs bg-amber-100 text-amber-700 px-1 rounded mt-1 inline-block">Login Required</span>
-                            )}
-                          </div>
-                        </div>
-                        <ChevronRight className="w-4 h-4" />
-                      </button>
-                    ))}
+                          </button>
+                        )}
 
-                    {/* Logout in Mobile Menu */}
-                    {userInfo && (
-                      <button
-                        onClick={() => {
-                          localStorage.removeItem("token");
-                          setMobileMenuOpen(false);
-                          navigate("/login");
-                        }}
-                        className="flex items-center justify-between p-4 rounded-lg transition-all duration-200 text-red-600 hover:bg-red-50"
-                        style={{ background: "none", border: "none", cursor: "pointer" }}
-                      >
-                        <div className="flex items-center space-x-3">
-                          <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <div className="border-t border-gray-100 my-1"></div>
+
+                        <button
+                          onClick={() => {
+                            localStorage.removeItem("token");
+                            setProfileMenuOpen(false);
+                            navigate("/login");
+                          }}
+                          className="w-full flex items-center px-4 py-3 text-sm text-red-600 hover:bg-red-50 transition-colors"
+                        >
+                          <svg className="w-4 h-4 mr-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" />
                           </svg>
-                          <span className="font-medium">Logout</span>
-                        </div>
-                        <ChevronRight className="w-4 h-4" />
-                      </button>
-                    )}
+                          <div className="text-left">
+                            <div className="font-medium">Logout</div>
+                            <div className="text-xs text-red-400">Sign out of account</div>
+                          </div>
+                        </button>
+                      </div>
+                    </div>
                   </div>
-                </SheetContent>
-              </Sheet>
+                )}
+
+                {/* Login Button (only show when not authenticated) */}
+                {!userInfo && (
+                  <Button
+                    variant="outline"
+                    className="hidden md:inline-flex"
+                    onClick={() => navigate("/login")}
+                  >
+                    Login
+                  </Button>
+                )}
+                
+                {/* Mobile Nav */}
+                <Sheet open={mobileMenuOpen} onOpenChange={setMobileMenuOpen}>
+                  <SheetTrigger asChild>
+                    <Button variant="ghost" size="icon" className="md:hidden">
+                      <Menu className="w-5 h-5" />
+                    </Button>
+                  </SheetTrigger>
+                  <SheetContent side="right" className="w-80">
+                    <div className="flex flex-col space-y-4 mt-8">
+                      {/* User Info in Mobile Menu */}
+                      {userInfo && (
+                        <div className="bg-gradient-to-r from-blue-50 to-purple-50 rounded-xl p-4 mb-4">
+                          <div className="flex items-center space-x-3">
+                            <div className="w-12 h-12 bg-gradient-to-br from-blue-500 to-purple-600 rounded-full flex items-center justify-center text-white">
+                              <User className="w-6 h-6" />
+                            </div>
+                            <div className="flex-1 min-w-0">
+                              <p className="text-sm font-medium text-gray-900 truncate">
+                                {userInfo.email || "User"}
+                              </p>
+                              <p className="text-xs text-gray-500 capitalize">
+                                {userInfo.role} Account
+                              </p>
+                            </div>
+                          </div>
+                        </div>
+                      )}
+
+                      {!userInfo && (
+                        <Button
+                          variant="outline"
+                          className="mb-2"
+                          onClick={() => {
+                            setMobileMenuOpen(false);
+                            navigate("/login");
+                          }}
+                        >
+                          Login
+                        </Button>
+                      )}
+
+                      {/* My Account Link in Mobile Menu */}
+                      {userInfo && (
+                        <button
+                          onClick={() => {
+                            navigate("/MyAccount");
+                            setMobileMenuOpen(false);
+                          }}
+                          className="flex items-center justify-between p-4 rounded-lg transition-all duration-200 bg-blue-50 text-blue-700"
+                          style={{ background: "none", border: "none", cursor: "pointer" }}
+                        >
+                          <div className="flex items-center space-x-3">
+                            <User className="w-5 h-5" />
+                            <div>
+                              <div className="flex items-center space-x-2">
+                                <span className="font-medium">My Account</span>
+                              </div>
+                              <p className="text-xs text-blue-600">Manage your account and BiCO₂ assets</p>
+                            </div>
+                          </div>
+                          <ChevronRight className="w-4 h-4" />
+                        </button>
+                      )}
+
+                      {/* Navigation Items */}
+                      {navigationItems.map((item) => (
+                        <button
+                          key={item.title}
+                          onClick={() => {
+                            handleNavClick(item.url, item);
+                            setMobileMenuOpen(false);
+                          }}
+                          className={`flex items-center justify-between p-4 rounded-lg transition-all duration-200 ${
+                            !item.external && location.pathname === item.url
+                              ? "bg-green-100 text-green-700"
+                              : "text-gray-600 hover:bg-gray-50"
+                          }`}
+                          style={{ background: "none", border: "none", cursor: "pointer" }}
+                        >
+                          <div className="flex items-center space-x-3">
+                            <item.icon className="w-5 h-5" />
+                            <div>
+                              <div className="flex items-center space-x-2">
+                                <span className="font-medium">{item.title}</span>
+                                {item.external && (
+                                  <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" />
+                                  </svg>
+                                )}
+                              </div>
+                              <p className="text-xs text-gray-500">{item.description}</p>
+                              {!item.public && !isAuthenticated && (
+                                <span className="text-xs bg-amber-100 text-amber-700 px-1 rounded mt-1 inline-block">Login Required</span>
+                              )}
+                            </div>
+                          </div>
+                          <ChevronRight className="w-4 h-4" />
+                        </button>
+                      ))}
+
+                      {/* Logout in Mobile Menu */}
+                      {userInfo && (
+                        <button
+                          onClick={() => {
+                            localStorage.removeItem("token");
+                            setMobileMenuOpen(false);
+                            navigate("/login");
+                          }}
+                          className="flex items-center justify-between p-4 rounded-lg transition-all duration-200 text-red-600 hover:bg-red-50"
+                          style={{ background: "none", border: "none", cursor: "pointer" }}
+                        >
+                          <div className="flex items-center space-x-3">
+                            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" />
+                            </svg>
+                            <span className="font-medium">Logout</span>
+                          </div>
+                          <ChevronRight className="w-4 h-4" />
+                        </button>
+                      )}
+                    </div>
+                  </SheetContent>
+                </Sheet>
+              </div>
             </div>
           </div>
-        </div>
-      </header>
+        </header>
+      )}
 
       {/* Page Content */}
-      <main className="flex-1">{children}</main>
+      <main className={isMyAccountPage ? "h-screen" : "flex-1"}>{children}</main>
 
-      {/* Footer */}
-      <footer className="bg-white border-t border-gray-200 mt-12">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-          <div className="flex flex-col md:flex-row justify-between items-center">
-            <div className="flex items-center space-x-2">
-              <Leaf className="w-5 h-5 text-green-600" />
-              <p className="text-gray-600">
-                BiCO<sub>2</sub> - Decentralized Carbon Credits Platform
-              </p>
-            </div>
-            <div className="flex items-center space-x-4 mt-4 md:mt-0">
-              <p className="text-sm text-gray-500">Powered by MaalChain & Web3</p>
-              <div className="w-2 h-2 bg-green-500 rounded-full animate-pulse"></div>
+      {/* Footer - Hide on MyAccount page */}
+      {!isMyAccountPage && (
+        <footer className="bg-white border-t border-gray-200 mt-12">
+          <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+            <div className="flex flex-col md:flex-row justify-between items-center">
+              <div className="flex items-center space-x-2">
+                <Leaf className="w-5 h-5 text-green-600" />
+                <p className="text-gray-600">
+                  BiCO<sub>2</sub> - Decentralized Carbon Credits Platform
+                </p>
+              </div>
+              <div className="flex items-center space-x-4 mt-4 md:mt-0">
+                <p className="text-sm text-gray-500">Powered by MaalChain & Web3</p>
+                <div className="w-2 h-2 bg-green-500 rounded-full animate-pulse"></div>
+              </div>
             </div>
           </div>
-        </div>
-      </footer>
+        </footer>
+      )}
     </div>
   );
 }

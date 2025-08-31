@@ -18,7 +18,7 @@ import GovTabs from "./components/Tabs/GovTabs";
 
 // Import existing components
 import IssuerTab from "@/components/account/IssuerTab";
-import BuyerTab from "@/components/account/BuyerTab";
+import MyHoldings from "./components/pages/tco2Holdings";
 import CertificatesTab from "@/components/account/CertificateTab";
 import MyProjects from "@/components/account/Myproject";
 import MyRequest from "@/components/account/MyRequest";
@@ -49,6 +49,7 @@ import {
   Zap,
   AlertCircle
 } from "lucide-react";
+
 
 export default function MyAccount() {
   const { walletAddress } = useConnectWallet();
@@ -114,7 +115,7 @@ export default function MyAccount() {
       case 'overview':
         return <AccountOverview userInfo={userInfo} walletAddress={walletAddress} />;
       case 'holdings':
-        return <BuyerTab walletAddress={walletAddress} />;
+        return <MyHoldings walletAddress={walletAddress} />;
       case 'certificates':
         return <CertificatesTab />;
       case 'portfolio':
@@ -284,21 +285,6 @@ const AccountOverview = ({ userInfo, walletAddress }) => {
           </CardContent>
         </Card>
 
-        {/* <Card className="border-0 shadow-lg bg-gradient-to-br from-orange-50 to-orange-100 hover:shadow-xl transition-all duration-300">
-          <CardContent className="p-6">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-sm font-medium text-orange-600">Organization</p>
-                <p className="text-lg font-bold text-orange-900 truncate">
-                  {userInfo?.organizationName || 'Not Set'}
-                </p>
-              </div>
-              <div className="w-12 h-12 bg-orange-500 rounded-xl flex items-center justify-center">
-                <Calendar className="w-6 h-6 text-white" />
-              </div>
-            </div>
-          </CardContent>
-        </Card> */}
       </div>
 
       {/* Account Details */}
