@@ -66,13 +66,6 @@ const SideMenuAccount = ({ children, activeSection, setActiveSection }) => {
         description: 'Retirement certificates',
         roles: ['user']
       },
-      {
-        id: 'portfolio',
-        label: 'Portfolio Analytics',
-        icon: BarChart3,
-        description: 'Investment insights',
-        roles: ['user']
-      },
 
       // Issuer specific
       {
@@ -80,14 +73,14 @@ const SideMenuAccount = ({ children, activeSection, setActiveSection }) => {
         label: 'Create Project',
         icon: Briefcase,
         description: 'Submit new carbon project',
-        roles: ['issuer', 'gov']
+        roles: ['issuer']
       },
       {
         id: 'my-projects',
         label: 'My Projects',
         icon: Building,
         description: 'Manage your projects',
-        roles: ['issuer', 'gov']
+        roles: ['issuer']
       },
       {
         id: 'withdrawal-requests',
@@ -96,13 +89,6 @@ const SideMenuAccount = ({ children, activeSection, setActiveSection }) => {
         description: 'Revenue withdrawal status',
         roles: ['issuer']
       },
-      {
-        id: 'project-analytics',
-        label: 'Project Analytics',
-        icon: Activity,
-        description: 'Project performance metrics',
-        roles: ['issuer', 'gov']
-      },
 
       // Validation/Verification specific
       {
@@ -110,21 +96,7 @@ const SideMenuAccount = ({ children, activeSection, setActiveSection }) => {
         label: 'Validation Queue',
         icon: CheckCircle2,
         description: 'Projects pending validation',
-        roles: ['validation', 'gov']
-      },
-      {
-        id: 'verification-history',
-        label: 'Verification History',
-        icon: Clock,
-        description: 'Past verification activities',
-        roles: ['verification', 'gov']
-      },
-      {
-        id: 'vvb-analytics',
-        label: 'VVB Analytics',
-        icon: Target,
-        description: 'Validation/Verification statistics',
-        roles: ['validation', 'verification', 'gov']
+        roles: ['validation']
       },
 
       // Gov specific
@@ -135,36 +107,6 @@ const SideMenuAccount = ({ children, activeSection, setActiveSection }) => {
         description: 'System-wide statistics',
         roles: ['gov']
       },
-      {
-        id: 'user-management',
-        label: 'User Management',
-        icon: Users,
-        description: 'Manage platform users',
-        roles: ['gov']
-      },
-      {
-        id: 'system-settings',
-        label: 'System Settings',
-        icon: Settings,
-        description: 'Platform configuration',
-        roles: ['gov']
-      },
-
-      // Common advanced features
-      // {
-      //   id: 'notifications',
-      //   label: 'Notifications',
-      //   icon: Bell,
-      //   description: 'Alerts and updates',
-      //   roles: ['user', 'issuer', 'gov', 'validation', 'verification']
-      // },
-      // {
-      //   id: 'payment-methods',
-      //   label: 'Payment Methods',
-      //   icon: CreditCard,
-      //   description: 'Manage payment options',
-      //   roles: ['user', 'issuer']
-      // }
     ];
 
     return [...baseItems, ...roleSpecificItems].filter(item => 
@@ -240,10 +182,10 @@ const SideMenuAccount = ({ children, activeSection, setActiveSection }) => {
   const roleInfo = getRoleInfo();
 
   return (
-    <div className="flex h-screen  from-gray-50 via-blue-50 to-green-50">
+    <div className="flex h-screen overflow-hidden bg-gradient-to-br from-gray-50 via-blue-50 to-green-50">
       
-      {/* Fixed Side Menu */}
-      <div className="w-80 bg-white border-r border-gray-200 shadow-xl flex flex-col h-full">
+      {/* Fixed Side Menu - Higher z-index */}
+      <div className="w-80 bg-white border-r border-gray-200 shadow-xl flex flex-col h-full flex-shrink-0 relative z-60">
         
         {/* User Profile Header - Fixed */}
         <div className={`bg-gradient-to-r ${roleInfo.bgGradient} p-6 border-b border-gray-200 flex-shrink-0`}>
@@ -319,38 +261,15 @@ const SideMenuAccount = ({ children, activeSection, setActiveSection }) => {
         </div>
       </div>
 
-      {/* Main Content Area - Scrollable */}
-      <div className="flex-1 flex flex-col h-full">
+      {/* Main Content Area - Higher z-index and top padding if header exists */}
+      <div className="flex-1 flex flex-col h-full min-w-0 overflow-hidden relative z-60">
         
-        {/* Content Header - Fixed */}
-        {/* <div className="flex-shrink-0 bg-white border-b border-gray-200 px-8 py-6">
-          <div className="flex items-center space-x-4">
-            {(() => {
-              const activeItem = menuItems.find(item => item.id === activeSection);
-              const Icon = activeItem?.icon || User;
-              return (
-                <>
-                  <div className={`w-12 h-12 bg-gradient-to-br ${roleInfo.gradient} rounded-xl flex items-center justify-center shadow-lg`}>
-                    <Icon className="w-6 h-6 text-white" />
-                  </div>
-                  <div>
-                    <h1 className="text-3xl font-bold text-gray-900">
-                      {activeItem?.label || 'Account Overview'}
-                    </h1>
-                    <p className="text-gray-600">
-                      {activeItem?.description || 'Manage your account settings and data'}
-                    </p>
-                  </div>
-                </>
-              );
-            })()}
-          </div>
-        </div> */}
-
-        {/* Scrollable Content Area */}
-        <div className="flex-1 overflow-y-auto">
-          <div className="p-8">
-            <div className="space-y-6">
+        {/* Add top padding to account for sticky header */}
+        <div className="pt-10"> {/* This accounts for the header height */}
+          
+          {/* Scrollable Content Area */}
+          <div className="h-[calc(100vh-4rem)] overflow-y-auto overflow-x-hidden">
+            <div className="px-8">
               {children}
             </div>
           </div>

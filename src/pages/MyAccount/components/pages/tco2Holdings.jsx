@@ -43,6 +43,7 @@ import {
 } from 'lucide-react';
 import { useActiveAccount } from 'thirdweb/react';
 import { apihost } from '@/components/contract/address';
+import { set } from 'date-fns';
 
 const MyHoldings = () => {
   const {
@@ -225,6 +226,9 @@ const MyHoldings = () => {
         const result = await getUserApproveProjectBalance(walletAddress, currentPage, nftsPerPage);
         setProjects(Array.isArray(result.nfts) ? result.nfts : []);
 
+        // set the same project four time in setProjects for testing
+        // setProjects(prev => [...prev, ...prev, ...prev, ...prev]);
+
         if (result.pagination) {
           setTotalPages(result.pagination.totalPages);
           setTotalNFTs(result.pagination.totalNFTs);
@@ -252,9 +256,10 @@ const MyHoldings = () => {
       <div >
         <div className="max-w-7xl mx-auto">
           {/* Header Section */}
-          <div className="mb-8">
+        
             {/* Wallet Connection Check */}
             {!walletAddress && (
+                <div className="mb-8">
               <Card className="border-red-200 bg-red-50">
                 <CardContent className="p-6">
                   <div className="flex items-center space-x-3">
@@ -268,8 +273,9 @@ const MyHoldings = () => {
                   </div>
                 </CardContent>
               </Card>
+                 </div>
             )}
-          </div>
+       
 
           {/* Loading State */}
           {loading && (
@@ -316,7 +322,7 @@ const MyHoldings = () => {
                       <img
                         src={project.metadata?.image || '/placeholder-image.png'}
                         alt={project.metadata?.name || "Carbon Credit NFT"}
-                        className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-300"
+                        className="w-[200] h-full object-cover group-hover:scale-110 transition-transform duration-300"
                         onError={(e) => {
                           e.target.src = '/placeholder-image.png';
                         }}
@@ -327,12 +333,12 @@ const MyHoldings = () => {
                       {project.tokenId === 1 ? (
                         <Badge className="bg-green-500 hover:bg-green-600 text-white border-0 shadow-lg text-xs">
                           <Coins className="w-3 h-3 mr-1" />
-                          Active
+                          Active ({Number(project.balanceMinted).toLocaleString()} tCO₂ )
                         </Badge>
                       ) : (
                         <Badge className="bg-red-500 hover:bg-red-600 text-white border-0 shadow-lg text-xs">
                           <Recycle className="w-3 h-3 mr-1" />
-                          Retired
+                          Retired ({Number(project.balanceRetired).toLocaleString()} tCO₂ )
                         </Badge>
                       )}
                     </div>
@@ -395,7 +401,7 @@ const MyHoldings = () => {
 
                     {/* Balance Cards - Compact Version */}
                     <div className="grid grid-cols-2 gap-2">
-                      {project.balanceMinted && (
+                      {/* {project.balanceMinted && (
                         <div className="bg-gradient-to-br from-green-50 to-green-100 border border-green-200 rounded-lg p-2">
                           <div className="text-center">
                             <div className="text-xs text-green-600 mb-1">Available</div>
@@ -404,9 +410,9 @@ const MyHoldings = () => {
                             </div>
                           </div>
                         </div>
-                      )}
+                      )} */}
                       
-                      {project.balanceRetired && (
+                      {/* {project.balanceRetired && (
                         <div className="bg-gradient-to-br from-orange-50 to-orange-100 border border-orange-200 rounded-lg p-2">
                           <div className="text-center">
                             <div className="text-xs text-orange-600 mb-1">Retired</div>
@@ -415,7 +421,7 @@ const MyHoldings = () => {
                             </div>
                           </div>
                         </div>
-                      )}
+                      )} */}
                     </div>
 
                     {/* Project Attributes - Compact */}

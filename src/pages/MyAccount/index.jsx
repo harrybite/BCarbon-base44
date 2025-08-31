@@ -19,7 +19,7 @@ import GovTabs from "./components/Tabs/GovTabs";
 // Import existing components
 import IssuerTab from "@/components/account/IssuerTab";
 import MyHoldings from "./components/pages/tco2Holdings";
-import CertificatesTab from "@/components/account/CertificateTab";
+import CertificatesTab from "./components/pages/CertificateTab";
 import MyProjects from "@/components/account/Myproject";
 import MyRequest from "@/components/account/MyRequest";
 
