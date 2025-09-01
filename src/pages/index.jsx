@@ -61,7 +61,7 @@ function PagesContent() {
         <Route path="/Trade" element={<Trade />} />
         <Route path="/ValidateCertificate" element={<ValidateCertificate />} />
         <Route path="/Administration" element={<Administration />} />
-        <Route path="/MyAccount" element={<MyAccount />} />
+        <Route path="/myaccount" element={<MyAccount />} />
         {/* login and ragistration */}
         <Route path="/login" element={<Login />} />
         <Route path="/register" element={<Register />} />

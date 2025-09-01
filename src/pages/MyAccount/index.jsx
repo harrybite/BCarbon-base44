@@ -20,7 +20,7 @@ import GovTabs from "./components/Tabs/GovTabs";
 import IssuerTab from "@/components/account/IssuerTab";
 import MyHoldings from "./components/pages/tco2Holdings";
 import CertificatesTab from "./components/pages/CertificateTab";
-import MyProjects from "@/components/account/Myproject";
+import Projects from "./components/pages/Project";
 import MyRequest from "@/components/account/MyRequest";
 
 // Import UI components
@@ -123,7 +123,7 @@ export default function MyAccount() {
       case 'create-project':
         return <IssuerTab walletAddress={walletAddress} />;
       case 'my-projects':
-        return <MyProjects />;
+        return <Projects />;
       case 'withdrawal-requests':
         return <MyRequest />;
       case 'project-analytics':

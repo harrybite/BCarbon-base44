@@ -77,10 +77,10 @@ const SideMenuAccount = ({ children, activeSection, setActiveSection }) => {
       },
       {
         id: 'my-projects',
-        label: 'My Projects',
+        label: 'Projects',
         icon: Building,
         description: 'Manage your projects',
-        roles: ['issuer']
+        roles: ['issuer', 'validation', 'verification', 'gov']
       },
       {
         id: 'withdrawal-requests',
@@ -253,7 +253,7 @@ const SideMenuAccount = ({ children, activeSection, setActiveSection }) => {
         <div className="flex-shrink-0 p-4 border-t border-gray-200 bg-white">
           <div className="flex items-center justify-between text-sm text-gray-500">
             <div className="flex items-center space-x-2">
-              <Leaf className="w-4 h-4 text-green-500" />
+              <Leaf className="w-4 text-green-500" />
               <span>BiCO₂ Platform</span>
             </div>
             <div className="w-2 h-2 bg-green-500 rounded-full animate-pulse"></div>
@@ -268,7 +268,7 @@ const SideMenuAccount = ({ children, activeSection, setActiveSection }) => {
         <div className="pt-10"> {/* This accounts for the header height */}
           
           {/* Scrollable Content Area */}
-          <div className="h-[calc(100vh-4rem)] overflow-y-auto overflow-x-hidden">
+          <div className="overflow-y-auto overflow-x-hidden ">
             <div className="px-8">
               {children}
             </div>
