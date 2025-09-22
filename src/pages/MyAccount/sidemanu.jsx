@@ -184,8 +184,8 @@ const SideMenuAccount = ({ children, activeSection, setActiveSection }) => {
   return (
     <div className="flex h-screen overflow-hidden bg-gradient-to-br from-gray-50 via-blue-50 to-green-50">
       
-      {/* Fixed Side Menu - Higher z-index */}
-      <div className="w-80 bg-white border-r border-gray-200 shadow-xl flex flex-col h-full flex-shrink-0 relative z-60">
+      {/* Fixed Side Menu */}
+      <div className="w-80 bg-white border-r border-gray-200 shadow-xl flex flex-col h-full flex-shrink-0">
         
         {/* User Profile Header - Fixed */}
         <div className={`bg-gradient-to-r ${roleInfo.bgGradient} p-6 border-b border-gray-200 flex-shrink-0`}>
@@ -206,6 +206,31 @@ const SideMenuAccount = ({ children, activeSection, setActiveSection }) => {
               </div>
               <p className="text-sm text-gray-600 mt-2">{roleInfo.description}</p>
             </div>
+          </div>
+        </div>
+
+        {/* Page Title Header - Fixed */}
+        <div className="bg-white border-b border-gray-200 px-6 py-4 flex-shrink-0">
+          <div className="flex items-center space-x-3">
+            {(() => {
+              const activeItem = menuItems.find(item => item.id === activeSection);
+              const Icon = activeItem?.icon || User;
+              return (
+                <>
+                  <div className={`w-10 h-10 bg-gradient-to-br ${roleInfo.gradient} rounded-xl flex items-center justify-center shadow-lg`}>
+                    <Icon className="w-5 h-5 text-white" />
+                  </div>
+                  <div>
+                    <h1 className="text-2xl font-bold text-gray-900">
+                      {activeItem?.label || 'Account Overview'}
+                    </h1>
+                    <p className="text-sm text-gray-600">
+                      {activeItem?.description || 'Manage your account settings and data'}
+                    </p>
+                  </div>
+                </>
+              );
+            })()}
           </div>
         </div>
 
@@ -253,7 +278,7 @@ const SideMenuAccount = ({ children, activeSection, setActiveSection }) => {
         <div className="flex-shrink-0 p-4 border-t border-gray-200 bg-white">
           <div className="flex items-center justify-between text-sm text-gray-500">
             <div className="flex items-center space-x-2">
-              <Leaf className="w-4 text-green-500" />
+              <Leaf className="w-4 h-4 text-green-500" />
               <span>BiCO₂ Platform</span>
             </div>
             <div className="w-2 h-2 bg-green-500 rounded-full animate-pulse"></div>
@@ -261,17 +286,13 @@ const SideMenuAccount = ({ children, activeSection, setActiveSection }) => {
         </div>
       </div>
 
-      {/* Main Content Area - Higher z-index and top padding if header exists */}
-      <div className="flex-1 flex flex-col h-full min-w-0 overflow-hidden relative z-60">
+      {/* Main Content Area - FIXED: Proper scrolling container */}
+      <div className="flex-1 flex flex-col h-full min-w-0 overflow-hidden">
         
-        {/* Add top padding to account for sticky header */}
-        <div className="pt-10"> {/* This accounts for the header height */}
-          
-          {/* Scrollable Content Area */}
-          <div className="overflow-y-auto overflow-x-hidden ">
-            <div className="px-8">
-              {children}
-            </div>
+        {/* Scrollable Content Area - This is the key fix */}
+        <div className="flex-1 overflow-y-auto overflow-x-hidden">
+          <div className="p-8 min-h-full">
+            {children}
           </div>
         </div>
       </div>

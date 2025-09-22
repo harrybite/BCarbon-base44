@@ -281,10 +281,6 @@ const handleUpdateUriSave = async () => {
 
   return (
     <div className="p-2">
-      {/* <div className="mb-6">
-        <h2 className="text-2xl font-bold text-gray-900 mb-2">My Projects</h2>
-        <p className="text-gray-600">Manage your carbon credit projects</p>
-      </div> */}
 
       <div className="border-gray-200 pt-1">
         {loading ? (
