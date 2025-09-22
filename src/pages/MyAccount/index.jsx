@@ -61,18 +61,7 @@ export default function MyAccount() {
   const { checkIsOwner, checkAuthorizedVVB } = useContractInteraction();
   const { userInfo, isAuthenticated } = useUserInfo();
 
-  // Check authentication
-  useEffect(() => {
-    if (!isAuthenticated) {
-      toast({
-        title: 'Authentication Required',
-        description: 'Please log in to access your account.',
-        variant: 'destructive',
-      });
-      navigate('/login');
-      return;
-    }
-  }, [isAuthenticated, navigate, toast]);
+
 
   useEffect(() => {    
     // Check owner and authorized VVB
@@ -80,7 +69,6 @@ export default function MyAccount() {
       try {
         const isOwner = await checkIsOwner();
         const isVVB = await checkAuthorizedVVB();
-        console.log('isOwner:', isOwner, 'isVVB:', isVVB);
         setIsOwner(isOwner);
         setIsVVB(isVVB);
         

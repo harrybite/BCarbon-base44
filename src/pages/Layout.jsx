@@ -2,7 +2,6 @@
 import { useEffect, useState, useRef } from "react";
 import { Link, useLocation, useNavigate } from "react-router-dom";
 import { createPageUrl } from "@/utils";
-import { jwtDecode } from "jwt-decode";
 
 import {
   Home,
@@ -13,7 +12,8 @@ import {
   ChevronRight,
   Menu,
   User,
-  UserCircle
+  UserCircle,
+  Loader2
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
@@ -24,6 +24,7 @@ import { bscTestnet } from "thirdweb/chains"
 import { useConnectWallet } from "@/context/walletcontext";
 import { apihost } from "@/components/contract/address";
 import { useContractInteraction } from "@/components/contract/ContractInteraction";
+import { useUserInfo } from "@/context/userInfo";
 
 // Base navigation items (always visible - no authentication required)
 const publicNavigationItems = [
@@ -69,35 +70,18 @@ export default function Layout({ children }) {
   const location = useLocation();
   const navigate = useNavigate();
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
-  const [userMenuOpen, setUserMenuOpen] = useState(false);
   const [profileMenuOpen, setProfileMenuOpen] = useState(false);
-  const userMenuRef = useRef(null);
   const profileMenuRef = useRef(null);
   const { walletAddress } = useConnectWallet();
   const [pendingUrl, setPendingUrl] = useState(null);
-  const [initialLoad, setInitialLoad] = useState(true);
-  const { connect, } = useConnect();
-  const { checkAuthorizedVVB, checkIsOwner } = useContractInteraction()
+  const { connect } = useConnect();
+  const { userInfo, isAuthenticated, isLoading } = useUserInfo();
   const account = useActiveAccount();
-
-  // Get user info from token
-  let userInfo = null;
-  const token = typeof window !== "undefined" ? localStorage.getItem("token") : null;
-  if (token) {
-    try {
-      userInfo = jwtDecode(token);
-    } catch (e) {
-      userInfo = null;
-    }
-  }
-  
-  // Check if user is authenticated (both wallet + login)
-  const isAuthenticated = walletAddress && userInfo;
   
   // Check if user is admin or VVB
   const isAdminOrVVB = userInfo && (userInfo.role === "gov" || userInfo.role === "vvb");
 
-  // Create navigation items based on user authentication and role (removed My Account from here)
+  // Create navigation items based on user authentication and role
   const getNavigationItems = () => {
     let items = [...publicNavigationItems];
     
@@ -119,42 +103,17 @@ export default function Layout({ children }) {
   // Close dropdowns if clicked outside
   useEffect(() => {
     function handleClickOutside(event) {
-      if (userMenuRef.current && !userMenuRef.current.contains(event.target)) {
-        setUserMenuOpen(false);
-      }
       if (profileMenuRef.current && !profileMenuRef.current.contains(event.target)) {
         setProfileMenuOpen(false);
       }
     }
-    if (userMenuOpen || profileMenuOpen) {
+    if (profileMenuOpen) {
       document.addEventListener("mousedown", handleClickOutside);
     } else {
       document.removeEventListener("mousedown", handleClickOutside);
     }
     return () => document.removeEventListener("mousedown", handleClickOutside);
-  }, [userMenuOpen, profileMenuOpen]);
-
-  // Handle account changes - but only after initial load
-  useEffect(() => {
-    const initTimer = setTimeout(() => {
-      setInitialLoad(false);
-    }, 2000);
-
-    return () => clearTimeout(initTimer);
-  }, []);
-
-  // Only handle account changes after initial load period
-  useEffect(() => {
-    if (!initialLoad && account?.address !== walletAddress) {
-      if (walletAddress && account?.address && account.address !== walletAddress) {
-        console.log("Wallet address changed, logging out");
-        localStorage.removeItem("token");
-        setUserMenuOpen(false);
-        setProfileMenuOpen(false);
-        navigate("/login");
-      }
-    }
-  }, [account?.address, walletAddress, initialLoad, navigate]);
+  }, [profileMenuOpen]);
 
   // Handler to navigate or trigger authentication
   const handleNavClick = (url, item) => {
@@ -175,13 +134,13 @@ export default function Layout({ children }) {
       connect(async () => {
         const wallet = createWallet("io.metamask");
         await wallet.connect({
-          thirdwebclient,
+          client: thirdwebclient,
           chain: bscTestnet
         });
         return wallet;
-      })
+      });
       setPendingUrl(url);
-    } else if (!userInfo) {
+    } else if (!isAuthenticated) {
       // Wallet connected but not logged in
       navigate("/login");
     } else {
@@ -193,45 +152,31 @@ export default function Layout({ children }) {
   // Listen for wallet connection and redirect if pending
   useEffect(() => {
     if (walletAddress && pendingUrl) {
-      if (userInfo) {
+      if (isAuthenticated) {
         navigate(pendingUrl);
         setPendingUrl(null);
       } else {
+        console.log("Wallet connected but not logged in, redirecting to login");
         navigate("/login");
         setPendingUrl(null);
       }
     }
-  }, [walletAddress, pendingUrl, navigate, userInfo]);
-
-  // Poll token validation every 30 seconds
-  useEffect(() => {
-    if (initialLoad) return;
-
-    const interval = setInterval(async () => {
-      const token = localStorage.getItem("token");
-      if (!token) return;
-      
-      try {
-        const res = await fetch(`${apihost}/api/protected`, {
-          headers: {
-            Authorization: `Bearer ${token}`,
-          },
-        });
-        if (res.status === 401) {
-          console.log("Token expired, logging out");
-          localStorage.removeItem("token");
-          navigate("/login");
-        }
-      } catch (err) {
-        console.log("Network error during token validation:", err.message);
-      }
-    }, 30000);
-
-    return () => clearInterval(interval);
-  }, [navigate, initialLoad]);
+  }, [walletAddress, pendingUrl, navigate, isAuthenticated]);
 
   // Check if current page is MyAccount to hide footer
   const isMyAccountPage = location.pathname === '/myaccount';
+
+  // Show loading spinner while checking authentication
+  if (isLoading) {
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-green-50 via-white to-blue-50 flex items-center justify-center">
+        <div className="text-center">
+          <Loader2 className="w-8 h-8 animate-spin text-green-600 mx-auto mb-4" />
+          <p className="text-gray-600">Loading...</p>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-green-50 via-white to-blue-50">
@@ -311,7 +256,7 @@ export default function Layout({ children }) {
                     <UserCircle className="w-6 h-6" />
                   </button>
 
-                  {/* Profile Dropdown - Increased z-index for MyAccount pages */}
+                  {/* Profile Dropdown */}
                   <div
                     className={`absolute right-0 mt-2 w-64 bg-white border border-gray-200 rounded-xl shadow-xl transition-all duration-200 ${
                       isMyAccountPage ? 'z-[10000]' : 'z-[1000]'
@@ -329,10 +274,10 @@ export default function Layout({ children }) {
                         </div>
                         <div className="flex-1 min-w-0">
                           <p className="text-sm font-medium text-gray-900 truncate">
-                            {userInfo.email || "User"}
+                            {userInfo?.email || "User"}
                           </p>
                           <p className="text-xs text-gray-500 capitalize">
-                            {userInfo.role} Account
+                            {userInfo?.role} Account
                           </p>
                           <p className="text-xs text-gray-400 font-mono truncate">
                             {walletAddress && `${walletAddress.slice(0, 6)}...${walletAddress.slice(-4)}`}
@@ -397,7 +342,7 @@ export default function Layout({ children }) {
               )}
 
               {/* Login Button (only show when not authenticated) */}
-              {!userInfo && (
+              {!isAuthenticated && (
                 <Button
                   variant="outline"
                   className="hidden md:inline-flex"
@@ -407,7 +352,7 @@ export default function Layout({ children }) {
                 </Button>
               )}
               
-              {/* Mobile Nav - Also update z-index */}
+              {/* Mobile Nav */}
               <Sheet open={mobileMenuOpen} onOpenChange={setMobileMenuOpen}>
                 <SheetTrigger asChild>
                   <Button variant="ghost" size="icon" className="md:hidden">
